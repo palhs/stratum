@@ -1,0 +1,132 @@
+# Requirements: Stratum
+
+**Defined:** 2026-03-03
+**Core Value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
+
+## v1 Requirements
+
+Requirements for initial release. Each maps to roadmap phases.
+
+### Data Ingestion
+
+- [ ] **DATA-01**: System ingests Vietnamese stock OHLCV data (weekly/monthly) via vnstock with version pinning and error handling
+- [ ] **DATA-02**: System ingests Vietnamese stock fundamental data (P/E, P/B, EPS, etc.) via vnstock
+- [ ] **DATA-03**: System ingests gold price data (weekly/monthly) from available free-tier sources
+- [ ] **DATA-04**: System ingests gold ETF flow data and central bank buying data from World Gold Council
+- [ ] **DATA-05**: System ingests macroeconomic indicators (GDP, inflation, unemployment, interest rates) from FRED
+- [ ] **DATA-06**: System pre-computes structure markers (moving averages, drawdown from ATH, valuation percentiles) during ingestion and stores in PostgreSQL
+- [ ] **DATA-07**: Every ingested data row includes `data_as_of` and `ingested_at` timestamps
+- [ ] **DATA-08**: System logs every pipeline run to `pipeline_run_log` table with success/failure status
+- [ ] **DATA-09**: System detects anomalous row counts from vnstock (>50% deviation from 4-week moving average) and flags them
+
+### Macro Analysis
+
+- [ ] **MACRO-01**: System classifies current macroeconomic regime against historical analogues using Neo4j knowledge graph
+- [ ] **MACRO-02**: Regime classification outputs a probability distribution across candidate regimes, not a single label
+- [ ] **MACRO-03**: When top regime confidence is below 70%, system surfaces "Mixed Signal Environment" with multiple likely analogues
+- [ ] **MACRO-04**: Neo4j RESEMBLES relationships carry `similarity_score`, `dimensions_matched`, and `period` properties
+- [ ] **MACRO-05**: System communicates when current environment has limited historical precedent rather than forcing a weak analogy
+
+### Asset Valuation
+
+- [ ] **VAL-01**: System assesses each asset's current valuation relative to its own historical range
+- [ ] **VAL-02**: Valuation assessment is contextualized by the current macro regime (regime-relative valuation)
+- [ ] **VAL-03**: System handles out-of-range valuation levels (historically unprecedented P/E, etc.) with explicit communication rather than misleading labels
+- [ ] **VAL-04**: Gold valuation includes ETF flow vs physical demand divergence flagging when contradictory signals exist
+
+### Price Structure
+
+- [ ] **STRUC-01**: System analyzes higher time-frame price structure (weekly/monthly) using pre-computed markers
+- [ ] **STRUC-02**: Price structure analysis includes MA positioning, drawdown from ATH, and trend context
+- [ ] **STRUC-03**: Price structure is framed as entry timing context within a fundamental thesis, not as standalone trading signals
+
+### AI Reasoning
+
+- [ ] **AI-01**: System produces an AI-derived entry quality assessment combining macro regime, valuation, and price structure
+- [ ] **AI-02**: Entry quality output is a qualitative tier (Favorable/Neutral/Cautious/Avoid) with reasoning decomposition, not a numeric score
+- [ ] **AI-03**: Every report shows three sub-assessments (macro, valuation, structure) before the composite entry quality assessment
+- [ ] **AI-04**: Each reasoning step has clear input, data source, and output — no black-box analysis
+- [ ] **AI-05**: All numeric claims in reports are traceable to retrieved database records, not LLM memory (grounding check)
+- [ ] **AI-06**: System handles conflicting signals across layers with explicit "strong thesis, weak structure — wait for structural confirmation" type outputs
+- [ ] **AI-07**: Report language uses probabilistic framing ("suggests," "conditions consistent with") and never contains "buy," "sell," or "entry confirmed"
+- [ ] **AI-08**: LangGraph reasoning pipeline uses explicit StateGraph with named nodes (MacroRegimeClassifier, ValuationContextualizer, StructureAnalyzer, EntryQualityScorer, ReportComposer)
+
+### Reports
+
+- [ ] **RPT-01**: Reports are rendered in structured card format (macro regime card, valuation card, price structure card, entry quality card)
+- [ ] **RPT-02**: Reports are generated in both Vietnamese (primary) and English
+- [ ] **RPT-03**: Vietnamese language content is native generation, not translation from English
+- [ ] **RPT-04**: Report UI feels like a research report, not a trading terminal — narrative-first with charts supporting the story
+- [ ] **RPT-05**: If one reasoning step fails, system completes remaining steps and flags the missing component rather than producing no report
+
+### User & Platform
+
+- [ ] **USER-01**: User can add and remove assets from their watchlist
+- [ ] **USER-02**: System generates reports on a monthly cadence for all watchlist assets
+- [ ] **USER-03**: When user adds a new asset mid-month, system generates an on-demand report immediately using latest available data
+- [ ] **USER-04**: User can authenticate via Supabase (single user at launch)
+
+### Infrastructure
+
+- [ ] **INFRA-01**: All services run in Docker Compose on a self-hosted VPS
+- [ ] **INFRA-02**: Storage layer (PostgreSQL, Neo4j, Qdrant) is the hard boundary between n8n ingestion and LangGraph reasoning — they never communicate directly
+- [ ] **INFRA-03**: LangGraph state is persisted via langgraph-checkpoint-postgres for audit trail and interrupted run recovery
+- [ ] **INFRA-04**: FastAPI serves reasoning pipeline with BackgroundTask and SSE streaming for step progress
+
+## v2 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Data Enrichment
+
+- **ENRICH-01**: System ingests earnings transcripts, Fed minutes, and macro reports into Qdrant for semantic retrieval
+- **ENRICH-02**: LlamaIndex retrieves relevant document context during reasoning steps
+
+### Report Enhancements
+
+- **RPTE-01**: Reports include explicit data freshness indicators showing `data_as_of` for each data source
+- **RPTE-02**: Users can view historical reports per asset (report archive)
+- **RPTE-03**: Users can export reports as PDF
+
+### Notifications
+
+- **NOTF-01**: Users receive email digest when new reports are generated (weekly cadence-aligned)
+
+### Platform Scale
+
+- **SCALE-01**: Multi-user accounts with separate watchlists and report histories
+- **SCALE-02**: Additional asset classes (BTC, bonds, US stocks)
+- **SCALE-03**: Asset screener — find assets matching a regime profile
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Real-time or intraday data | Contradicts weekly/monthly analytical frame; adds cost with no analytical value for the use case |
+| Portfolio holdings tracking and P&L | Scope creep into brokerage-adjacent features; changes product from advisor to portfolio manager |
+| Buy/sell trade signals | Regulatory risk (Vietnam SSC); defeats probabilistic macro-fundamental framing |
+| Short-term technical analysis (RSI, MACD, patterns) | Different user persona (trader vs long-term investor); explicitly excluded from product thesis |
+| Social features (sharing, comments, community) | Moderation burden; regulatory exposure; diverts from core analysis quality |
+| AI chat / Q&A over reports | Unpredictable output quality; higher LLM cost; harder to ensure explainability |
+| Price alerts and push notifications | Implies real-time monitoring; conflicts with weekly/monthly cadence thesis |
+| Backtesting / strategy simulator | Extreme complexity; requires years of clean historical data; risk of overfitting false confidence |
+| Mobile app | Web-first; mobile follows only if usage patterns demand it |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| (Populated during roadmap creation) | | |
+
+**Coverage:**
+- v1 requirements: 35 total
+- Mapped to phases: 0
+- Unmapped: 35
+
+---
+*Requirements defined: 2026-03-03*
+*Last updated: 2026-03-03 after initial definition*
