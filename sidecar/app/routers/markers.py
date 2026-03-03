@@ -1,6 +1,6 @@
 """
 Structure marker computation endpoint for the Stratum Data Sidecar.
-Phase 2 | Plan 03
+Phase 2 | Plan 03 (updated Plan 04: pipeline logging)
 
 Endpoint:
   POST /compute/structure-markers  — Compute and upsert all structure markers
@@ -10,9 +10,16 @@ the n8n workflow). Depends on fresh OHLCV and fundamental data in PostgreSQL.
 
 LangGraph reasoning nodes READ pre-computed markers — they NEVER compute them.
 This endpoint populates the structure_markers table for all assets.
+
+Plan 04 additions:
+  - log_pipeline_run() called on every run (success and failure)
+  - duration_ms recorded via time.monotonic()
+  - No anomaly detection for structure markers (vnstock only)
 """
 
 import logging
+import time
+from datetime import date, timezone, datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -20,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.services import markers_service
+from app.services.pipeline_log_service import log_pipeline_run
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -81,7 +89,13 @@ async def compute_structure_markers(
     If source tables are empty (data not yet loaded), returns 200 with
     total_rows_written=0 and a warning message. This is not an error —
     source data may not have been ingested yet.
+
+    Every run writes to pipeline_run_log (success or failure).
     """
+    pipeline_name = "structure_markers"
+    start_time = time.monotonic()
+    data_as_of_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+
     asset_types = request.asset_types
     if asset_types is not None:
         # Validate asset_type values
@@ -108,15 +122,26 @@ async def compute_structure_markers(
             asset_types=asset_types,
         )
     except Exception as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        log_pipeline_run(
+            db, pipeline_name, "failure", 0, data_as_of_str,
+            error_message=str(exc), duration_ms=duration_ms,
+        )
         logger.exception("Unexpected error during structure marker computation")
         # Propagate as a 500 — do NOT swallow silently
         raise
 
+    duration_ms = int((time.monotonic() - start_time) * 1000)
     total = result["total_rows_written"]
     breakdown = result["breakdown"]
     null_counts = result["null_counts"]
 
     if total == 0:
+        log_pipeline_run(
+            db, pipeline_name, "partial", 0, data_as_of_str,
+            error_message="0 rows written — source tables may be empty",
+            duration_ms=duration_ms,
+        )
         logger.warning(
             "compute_structure_markers: 0 rows written — source tables may be empty"
         )
@@ -131,6 +156,10 @@ async def compute_structure_markers(
             ),
         )
 
+    log_pipeline_run(
+        db, pipeline_name, "success", total, data_as_of_str,
+        duration_ms=duration_ms,
+    )
     logger.info(
         "compute_structure_markers: wrote %d rows — breakdown: %s",
         total, breakdown,

@@ -1,6 +1,6 @@
 """
 Gold data ingestion endpoints for the Stratum Data Sidecar.
-Phase 2 | Plan 02
+Phase 2 | Plan 02 (updated Plan 04: pipeline logging)
 
 Endpoints:
   POST /ingest/gold/fred-price   — Fetch and upsert FRED GOLDAMGBD228NLBM gold price
@@ -13,9 +13,15 @@ Error mapping:
   501 — Not Implemented (WGC flows — JS-rendered portal)
   503 — Service unavailable (missing FRED_API_KEY)
   500 — Unexpected internal error
+
+Plan 04 additions:
+  - log_pipeline_run() called on every run (success and failure)
+  - duration_ms recorded via time.monotonic()
+  - No anomaly detection for gold endpoints (vnstock only)
 """
 
 import logging
+import time
 from datetime import date
 from typing import Optional
 
@@ -26,6 +32,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.services import gold_service
 from app.services.gold_service import WGCNotImplemented
+from app.services.pipeline_log_service import log_pipeline_run
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,7 +71,11 @@ async def ingest_gold_fred_price(
     data_as_of = the FRED observation date (the day the price was fixed), NOT ingestion time.
     Historical backfill: pass start_date 10 years ago to ingest the full history.
     Upsert is idempotent: re-running with the same date range produces no duplicates.
+    Every run writes to pipeline_run_log (success or failure).
     """
+    pipeline_name = "gold_fred_price"
+    start_time = time.monotonic()
+
     try:
         result = gold_service.fetch_and_upsert_gold_fred_price(
             start_date=str(request.start_date),
@@ -72,21 +83,45 @@ async def ingest_gold_fred_price(
             db_session=db,
         )
     except EnvironmentError as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        log_pipeline_run(
+            db, pipeline_name, "failure", 0, str(request.end_date),
+            error_message=str(exc), duration_ms=duration_ms,
+        )
         logger.error("FRED API key missing: %s", exc)
         raise HTTPException(status_code=503, detail=f"FRED_API_KEY not configured: {exc}") from exc
     except Exception as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        log_pipeline_run(
+            db, pipeline_name, "failure", 0, str(request.end_date),
+            error_message=str(exc), duration_ms=duration_ms,
+        )
         logger.exception("Unexpected error during FRED gold price ingest")
         raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
 
-    if result["rows_ingested"] == 0:
+    duration_ms = int((time.monotonic() - start_time) * 1000)
+    rows_ingested = result["rows_ingested"]
+    data_as_of = result.get("data_as_of") or str(request.end_date)
+
+    if rows_ingested == 0:
+        log_pipeline_run(
+            db, pipeline_name, "partial", 0, data_as_of,
+            error_message="No gold price data returned for the given date range",
+            duration_ms=duration_ms,
+        )
         raise HTTPException(
             status_code=204,
             detail="No gold price data returned for the given date range",
         )
 
+    log_pipeline_run(
+        db, pipeline_name, "success", rows_ingested, data_as_of,
+        duration_ms=duration_ms,
+    )
+
     return IngestResponse(
         status="success",
-        rows_ingested=result["rows_ingested"],
+        rows_ingested=rows_ingested,
         data_as_of=result.get("data_as_of"),
     )
 
@@ -107,7 +142,11 @@ async def ingest_gold_gld_etf(
     data_as_of = the bar's week-start date normalized to midnight UTC.
     Historical backfill: pass start_date 10 years ago for full history.
     Upsert is idempotent: re-running produces no duplicates.
+    Every run writes to pipeline_run_log (success or failure).
     """
+    pipeline_name = "gold_gld_etf"
+    start_time = time.monotonic()
+
     try:
         result = gold_service.fetch_and_upsert_gld_etf(
             start_date=str(request.start_date),
@@ -116,18 +155,37 @@ async def ingest_gold_gld_etf(
             db_session=db,
         )
     except Exception as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        log_pipeline_run(
+            db, pipeline_name, "failure", 0, str(request.end_date),
+            error_message=str(exc), duration_ms=duration_ms,
+        )
         logger.exception("Unexpected error during GLD ETF ingest")
         raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
 
-    if result["rows_ingested"] == 0:
+    duration_ms = int((time.monotonic() - start_time) * 1000)
+    rows_ingested = result["rows_ingested"]
+    data_as_of = result.get("data_as_of") or str(request.end_date)
+
+    if rows_ingested == 0:
+        log_pipeline_run(
+            db, pipeline_name, "partial", 0, data_as_of,
+            error_message="No GLD ETF data returned for the given date range",
+            duration_ms=duration_ms,
+        )
         raise HTTPException(
             status_code=204,
             detail="No GLD ETF data returned for the given date range",
         )
 
+    log_pipeline_run(
+        db, pipeline_name, "success", rows_ingested, data_as_of,
+        duration_ms=duration_ms,
+    )
+
     return IngestResponse(
         status="success",
-        rows_ingested=result["rows_ingested"],
+        rows_ingested=rows_ingested,
         data_as_of=result.get("data_as_of"),
     )
 
@@ -149,6 +207,9 @@ async def ingest_gold_wgc_flows(
 
     Known limitation: import WGC data manually via CSV upload.
     See deferred-items.md for details.
+
+    Note: 501 responses are NOT logged to pipeline_run_log — this is a known
+    stub, not a pipeline run.
     """
     try:
         gold_service.fetch_and_upsert_wgc_flows(db_session=db)
