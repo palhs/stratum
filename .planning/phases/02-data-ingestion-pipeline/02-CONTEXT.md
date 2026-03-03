@@ -19,6 +19,7 @@ All external data sources flowing into PostgreSQL on schedule with pre-computed 
 - OHLCV storage: single `stock_ohlcv` table with `resolution` column ('weekly'/'monthly') — not separate tables
 - vnstock integration: dedicated sidecar Python container (FastAPI) with pinned vnstock version, called by n8n via HTTP Request node
 - Sidecar scope: Claude's discretion on whether all sources route through the sidecar or just vnstock (other sources may use n8n HTTP nodes directly if they're standard REST APIs)
+- vnstock API key: free Community tier key from vnstocks.com — raises rate limit from 20 to 60 req/min. Passed via VNSTOCK_API_KEY env var. Sidecar authenticates on startup if set, falls back to guest tier if unset.
 - Historical backfill: 5 years on first run for Vietnamese stocks
 
 ### Gold Data Sourcing
