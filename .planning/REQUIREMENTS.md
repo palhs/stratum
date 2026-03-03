@@ -68,8 +68,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: All services run in Docker Compose on a self-hosted VPS
-- [ ] **INFRA-02**: Storage layer (PostgreSQL, Neo4j, Qdrant) is the hard boundary between n8n ingestion and LangGraph reasoning — they never communicate directly
+- [x] **INFRA-01**: All services run in Docker Compose on a self-hosted VPS
+- [x] **INFRA-02**: Storage layer (PostgreSQL, Neo4j, Qdrant) is the hard boundary between n8n ingestion and LangGraph reasoning — they never communicate directly
 - [ ] **INFRA-03**: LangGraph state is persisted via langgraph-checkpoint-postgres for audit trail and interrupted run recovery
 - [ ] **INFRA-04**: FastAPI serves reasoning pipeline with BackgroundTask and SSE streaming for step progress
 
@@ -120,8 +120,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 2 | Pending |
