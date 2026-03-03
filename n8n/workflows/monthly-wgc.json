@@ -1,0 +1,212 @@
+{
+  "name": "Monthly WGC Scraping",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 1 * *"
+            }
+          ]
+        },
+        "timezone": "Asia/Ho_Chi_Minh"
+      },
+      "id": "schedule-trigger-monthly",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/ingest/gold/wgc-flows",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "ingest-wgc-flows",
+      "name": "Ingest WGC Flows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "onError": "continueErrorOutput",
+      "notes": "Returns 501 until WGC Goldhub ingestion is implemented. This is expected — the retry loop will exhaust and the workflow will continue to structure markers."
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'gold_wgc_flows' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-wgc",
+      "name": "Retry Counter (WGC)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-wgc",
+      "name": "Wait (WGC)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/compute/structure-markers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"asset_types\": [\"gold_spot\", \"gold_etf\"]\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "compute-gold-markers",
+      "name": "Compute Gold Structure Markers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'structure_markers_gold' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-gold-markers",
+      "name": "Retry Counter (Gold Markers)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-gold-markers",
+      "name": "Wait (Gold Markers)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1100, 460]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ingest WGC Flows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest WGC Flows": {
+      "main": [
+        [
+          {
+            "node": "Compute Gold Structure Markers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (WGC)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (WGC)": {
+      "main": [
+        [
+          {
+            "node": "Wait (WGC)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (WGC)": {
+      "main": [
+        [
+          {
+            "node": "Ingest WGC Flows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Gold Structure Markers": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Retry Counter (Gold Markers)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (Gold Markers)": {
+      "main": [
+        [
+          {
+            "node": "Wait (Gold Markers)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Gold Markers)": {
+      "main": [
+        [
+          {
+            "node": "Compute Gold Structure Markers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "errorWorkflow": "Error Handler"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "02-04-monthly-v1",
+  "triggerCount": 0,
+  "tags": [
+    {
+      "createdAt": "2026-03-04T00:00:00.000Z",
+      "updatedAt": "2026-03-04T00:00:00.000Z",
+      "id": "stratum-ingestion",
+      "name": "stratum-ingestion"
+    }
+  ]
+}

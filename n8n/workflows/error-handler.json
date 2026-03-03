@@ -1,0 +1,119 @@
+{
+  "name": "Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "workflow_name",
+              "name": "workflow_name",
+              "value": "={{ $('Error Trigger').first().json.workflow.name }}",
+              "type": "string"
+            },
+            {
+              "id": "failed_node",
+              "name": "failed_node",
+              "value": "={{ $('Error Trigger').first().json.execution.lastNodeExecuted }}",
+              "type": "string"
+            },
+            {
+              "id": "error_message",
+              "name": "error_message",
+              "value": "={{ $('Error Trigger').first().json.execution.error.message }}",
+              "type": "string"
+            },
+            {
+              "id": "error_time",
+              "name": "error_time",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "execution_id",
+              "name": "execution_id",
+              "value": "={{ $('Error Trigger').first().json.execution.id }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "format-error",
+      "name": "Format Error Details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=\ud83d\udea8 *Pipeline Failure*\n*Workflow:* {{ $json.workflow_name }}\n*Node:* {{ $json.failed_node }}\n*Error:* {{ $json.error_message }}\n*Time:* {{ $json.error_time }}\n*Execution ID:* {{ $json.execution_id }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-failure-alert",
+      "name": "Telegram Failure Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [680, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Details": {
+      "main": [
+        [
+          {
+            "node": "Telegram Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "02-04-error-handler-v1",
+  "triggerCount": 0,
+  "tags": [
+    {
+      "createdAt": "2026-03-04T00:00:00.000Z",
+      "updatedAt": "2026-03-04T00:00:00.000Z",
+      "id": "stratum-ingestion",
+      "name": "stratum-ingestion"
+    }
+  ]
+}

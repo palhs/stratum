@@ -1,0 +1,634 @@
+{
+  "name": "Weekly Data Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * 0"
+            }
+          ]
+        },
+        "timezone": "Asia/Ho_Chi_Minh"
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "end_date",
+              "name": "end_date",
+              "value": "={{ $now.toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "start_date",
+              "name": "start_date",
+              "value": "={{ $now.minus({ weeks: 2 }).toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-date-range",
+      "name": "Set Date Range",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/ingest/vnstock/ohlcv",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"start_date\": \"{{ $json.start_date }}\",\n  \"end_date\": \"{{ $json.end_date }}\"\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "ingest-vnstock-ohlcv",
+      "name": "Ingest vnstock OHLCV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'vnstock_ohlcv' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-ohlcv",
+      "name": "Retry Counter (OHLCV)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-ohlcv",
+      "name": "Wait (OHLCV)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1100, 460]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/ingest/vnstock/fundamentals",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"start_date\": \"{{ $json.start_date }}\",\n  \"end_date\": \"{{ $json.end_date }}\"\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ingest-vnstock-fundamentals",
+      "name": "Ingest vnstock Fundamentals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'vnstock_fundamentals' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-fundamentals",
+      "name": "Retry Counter (Fundamentals)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-fundamentals",
+      "name": "Wait (Fundamentals)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1520, 460]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/ingest/gold/fred-price",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"start_date\": \"{{ $('Set Date Range').first().json.start_date }}\",\n  \"end_date\": \"{{ $('Set Date Range').first().json.end_date }}\"\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ingest-gold-fred",
+      "name": "Ingest Gold FRED Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'gold_fred_price' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-gold-fred",
+      "name": "Retry Counter (Gold FRED)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-gold-fred",
+      "name": "Wait (Gold FRED)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1940, 460]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/ingest/gold/gld-etf",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"start_date\": \"{{ $('Set Date Range').first().json.start_date }}\",\n  \"end_date\": \"{{ $('Set Date Range').first().json.end_date }}\"\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ingest-gold-etf",
+      "name": "Ingest GLD ETF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2160, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'gold_gld_etf' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-etf",
+      "name": "Retry Counter (ETF)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-etf",
+      "name": "Wait (ETF)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2360, 460]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/ingest/fred/indicators",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"start_date\": \"{{ $('Set Date Range').first().json.start_date }}\",\n  \"end_date\": \"{{ $('Set Date Range').first().json.end_date }}\"\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ingest-fred-indicators",
+      "name": "Ingest FRED Indicators",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2580, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'fred_indicators' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-fred",
+      "name": "Retry Counter (FRED)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2580, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-fred",
+      "name": "Wait (FRED)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2780, 460]
+    },
+    {
+      "parameters": {
+        "url": "http://data-sidecar:8000/compute/structure-markers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "compute-structure-markers",
+      "name": "Compute Structure Markers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3000, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = ($input.first().json.attempt || 0) + 1;\nconst delays = [60, 300, 900];\nif (attempt > 3) {\n  return [{ json: { giveUp: true, attempt, pipeline: 'structure_markers' } }];\n}\nreturn [{ json: { ...($input.first().json), attempt, delay_seconds: delays[attempt - 1] } }];"
+      },
+      "id": "retry-counter-markers",
+      "name": "Retry Counter (Markers)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3000, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-markers",
+      "name": "Wait (Markers)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [3200, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "anomaly-check-ohlcv",
+              "leftValue": "={{ $('Ingest vnstock OHLCV').first().json.anomaly_detected }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "anomaly-check-fundamentals",
+              "leftValue": "={{ $('Ingest vnstock Fundamentals').first().json.anomaly_detected }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "check-anomalies",
+      "name": "Any Anomaly Detected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3220, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=\u26a0\ufe0f *Row Count Anomaly Detected*\n*Workflow:* Weekly Data Pipeline\n*OHLCV anomaly:* {{ $('Ingest vnstock OHLCV').first().json.anomaly_detected }}\n*Fundamentals anomaly:* {{ $('Ingest vnstock Fundamentals').first().json.anomaly_detected }}\n*Time:* {{ $now.toISO() }}\n\n_This is a warning only — data was ingested successfully._",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-anomaly-alert",
+      "name": "Telegram Anomaly Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3440, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Range": {
+      "main": [
+        [
+          {
+            "node": "Ingest vnstock OHLCV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest vnstock OHLCV": {
+      "main": [
+        [
+          {
+            "node": "Ingest vnstock Fundamentals",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (OHLCV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (OHLCV)": {
+      "main": [
+        [
+          {
+            "node": "Wait (OHLCV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (OHLCV)": {
+      "main": [
+        [
+          {
+            "node": "Ingest vnstock OHLCV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest vnstock Fundamentals": {
+      "main": [
+        [
+          {
+            "node": "Ingest Gold FRED Price",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (Fundamentals)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (Fundamentals)": {
+      "main": [
+        [
+          {
+            "node": "Wait (Fundamentals)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Fundamentals)": {
+      "main": [
+        [
+          {
+            "node": "Ingest vnstock Fundamentals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest Gold FRED Price": {
+      "main": [
+        [
+          {
+            "node": "Ingest GLD ETF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (Gold FRED)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (Gold FRED)": {
+      "main": [
+        [
+          {
+            "node": "Wait (Gold FRED)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Gold FRED)": {
+      "main": [
+        [
+          {
+            "node": "Ingest Gold FRED Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest GLD ETF": {
+      "main": [
+        [
+          {
+            "node": "Ingest FRED Indicators",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (ETF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (ETF)": {
+      "main": [
+        [
+          {
+            "node": "Wait (ETF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (ETF)": {
+      "main": [
+        [
+          {
+            "node": "Ingest GLD ETF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest FRED Indicators": {
+      "main": [
+        [
+          {
+            "node": "Compute Structure Markers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (FRED)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (FRED)": {
+      "main": [
+        [
+          {
+            "node": "Wait (FRED)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (FRED)": {
+      "main": [
+        [
+          {
+            "node": "Ingest FRED Indicators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Structure Markers": {
+      "main": [
+        [
+          {
+            "node": "Any Anomaly Detected?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Counter (Markers)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Counter (Markers)": {
+      "main": [
+        [
+          {
+            "node": "Wait (Markers)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Markers)": {
+      "main": [
+        [
+          {
+            "node": "Compute Structure Markers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Anomaly Detected?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Anomaly Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "errorWorkflow": "Error Handler"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "02-04-weekly-v1",
+  "triggerCount": 0,
+  "tags": [
+    {
+      "createdAt": "2026-03-04T00:00:00.000Z",
+      "updatedAt": "2026-03-04T00:00:00.000Z",
+      "id": "stratum-ingestion",
+      "name": "stratum-ingestion"
+    }
+  ]
+}
