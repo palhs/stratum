@@ -10,7 +10,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.routers import gold, health, markers, vnstock
+from app.routers import fred, gold, health, markers, vnstock
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,11 +26,11 @@ app = FastAPI(
 
 # ---------------------------------------------------------------------------
 # Router registration
-# Additional routers (fred) will be added in later plans.
 # ---------------------------------------------------------------------------
 app.include_router(health.router)
 app.include_router(vnstock.router, prefix="/ingest/vnstock", tags=["vnstock"])
 app.include_router(gold.router, prefix="/ingest/gold", tags=["gold"])
+app.include_router(fred.router, prefix="/ingest/fred", tags=["fred"])
 app.include_router(markers.router, prefix="/compute", tags=["markers"])
 
 
