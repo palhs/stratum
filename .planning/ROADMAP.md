@@ -32,13 +32,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Neo4j schema enforces that RESEMBLES relationships carry `similarity_score`, `dimensions_matched`, and `period` properties — no bare relationships exist
   4. Qdrant collections are created with named versions and the storage boundary is enforced (n8n and LangGraph containers have no network path to each other, only to storage)
   5. All services are reachable from the host at documented ports and Nginx reverse proxy is configured with SSE-compatible headers
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: VPS provisioning and Docker Compose service stack
-- [ ] 01-02: PostgreSQL schema design and initial migrations
-- [ ] 01-03: Neo4j schema design and RESEMBLES relationship constraints
-- [ ] 01-04: Qdrant collection setup and network boundary enforcement
+- [ ] 01-01-PLAN.md — Docker Compose infrastructure stack with dual-network isolation, health checks, profiles, Makefile, and VPS provisioning
+- [ ] 01-02-PLAN.md — Storage schemas and initialization (PostgreSQL Flyway migration, Neo4j constraints + APOC triggers, Qdrant collection with alias versioning)
 
 ### Phase 2: Data Ingestion Pipeline
 **Goal**: All external data sources are flowing into storage on schedule with pre-computed structure markers, full timestamp metadata, and automatic detection of pipeline failures and data anomalies
@@ -163,7 +161,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure and Storage Foundation | 0/4 | Not started | - |
+| 1. Infrastructure and Storage Foundation | 0/2 | Planned | - |
 | 2. Data Ingestion Pipeline | 0/5 | Not started | - |
 | 3. Retrieval Layer Validation | 0/3 | Not started | - |
 | 4. Analytical Reasoning Nodes | 0/5 | Not started | - |
