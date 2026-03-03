@@ -12,7 +12,7 @@ Stratum is built in seven phases following the hard dependency chain of its two-
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Infrastructure and Storage Foundation** - Docker Compose environment with all storage services running and schemas designed for correctness from day one
+- [x] **Phase 1: Infrastructure and Storage Foundation** - Docker Compose environment with all storage services running and schemas designed for correctness from day one
 - [ ] **Phase 2: Data Ingestion Pipeline** - All external data sources flowing into storage with pre-computed markers, timestamps, and pipeline health monitoring
 - [ ] **Phase 3: Retrieval Layer Validation** - LlamaIndex retrievers confirmed working against real loaded data before being embedded in reasoning nodes
 - [ ] **Phase 4: Analytical Reasoning Nodes** - MacroRegimeClassifier, ValuationContextualizer, and StructureAnalyzer nodes producing validated sub-assessments
@@ -35,8 +35,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Docker Compose infrastructure stack with dual-network isolation, health checks, profiles, Makefile, and VPS provisioning
-- [ ] 01-02-PLAN.md — Storage schemas and initialization (PostgreSQL Flyway migration, Neo4j constraints + APOC triggers, Qdrant collection with alias versioning)
+- [x] 01-01-PLAN.md — Docker Compose infrastructure stack with dual-network isolation, health checks, profiles, Makefile, and VPS provisioning
+- [x] 01-02-PLAN.md — Storage schemas and initialization (PostgreSQL Flyway migration, Neo4j constraints + APOC triggers, Qdrant collection with alias versioning)
 
 ### Phase 2: Data Ingestion Pipeline
 **Goal**: All external data sources are flowing into storage on schedule with pre-computed structure markers, full timestamp metadata, and automatic detection of pipeline failures and data anomalies
@@ -161,7 +161,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure and Storage Foundation | 1/2 | In Progress|  |
+| 1. Infrastructure and Storage Foundation | 2/2 | Complete | 2026-03-03 |
 | 2. Data Ingestion Pipeline | 0/5 | Not started | - |
 | 3. Retrieval Layer Validation | 0/3 | Not started | - |
 | 4. Analytical Reasoning Nodes | 0/5 | Not started | - |

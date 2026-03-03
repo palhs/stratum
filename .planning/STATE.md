@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-03T06:59:20.014Z"
+status: in-progress
+last_updated: "2026-03-03T07:03:14Z"
 progress:
-  total_phases: 1
+  total_phases: 7
   completed_phases: 0
-  total_plans: 2
-  completed_plans: 1
+  total_plans: 14
+  completed_plans: 2
 ---
 
 # Project State
@@ -18,32 +18,32 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** Phase 1 — Infrastructure and Storage Foundation
+**Current focus:** Phase 1 complete — ready for Phase 2 (Data Ingestion)
 
 ## Current Position
 
-Phase: 1 of 7 (Infrastructure and Storage Foundation)
-Plan: 1 of 2 in current phase (01-01 complete, 01-02 next)
-Status: In progress
-Last activity: 2026-03-03 — Phase 1 Plan 1 complete: Docker Compose stack, env files, Makefile, VPS provisioning
+Phase: 1 of 7 (Infrastructure and Storage Foundation) — COMPLETE
+Plan: 2 of 2 in Phase 1 (01-01 complete, 01-02 complete)
+Status: Phase 1 complete
+Last activity: 2026-03-03 — Phase 1 Plan 2 complete: Flyway V1 migration, Neo4j constraints, APOC trigger, Qdrant collection init
 
-Progress: [█░░░░░░░░░] 7% (1/14 plans total)
+Progress: [██░░░░░░░░] 14% (2/14 plans total)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 3 min
-- Total execution time: 0.05 hours
+- Total plans completed: 2
+- Average duration: 2.5 min
+- Total execution time: 0.08 hours
 
 **By Phase:**
 
 | Phase | Plans | Total Time | Avg/Plan |
 |-------|-------|------------|----------|
-| 01-infrastructure-and-storage-foundation | 1/2 | 3 min | 3 min |
+| 01-infrastructure-and-storage-foundation | 2/2 | 5 min | 2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min
+- Last 5 plans: 2.5 min
 - Trend: —
 
 *Updated after each plan completion*
@@ -61,6 +61,9 @@ Recent decisions affecting current work:
 - [Phase 01-infrastructure-and-storage-foundation]: n8n on ingestion network only, storage services on both networks — INFRA-02 enforced at Docker network level
 - [Phase 01-infrastructure-and-storage-foundation]: postgres and qdrant ports not exposed on host; only Neo4j Browser (7474/7687) and n8n UI (5678) exposed
 - [Phase 01-infrastructure-and-storage-foundation]: Named volumes for all persistent data, no bind mounts — avoids Qdrant APFS POSIX incompatibility on macOS
+- [Phase 01-02]: Vector size 384 (FastEmbed BAAI/bge-small-en-v1.5) instead of 1536 (OpenAI) — more memory-efficient for 8GB VPS; FastEmbed is the chosen embedding approach
+- [Phase 01-02]: Neo4j init entrypoint split: constraints run -d neo4j, APOC triggers run -d system — constraints cannot be created on system database
+- [Phase 01-02]: n8n database created via PostgreSQL initdb (create-n8n-db.sql) — CREATE DATABASE cannot run inside a Flyway transaction
 
 ### Pending Todos
 
@@ -76,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 01-infrastructure-and-storage-foundation 01-01-PLAN.md
-Resume file: .planning/phases/01-infrastructure-and-storage-foundation/01-02-PLAN.md
+Stopped at: Completed 01-infrastructure-and-storage-foundation 01-02-PLAN.md
+Resume file: .planning/phases/02-data-ingestion-pipelines/ (next phase)
