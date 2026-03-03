@@ -9,7 +9,7 @@
 ENV_FILE := $(shell test -f .env.local && echo .env.local || echo .env)
 COMPOSE := docker compose --env-file $(ENV_FILE)
 
-.PHONY: help up up-storage up-ingestion down reset-db migrate logs ps health
+.PHONY: help up up-storage up-ingestion down reset-db nuke migrate logs ps health
 
 ## help: Show available commands (default target)
 help:
@@ -55,6 +55,16 @@ reset-db:
 	@echo "Continuing in 5 seconds..."
 	@sleep 5
 	$(COMPOSE) down -v
+
+## nuke: NUCLEAR — remove containers, volumes, AND all images
+nuke:
+	@echo ""
+	@echo "NUCLEAR: This will destroy ALL containers, volumes, AND downloaded images."
+	@echo "You will need to re-pull all images on next 'make up'."
+	@echo ""
+	@echo "Press Ctrl-C to cancel. Continuing in 5 seconds..."
+	@sleep 5
+	$(COMPOSE) down --rmi all -v --remove-orphans
 
 ## migrate: Run Flyway SQL migrations against postgres
 migrate:
