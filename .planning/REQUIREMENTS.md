@@ -9,13 +9,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Data Ingestion
 
-- [ ] **DATA-01**: System ingests Vietnamese stock OHLCV data (weekly/monthly) via vnstock with version pinning and error handling
-- [ ] **DATA-02**: System ingests Vietnamese stock fundamental data (P/E, P/B, EPS, etc.) via vnstock
+- [x] **DATA-01**: System ingests Vietnamese stock OHLCV data (weekly/monthly) via vnstock with version pinning and error handling
+- [x] **DATA-02**: System ingests Vietnamese stock fundamental data (P/E, P/B, EPS, etc.) via vnstock
 - [ ] **DATA-03**: System ingests gold price data (weekly/monthly) from available free-tier sources
 - [ ] **DATA-04**: System ingests gold ETF flow data and central bank buying data from World Gold Council
 - [ ] **DATA-05**: System ingests macroeconomic indicators (GDP, inflation, unemployment, interest rates) from FRED
 - [ ] **DATA-06**: System pre-computes structure markers (moving averages, drawdown from ATH, valuation percentiles) during ingestion and stores in PostgreSQL
-- [ ] **DATA-07**: Every ingested data row includes `data_as_of` and `ingested_at` timestamps
+- [x] **DATA-07**: Every ingested data row includes `data_as_of` and `ingested_at` timestamps
 - [ ] **DATA-08**: System logs every pipeline run to `pipeline_run_log` table with success/failure status
 - [ ] **DATA-09**: System detects anomalous row counts from vnstock (>50% deviation from 4-week moving average) and flags them
 
@@ -122,13 +122,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | INFRA-01 | Phase 1 | Complete |
 | INFRA-02 | Phase 1 | Complete |
-| DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Complete |
+| DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Pending |
 | DATA-04 | Phase 2 | Pending |
 | DATA-05 | Phase 2 | Pending |
 | DATA-06 | Phase 2 | Pending |
-| DATA-07 | Phase 2 | Pending |
+| DATA-07 | Phase 2 | Complete |
 | DATA-08 | Phase 2 | Pending |
 | DATA-09 | Phase 2 | Pending |
 | MACRO-04 | Phase 3 | Pending |

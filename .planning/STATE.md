@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-03T07:10:03.020Z"
+status: in_progress
+last_updated: "2026-03-04T17:42:00.000Z"
 progress:
-  total_phases: 1
+  total_phases: 7
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 14
+  completed_plans: 3
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 1 of 7 (Infrastructure and Storage Foundation) — COMPLETE
-Plan: 2 of 2 in Phase 1 (01-01 complete, 01-02 complete)
-Status: Phase 1 complete
-Last activity: 2026-03-03 — Phase 1 Plan 2 complete: Flyway V1 migration, Neo4j constraints, APOC trigger, Qdrant collection init
+Phase: 2 of 7 (Data Ingestion Pipeline) — IN PROGRESS
+Plan: 1 of 5 in Phase 2 complete (02-01 complete)
+Status: Phase 2 in progress
+Last activity: 2026-03-04 — Phase 2 Plan 1 complete: Flyway V2-V5 migrations, data-sidecar FastAPI container, vnstock OHLCV + fundamentals ingestion
 
-Progress: [██░░░░░░░░] 14% (2/14 plans total)
+Progress: [███░░░░░░░] 21% (3/14 plans total)
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [██░░░░░░░░] 14% (2/14 plans total)
 | Phase | Plans | Total Time | Avg/Plan |
 |-------|-------|------------|----------|
 | 01-infrastructure-and-storage-foundation | 2/2 | 5 min | 2.5 min |
+| 02-data-ingestion-pipeline | 1/5 | 7 min | 7 min |
 
 **Recent Trend:**
 - Last 5 plans: 2.5 min
@@ -64,6 +65,12 @@ Recent decisions affecting current work:
 - [Phase 01-02]: Vector size 384 (FastEmbed BAAI/bge-small-en-v1.5) instead of 1536 (OpenAI) — more memory-efficient for 8GB VPS; FastEmbed is the chosen embedding approach
 - [Phase 01-02]: Neo4j init entrypoint split: constraints run -d neo4j, APOC triggers run -d system — constraints cannot be created on system database
 - [Phase 01-02]: n8n database created via PostgreSQL initdb (create-n8n-db.sql) — CREATE DATABASE cannot run inside a Flyway transaction
+- [Phase 02-01]: VCI source used exclusively for vnstock calls — TCBS source is broken as of 2025
+- [Phase 02-01]: VN30 symbols fetched live via Listing.symbols_by_group() — never hard-coded
+- [Phase 02-01]: Single stock_ohlcv table with resolution column — no separate tables per resolution (locked decision)
+- [Phase 02-01]: SQLAlchemy Core Table() style over ORM declarative — required for pg_insert().on_conflict_do_update() upsert pattern
+- [Phase 02-01]: data-sidecar has no host port mapping — n8n calls it as data-sidecar:8000 on ingestion network
+- [Phase 02-01]: UNIQUE constraint with COALESCE in gold_wgc_flows implemented as CREATE UNIQUE INDEX (PostgreSQL table-level UNIQUE does not support expressions)
 
 ### Pending Todos
 
@@ -78,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-03
-Stopped at: Completed 01-infrastructure-and-storage-foundation 01-02-PLAN.md
-Resume file: .planning/phases/02-data-ingestion-pipelines/ (next phase)
+Last session: 2026-03-04
+Stopped at: Completed 02-data-ingestion-pipeline 02-01-PLAN.md
+Resume file: .planning/phases/02-data-ingestion-pipeline/02-02-PLAN.md
