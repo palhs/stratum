@@ -16,8 +16,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **DATA-05**: System ingests macroeconomic indicators (GDP, inflation, unemployment, interest rates) from FRED
 - [x] **DATA-06**: System pre-computes structure markers (moving averages, drawdown from ATH, valuation percentiles) during ingestion and stores in PostgreSQL
 - [x] **DATA-07**: Every ingested data row includes `data_as_of` and `ingested_at` timestamps
-- [ ] **DATA-08**: System logs every pipeline run to `pipeline_run_log` table with success/failure status
-- [ ] **DATA-09**: System detects anomalous row counts from vnstock (>50% deviation from 4-week moving average) and flags them
+- [x] **DATA-08**: System logs every pipeline run to `pipeline_run_log` table with success/failure status
+- [x] **DATA-09**: System detects anomalous row counts from vnstock (>50% deviation from 4-week moving average) and flags them
 
 ### Macro Analysis
 
@@ -129,8 +129,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-05 | Phase 2 | Complete |
 | DATA-06 | Phase 2 | Complete |
 | DATA-07 | Phase 2 | Complete |
-| DATA-08 | Phase 2 | Pending |
-| DATA-09 | Phase 2 | Pending |
+| DATA-08 | Phase 2 | Complete |
+| DATA-09 | Phase 2 | Complete |
 | MACRO-04 | Phase 3 | Pending |
 | MACRO-01 | Phase 4 | Pending |
 | MACRO-02 | Phase 4 | Pending |
