@@ -1,6 +1,6 @@
 """
 Stratum Data Sidecar — FastAPI application entry point.
-Phase 2 | Plan 01
+Phase 2 | Plans 01, 02, 03
 
 Internal service on the ingestion network.
 n8n calls endpoints by service name: http://data-sidecar:8000/...
@@ -10,7 +10,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.routers import health, vnstock
+from app.routers import gold, health, markers, vnstock
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,10 +26,12 @@ app = FastAPI(
 
 # ---------------------------------------------------------------------------
 # Router registration
-# Additional routers (gold, fred, wgc, markers) will be added in later plans.
+# Additional routers (fred) will be added in later plans.
 # ---------------------------------------------------------------------------
 app.include_router(health.router)
 app.include_router(vnstock.router, prefix="/ingest/vnstock", tags=["vnstock"])
+app.include_router(gold.router, prefix="/ingest/gold", tags=["gold"])
+app.include_router(markers.router, prefix="/compute", tags=["markers"])
 
 
 @app.on_event("startup")
