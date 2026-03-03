@@ -5,6 +5,10 @@
 
 .DEFAULT_GOAL := help
 
+# Detect env file: use .env.local if it exists, otherwise .env
+ENV_FILE := $(shell test -f .env.local && echo .env.local || echo .env)
+COMPOSE := docker compose --env-file $(ENV_FILE)
+
 .PHONY: help up up-storage up-ingestion down reset-db migrate logs ps health
 
 ## help: Show available commands (default target)
@@ -27,19 +31,19 @@ help:
 
 ## up: Start all local dev services (storage + ingestion: postgres, neo4j, qdrant, n8n)
 up:
-	docker compose --profile storage --profile ingestion up -d
+	$(COMPOSE) --profile storage --profile ingestion up -d
 
 ## up-storage: Start databases only (postgres, neo4j, qdrant)
 up-storage:
-	docker compose --profile storage up -d
+	$(COMPOSE) --profile storage up -d
 
 ## up-ingestion: Start databases + n8n
 up-ingestion:
-	docker compose --profile ingestion up -d
+	$(COMPOSE) --profile ingestion up -d
 
 ## down: Stop all running services (preserves volumes)
 down:
-	docker compose down
+	$(COMPOSE) down
 
 ## reset-db: DESTRUCTIVE — destroy all volumes and remove containers
 reset-db:
@@ -50,25 +54,25 @@ reset-db:
 	@echo "All data will be permanently lost. Press Ctrl-C to cancel."
 	@echo "Continuing in 5 seconds..."
 	@sleep 5
-	docker compose down -v
+	$(COMPOSE) down -v
 
 ## migrate: Run Flyway SQL migrations against postgres
 migrate:
-	docker compose run --rm flyway migrate
+	$(COMPOSE) run --rm flyway migrate
 
 ## logs: Stream logs from all running services
 logs:
-	docker compose logs -f
+	$(COMPOSE) logs -f
 
 ## ps: Show status of all services
 ps:
-	docker compose ps
+	$(COMPOSE) ps
 
 ## health: Check health status of all running services
 health:
 	@echo ""
 	@echo "Service Health Status"
 	@echo "====================="
-	@docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || \
-		docker compose ps
+	@$(COMPOSE) ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || \
+		$(COMPOSE) ps
 	@echo ""
