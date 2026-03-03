@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-04T17:42:00.000Z"
+last_updated: "2026-03-04T17:49:06Z"
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,33 +18,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** Phase 1 complete — ready for Phase 2 (Data Ingestion)
+**Current focus:** Phase 2 in progress — Plans 01, 02, 03 complete
 
 ## Current Position
 
 Phase: 2 of 7 (Data Ingestion Pipeline) — IN PROGRESS
-Plan: 1 of 5 in Phase 2 complete (02-01 complete)
+Plan: 3 of 5 in Phase 2 complete (02-01, 02-02, 02-03 complete)
 Status: Phase 2 in progress
-Last activity: 2026-03-04 — Phase 2 Plan 1 complete: Flyway V2-V5 migrations, data-sidecar FastAPI container, vnstock OHLCV + fundamentals ingestion
+Last activity: 2026-03-04 — Phase 2 Plan 3 complete: structure marker computation service (MAs, drawdowns, percentile ranks), POST /compute/structure-markers endpoint
 
-Progress: [███░░░░░░░] 21% (3/14 plans total)
+Progress: [████░░░░░░] 28% (4/14 plans total)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 2.5 min
-- Total execution time: 0.08 hours
+- Total plans completed: 4
+- Average duration: ~4 min
+- Total execution time: ~0.24 hours
 
 **By Phase:**
 
 | Phase | Plans | Total Time | Avg/Plan |
 |-------|-------|------------|----------|
 | 01-infrastructure-and-storage-foundation | 2/2 | 5 min | 2.5 min |
-| 02-data-ingestion-pipeline | 1/5 | 7 min | 7 min |
+| 02-data-ingestion-pipeline | 3/5 | ~13 min | ~4.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 2.5 min
+- Last 5 plans: ~4 min
 - Trend: —
 
 *Updated after each plan completion*
@@ -71,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 02-01]: SQLAlchemy Core Table() style over ORM declarative — required for pg_insert().on_conflict_do_update() upsert pattern
 - [Phase 02-01]: data-sidecar has no host port mapping — n8n calls it as data-sidecar:8000 on ingestion network
 - [Phase 02-01]: UNIQUE constraint with COALESCE in gold_wgc_flows implemented as CREATE UNIQUE INDEX (PostgreSQL table-level UNIQUE does not support expressions)
+- [Phase 02-03]: Full recompute strategy for structure markers — at VN30 scale (~7,800 rows) < 5s; incremental adds complexity with no meaningful gain
+- [Phase 02-03]: gold_price rows treated as weekly resolution for gold spot (XAU) — assigns symbol='XAU', resolution='weekly' to spot price series
+- [Phase 02-03]: PE percentile rank computed via merge_asof (backward join) to align annual PE reports to weekly bars
 
 ### Pending Todos
 
@@ -86,5 +89,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 02-data-ingestion-pipeline 02-01-PLAN.md
-Resume file: .planning/phases/02-data-ingestion-pipeline/02-02-PLAN.md
+Stopped at: Completed 02-data-ingestion-pipeline 02-03-PLAN.md
+Resume file: .planning/phases/02-data-ingestion-pipeline/02-04-PLAN.md
