@@ -1,0 +1,186 @@
+name: stratum
+
+# =============================================================================
+# Networks: INFRA-02 — dual-network isolation
+#   - ingestion: n8n + storage services
+#   - reasoning: future LangGraph/FastAPI + storage services
+#   Storage services join BOTH; consumer services join ONE only.
+# =============================================================================
+networks:
+  ingestion:
+    driver: bridge
+  reasoning:
+    driver: bridge
+
+# =============================================================================
+# Volumes: named volumes only (no bind mounts for persistent data)
+# =============================================================================
+volumes:
+  postgres_data:
+  neo4j_data:
+  neo4j_logs:
+  qdrant_storage:
+  n8n_data:
+
+services:
+
+  # ===========================================================================
+  # STORAGE TIER — attached to both networks; no host port mapping for postgres/qdrant
+  # Profiles: storage | ingestion | reasoning
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ingestion
+      - reasoning
+    profiles: ["storage", "ingestion", "reasoning"]
+    # NOTE: No ports — postgres is internal only (locked decision)
+
+  neo4j:
+    image: neo4j:5.26.21
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "1G"
+      NEO4J_server_memory_pagecache_size: "512m"
+      NEO4J_apoc_trigger_enabled: "true"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    ports:
+      - "7474:7474"   # Neo4j Browser (admin UI — exposed on host)
+      - "7687:7687"   # Bolt protocol (admin UI — exposed on host)
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - ingestion
+      - reasoning
+    profiles: ["storage", "ingestion", "reasoning"]
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.3
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ingestion
+      - reasoning
+    profiles: ["storage", "ingestion", "reasoning"]
+    # NOTE: No ports — qdrant is internal only (locked decision)
+
+  # ===========================================================================
+  # MIGRATION / INIT TIER — one-shot services, exit after completion
+  # Profiles: storage | ingestion | reasoning
+  # ===========================================================================
+
+  flyway:
+    image: flyway/flyway:10
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/flyway/sql
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      FLYWAY_USER: ${POSTGRES_USER}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["flyway", "migrate"]
+    networks:
+      - ingestion
+    profiles: ["storage", "ingestion", "reasoning"]
+    # No restart policy — flyway exits after migration completes
+
+  neo4j-init:
+    image: neo4j:5.26.21
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./neo4j/init:/init-scripts
+    entrypoint: >
+      bash -c "
+        for f in /init-scripts/*.cypher; do
+          echo \"Running $$f...\";
+          cypher-shell -a bolt://neo4j:7687 -u neo4j -p $$NEO4J_PASSWORD -d system -f $$f;
+        done;
+        echo 'Neo4j init complete.'
+      "
+    environment:
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+    networks:
+      - ingestion
+    profiles: ["storage", "ingestion", "reasoning"]
+    # No restart policy — one-shot init; runs against system database for APOC trigger.install()
+
+  qdrant-init:
+    image: curlimages/curl:latest
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    volumes:
+      - ./scripts/init-qdrant.sh:/init-qdrant.sh:ro
+    entrypoint: ["sh", "/init-qdrant.sh"]
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+    networks:
+      - ingestion
+    profiles: ["storage", "ingestion", "reasoning"]
+    # No restart policy — one-shot init
+
+  # ===========================================================================
+  # INGESTION TIER — ingestion network ONLY (INFRA-02 enforcement)
+  # n8n has no path to the reasoning network
+  # ===========================================================================
+
+  n8n:
+    image: n8nio/n8n:1.78.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${N8N_DB_NAME}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"   # n8n UI (exposed on host)
+    networks:
+      - ingestion     # n8n ONLY — cannot reach reasoning network (INFRA-02)
+    profiles: ["ingestion"]
