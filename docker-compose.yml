@@ -127,10 +127,10 @@ services:
       - ./neo4j/init:/init-scripts
     entrypoint: >
       bash -c "
-        for f in /init-scripts/*.cypher; do
-          echo \"Running $$f...\";
-          cypher-shell -a bolt://neo4j:7687 -u neo4j -p $$NEO4J_PASSWORD -d system -f $$f;
-        done;
+        echo 'Running constraints against neo4j database...';
+        cypher-shell -a bolt://neo4j:7687 -u neo4j -p $$NEO4J_PASSWORD -d neo4j -f /init-scripts/01_constraints.cypher;
+        echo 'Running APOC triggers against system database...';
+        cypher-shell -a bolt://neo4j:7687 -u neo4j -p $$NEO4J_PASSWORD -d system -f /init-scripts/02_apoc_triggers.cypher;
         echo 'Neo4j init complete.'
       "
     environment:
