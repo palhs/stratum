@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-04T17:49:06Z"
+last_updated: "2026-03-04T18:00:00Z"
 progress:
   total_phases: 7
   completed_phases: 1
@@ -71,6 +71,8 @@ Recent decisions affecting current work:
 - [Phase 02-01]: SQLAlchemy Core Table() style over ORM declarative — required for pg_insert().on_conflict_do_update() upsert pattern
 - [Phase 02-01]: data-sidecar has no host port mapping — n8n calls it as data-sidecar:8000 on ingestion network
 - [Phase 02-01]: UNIQUE constraint with COALESCE in gold_wgc_flows implemented as CREATE UNIQUE INDEX (PostgreSQL table-level UNIQUE does not support expressions)
+- [Phase 02-02]: WGC flows implemented as 501 stub — Goldhub is JS-rendered, no stable download URL; Playwright excluded to avoid Chromium in sidecar container
+- [Phase 02-02]: FRED_API_KEY absence returns 503 (not 500) — configuration issue, not internal error; response includes link to key registration
 - [Phase 02-03]: Full recompute strategy for structure markers — at VN30 scale (~7,800 rows) < 5s; incremental adds complexity with no meaningful gain
 - [Phase 02-03]: gold_price rows treated as weekly resolution for gold spot (XAU) — assigns symbol='XAU', resolution='weekly' to spot price series
 - [Phase 02-03]: PE percentile rank computed via merge_asof (backward join) to align annual PE reports to weekly bars
