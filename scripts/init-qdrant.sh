@@ -9,6 +9,15 @@
 #   QDRANT_API_KEY  — Qdrant service API key
 #   QDRANT_HOST     — Qdrant hostname (default: qdrant)
 #   QDRANT_PORT     — Qdrant port (default: 6333)
+#
+# Vector size: 384 — matches FastEmbed default model (BAAI/bge-small-en-v1.5)
+# Distance: Cosine (standard for semantic similarity)
+#
+# Alias versioning pattern: stable aliases (macro_embeddings) point to versioned
+# collections (macro_embeddings_v1). When the embedding model changes, create v2,
+# update the alias — no client code changes, zero downtime.
+#
+# This script is idempotent — safe to run multiple times.
 # =============================================================================
 
 set -e
@@ -21,6 +30,15 @@ echo "================================================="
 echo "Qdrant Collection Initialization"
 echo "Target: ${BASE_URL}"
 echo "================================================="
+
+# ---------------------------------------------------------------------------
+# Wait for Qdrant to be ready (belt-and-suspenders — health check should handle this)
+# ---------------------------------------------------------------------------
+echo "Waiting for Qdrant..."
+until curl -sf "${BASE_URL}/healthz" > /dev/null 2>&1; do
+  sleep 2
+done
+echo "Qdrant is ready."
 
 # ---------------------------------------------------------------------------
 # Helper: create collection if it does not already exist
@@ -86,21 +104,22 @@ create_alias() {
 # ---------------------------------------------------------------------------
 # Collections
 #
-# Vector size 1536 matches OpenAI text-embedding-3-small and text-embedding-ada-002.
+# Vector size 384 matches FastEmbed default model (BAAI/bge-small-en-v1.5).
+# More memory-efficient than 1536 (OpenAI) for the 8GB VPS.
 # If the embedding model changes, create a new versioned collection (v2, v3, ...)
 # and update the alias — zero downtime, no client code changes.
 # ---------------------------------------------------------------------------
 
-# Macro regime embeddings (for regime analogue similarity search)
-create_collection_if_missing "macro_embeddings_v1" 1536 "Cosine"
+# Macro regime embeddings (for regime analogue similarity search — MACRO-04)
+create_collection_if_missing "macro_embeddings_v1" 384 "Cosine"
 create_alias "macro_embeddings" "macro_embeddings_v1"
 
 # Valuation context embeddings (for historical valuation narrative retrieval)
-create_collection_if_missing "valuation_embeddings_v1" 1536 "Cosine"
+create_collection_if_missing "valuation_embeddings_v1" 384 "Cosine"
 create_alias "valuation_embeddings" "valuation_embeddings_v1"
 
 # Price structure embeddings (for pattern-based structure context)
-create_collection_if_missing "structure_embeddings_v1" 1536 "Cosine"
+create_collection_if_missing "structure_embeddings_v1" 384 "Cosine"
 create_alias "structure_embeddings" "structure_embeddings_v1"
 
 echo ""
