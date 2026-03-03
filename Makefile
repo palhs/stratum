@@ -9,7 +9,7 @@
 ENV_FILE := $(shell test -f .env.local && echo .env.local || echo .env)
 COMPOSE := docker compose --env-file $(ENV_FILE)
 
-.PHONY: help up up-storage up-ingestion down reset-db nuke migrate logs ps health
+.PHONY: help up up-storage up-ingestion up-sidecar down reset-db nuke migrate logs ps health
 
 ## help: Show available commands (default target)
 help:
@@ -29,7 +29,7 @@ help:
 	@echo "  make reset-db     # DESTRUCTIVE: destroy all volumes and restart"
 	@echo ""
 
-## up: Start all local dev services (storage + ingestion: postgres, neo4j, qdrant, n8n)
+## up: Start all local dev services (storage + ingestion: postgres, neo4j, qdrant, n8n, data-sidecar)
 up:
 	$(COMPOSE) --profile storage --profile ingestion up -d
 
@@ -40,6 +40,10 @@ up-storage:
 ## up-ingestion: Start databases + n8n
 up-ingestion:
 	$(COMPOSE) --profile ingestion up -d
+
+## up-sidecar: Build and start data-sidecar only (requires storage services running)
+up-sidecar:
+	$(COMPOSE) --profile ingestion up -d --build data-sidecar
 
 ## down: Stop all running services (preserves volumes)
 down:

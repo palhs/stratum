@@ -185,3 +185,32 @@ services:
     networks:
       - ingestion     # n8n ONLY — cannot reach reasoning network (INFRA-02)
     profiles: ["ingestion"]
+
+  # ===========================================================================
+  # DATA SIDECAR — Python FastAPI ingestion service
+  # Internal only — no host port mapping (n8n calls data-sidecar:8000)
+  # Profile: ingestion
+  # ===========================================================================
+
+  data-sidecar:
+    build:
+      context: ./sidecar
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      VNSTOCK_API_KEY: ${VNSTOCK_API_KEY:-}
+      FRED_API_KEY: ${FRED_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ingestion     # ingestion network only (INFRA-02 enforcement)
+    profiles: ["ingestion"]
+    # NOTE: No host port mapping — n8n calls data-sidecar:8000 internally
