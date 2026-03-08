@@ -13,7 +13,7 @@ Stratum is built in seven phases following the hard dependency chain of its two-
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure and Storage Foundation** - Docker Compose environment with all storage services running and schemas designed for correctness from day one
-- [ ] **Phase 2: Data Ingestion Pipeline** - All external data sources flowing into storage with pre-computed markers, timestamps, and pipeline health monitoring
+- [x] **Phase 2: Data Ingestion Pipeline** - All external data sources flowing into storage with pre-computed markers, timestamps, and pipeline health monitoring (completed 2026-03-08)
 - [ ] **Phase 3: Retrieval Layer Validation** - LlamaIndex retrievers confirmed working against real loaded data before being embedded in reasoning nodes
 - [ ] **Phase 4: Analytical Reasoning Nodes** - MacroRegimeClassifier, ValuationContextualizer, and StructureAnalyzer nodes producing validated sub-assessments
 - [ ] **Phase 5: Synthesis, Reports, and Explainability** - EntryQualityScorer and ReportComposer completing the full reasoning chain with bilingual report output
@@ -162,7 +162,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure and Storage Foundation | 2/2 | Complete | 2026-03-03 |
-| 2. Data Ingestion Pipeline | 4/5 | In Progress|  |
+| 2. Data Ingestion Pipeline | 5/5 | Complete   | 2026-03-08 |
 | 3. Retrieval Layer Validation | 0/3 | Not started | - |
 | 4. Analytical Reasoning Nodes | 0/5 | Not started | - |
 | 5. Synthesis, Reports, and Explainability | 0/6 | Not started | - |
