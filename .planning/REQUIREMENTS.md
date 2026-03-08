@@ -96,13 +96,46 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | Pending |
+| INFRA-01 | Phase 3 | Pending |
+| INFRA-02 | Phase 3 | Pending |
+| INFRA-03 | Phase 3 | Pending |
+| INFRA-04 | Phase 3 | Pending |
+| INFRA-05 | Phase 3 | Pending |
+| INFRA-06 | Phase 3 | Pending |
+| DATA-01 | Phase 4 | Pending |
+| DATA-02 | Phase 4 | Pending |
+| DATA-03 | Phase 4 | Pending |
+| DATA-04 | Phase 4 | Pending |
+| RETR-01 | Phase 5 | Pending |
+| RETR-02 | Phase 5 | Pending |
+| RETR-03 | Phase 5 | Pending |
+| RETR-04 | Phase 5 | Pending |
+| REAS-01 | Phase 6 | Pending |
+| REAS-02 | Phase 6 | Pending |
+| REAS-03 | Phase 6 | Pending |
+| REAS-04 | Phase 6 | Pending |
+| REAS-05 | Phase 6 | Pending |
+| REAS-07 | Phase 6 | Pending |
+| REAS-06 | Phase 7 | Pending |
+| REPT-01 | Phase 7 | Pending |
+| REPT-02 | Phase 7 | Pending |
+| REPT-03 | Phase 7 | Pending |
+| REPT-04 | Phase 7 | Pending |
+| REPT-05 | Phase 7 | Pending |
+| SRVC-01 | Phase 8 | Pending |
+| SRVC-02 | Phase 8 | Pending |
+| SRVC-03 | Phase 8 | Pending |
+| SRVC-04 | Phase 8 | Pending |
+| SRVC-05 | Phase 8 | Pending |
+| SRVC-06 | Phase 9 | Pending |
+| SRVC-07 | Phase 9 | Pending |
+| SRVC-08 | Phase 9 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30 ⚠️
+- v2.0 requirements: 34 total (note: prior traceability section incorrectly stated 30; actual count is 34)
+- Mapped to phases: 34
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 — traceability populated after roadmap creation (Phases 3-9)*

@@ -2,11 +2,12 @@
 
 ## Overview
 
-Stratum is built in seven phases following the hard dependency chain of its two-pipeline architecture. Infrastructure and storage come first because every other component writes to or reads from it. Ingestion populates the stores with real data. Retrieval validation confirms LlamaIndex can execute the specific Cypher and hybrid search patterns before they are embedded inside a reasoning graph. The analytical reasoning nodes are then built and validated individually, followed by the synthesis layer that wires them into a complete bilingual report. The API layer exposes the working pipeline with streaming job progress. The frontend renders reports in the research-report aesthetic and delivers the user-facing platform. Phase 4 is the intellectual core and highest-risk phase — all four critical pitfalls (LLM hallucination, stale data, regime overconfidence, score framing) must be addressed here or in Phase 5 before the API or frontend are worth building.
+Stratum is built in phases following the hard dependency chain of its two-pipeline architecture. v1.0 delivered infrastructure and data ingestion (Phases 1-2). v2.0 builds the analytical reasoning engine on top, starting from infrastructure hardening (Phase 3) through knowledge graph population, retrieval validation, individual reasoning nodes, graph assembly with end-to-end report generation, the FastAPI gateway, and finally production hardening under realistic batch load (Phase 9). The dependency chain is strict and unidirectional: data must be in stores before retrieval can be validated; retrieval must be validated before reasoning nodes can be built; nodes must be individually validated before the graph can be assembled; the graph must produce a valid report before the API wrapper is worth building; and single-asset success must be stress-tested at batch scale before v2.0 is complete.
 
 ## Milestones
 
 - ✅ **v1.0 Infrastructure and Data Ingestion** — Phases 1-2 (shipped 2026-03-09)
+- 🚧 **v2.0 Analytical Reasoning Engine** — Phases 3-9 (in progress)
 
 ## Phases
 
@@ -26,123 +27,156 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 </details>
 
-### Unassigned (Phases 3-7)
+### 🚧 v2.0 Analytical Reasoning Engine (In Progress)
 
-- [ ] **Phase 3: Retrieval Layer Validation** - LlamaIndex retrievers confirmed working against real loaded data before being embedded in reasoning nodes
-- [ ] **Phase 4: Analytical Reasoning Nodes** - MacroRegimeClassifier, ValuationContextualizer, and StructureAnalyzer nodes producing validated sub-assessments
-- [ ] **Phase 5: Synthesis, Reports, and Explainability** - EntryQualityScorer and ReportComposer completing the full reasoning chain with bilingual report output
-- [ ] **Phase 6: API Layer and Platform** - FastAPI gateway exposing report generation and watchlist management with SSE streaming and LangGraph state persistence
-- [ ] **Phase 7: Frontend** - Next.js report viewer delivering the research-report aesthetic with Supabase auth, structured report cards, and real-time pipeline progress
+**Milestone Goal:** Build the multi-step AI reasoning pipeline that transforms raw market data into actionable entry quality assessments with explainable, bilingual analysis.
+
+- [ ] **Phase 3: Infrastructure Hardening and Database Migrations** - Flyway migrations, memory limits, VPS swap, and checkpoint schema in place before any reasoning code is written
+- [ ] **Phase 4: Knowledge Graph and Document Corpus Population** - Neo4j regime nodes with analogue relationships and Qdrant document collections populated with curated content
+- [ ] **Phase 5: Retrieval Layer Validation** - LlamaIndex retrievers confirmed working against real loaded data across all three stores before embedding in reasoning nodes
+- [ ] **Phase 6: LangGraph Reasoning Nodes** - Five individual reasoning nodes built and validated in isolation with correct state schemas and Gemini structured output
+- [ ] **Phase 7: Graph Assembly and End-to-End Report Generation** - StateGraph assembled and first complete bilingual report produced, grounded, and stored in PostgreSQL
+- [ ] **Phase 8: FastAPI Gateway and Docker Service** - HTTP gateway exposing the validated reasoning pipeline with background execution and SSE streaming
+- [ ] **Phase 9: Production Hardening and Batch Validation** - Batch behavior validated at 20-stock scale with memory baseline, spend alerts, and checkpoint cleanup
 
 ## Phase Details
 
-### Phase 3: Retrieval Layer Validation
-**Goal**: LlamaIndex retrievers are confirmed working against real data loaded in Phase 2, with custom Cypher templates validated against the Neo4j schema and hybrid search confirmed returning useful results from Qdrant — before these retrievers are embedded inside the reasoning graph
+### Phase 3: Infrastructure Hardening and Database Migrations
+**Goal**: All infrastructure prerequisites are in place before any reasoning code is written — Flyway migrations create the reports and report_jobs tables, all Docker services have explicit memory limits, VPS swap is configured, Neo4j JVM heap is set, GEMINI_API_KEY is available, and the LangGraph checkpoint schema is initialized
 **Depends on**: Phase 2
-**Requirements**: MACRO-04
+**Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06
 **Success Criteria** (what must be TRUE):
-  1. Neo4j RESEMBLES relationships in the loaded graph carry `similarity_score`, `dimensions_matched`, and `period` on every relationship — retrievable via the custom Cypher templates that Phase 4 nodes will use
-  2. A test query against the Neo4j knowledge graph returns macro regime analogues with full relationship properties (not just node IDs) using LlamaIndex GraphRAGRetriever with registered custom Cypher templates
-  3. A test query against Qdrant returns relevant financial documents via hybrid search (dense + sparse BM25) — not dense-only
-  4. FastEmbed embedding model produces consistent vectors for the asset identifiers and regime terminology used in the Vietnamese market context
+  1. Running `flyway migrate` applies V6 and V7 cleanly — the `reports` table and `report_jobs` table exist in PostgreSQL with all columns and constraints visible via `\d reports` and `\d report_jobs`
+  2. All Docker services in `docker-compose.yml` have explicit `mem_limit` values (Neo4j 2GB, Qdrant 1GB, PostgreSQL 512MB, n8n 512MB, reasoning-engine 2GB) — `docker inspect` confirms limits on running containers
+  3. VPS swap is active at 4GB (`free -h` shows 4G swap) and Neo4j JVM heap is explicitly set in docker-compose.yml — Neo4j starts without defaulting to 25% of system RAM
+  4. `GEMINI_API_KEY` is present in the environment configuration and accessible to the reasoning-engine service — a curl test against the Gemini API returns a valid response
+  5. LangGraph checkpoint schema is initialized in PostgreSQL — the checkpoint tables created by `AsyncPostgresSaver.setup()` exist and are queryable
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: LlamaIndex GraphRAGRetriever setup with custom Neo4j Cypher templates
-- [ ] 03-02: LlamaIndex HybridRetriever setup for Qdrant with FastEmbed integration
-- [ ] 03-03: Retrieval quality validation against loaded data
+- [ ] 03-01: Flyway V6 and V7 migrations — reports and report_jobs tables
+- [ ] 03-02: Docker Compose memory limits, VPS swap, Neo4j JVM heap, and GEMINI_API_KEY configuration
+- [ ] 03-03: LangGraph checkpoint schema initialization and validation
 
-### Phase 4: Analytical Reasoning Nodes
-**Goal**: The three analytical LangGraph nodes — MacroRegimeClassifier, ValuationContextualizer, and StructureAnalyzer — produce validated sub-assessments with correct handling of mixed signals, out-of-range values, and limited historical precedent
+### Phase 4: Knowledge Graph and Document Corpus Population
+**Goal**: The Neo4j knowledge graph contains historical macro regime nodes covering 2008-2025 with HAS_ANALOGUE relationships carrying full similarity metadata, Qdrant macro_docs and earnings_docs collections are populated with curated documents, and a Vietnamese financial term dictionary exists as a content artifact — all three are prerequisites for any retrieval or reasoning work
 **Depends on**: Phase 3
-**Requirements**: MACRO-01, MACRO-02, MACRO-03, MACRO-05, VAL-01, VAL-02, VAL-03, VAL-04, STRUC-01, STRUC-02, STRUC-03
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04
 **Success Criteria** (what must be TRUE):
-  1. MacroRegimeClassifier outputs a probability distribution across candidate regimes (not a single label) and surfaces "Mixed Signal Environment" with multiple analogues when top confidence is below 70%
-  2. MacroRegimeClassifier communicates explicitly when the current environment has limited historical precedent rather than forcing a low-confidence analogy
-  3. ValuationContextualizer assesses each asset's valuation relative to its own historical range and contextualizes it within the current macro regime — regime-relative valuation, not raw percentile alone
-  4. ValuationContextualizer handles historically unprecedented valuation levels with explicit communication ("this level has no direct historical precedent") rather than misleading out-of-range labels, and flags ETF flow vs physical demand divergence for gold when signals contradict
-  5. StructureAnalyzer produces a price structure sub-assessment using pre-computed MA positioning, drawdown from ATH, and trend context, framed as entry timing context within a fundamental thesis — not as standalone trading signals
+  1. Neo4j contains macro regime nodes spanning major economic periods from 2008-2025 — a Cypher query `MATCH (r:Regime) RETURN count(r)` returns a non-zero count and each node carries FRED series values for the period
+  2. Neo4j `HAS_ANALOGUE` relationships exist between regime nodes, each carrying `similarity_score`, `dimensions_matched`, `period_start`, and `period_end` — a Cypher query traversing these relationships returns full relationship properties (not just node IDs)
+  3. Qdrant `macro_docs` collection is populated — a similarity search for "Federal Reserve rate decision" returns relevant Fed FOMC minutes or SBV report chunks with scores above 0.7
+  4. Qdrant `earnings_docs` collection is populated — a similarity search for a VN30 company ticker returns relevant earnings transcript chunks from that company's filings
 **Plans**: TBD
 
 Plans:
-- [ ] 04-01: LangGraph StateGraph skeleton and MacroRegimeClassifier node
-- [ ] 04-02: Neo4j regime seed data curation and analogue relationship population
-- [ ] 04-03: ValuationContextualizer node with regime-relative context and out-of-range handling
-- [ ] 04-04: StructureAnalyzer node with pre-computed marker consumption
-- [ ] 04-05: Mixed-signal and limited-precedent test cases
+- [ ] 04-01: Neo4j historical macro regime node schema design and Cypher seed scripts (query-first design)
+- [ ] 04-02: Neo4j regime analogue relationship population with similarity scores (2008-2025 periods)
+- [ ] 04-03: Qdrant macro_docs collection population — Fed FOMC minutes and SBV reports
+- [ ] 04-04: Qdrant earnings_docs collection population — VN30 company earnings transcripts
 
-### Phase 5: Synthesis, Reports, and Explainability
-**Goal**: EntryQualityScorer and ReportComposer complete the reasoning chain, producing a qualitative entry quality assessment with full reasoning decomposition and bilingual report output — with every numeric claim grounded to retrieved database records and conflicting signals handled explicitly
+### Phase 5: Retrieval Layer Validation
+**Goal**: All three retrieval paths (Neo4j via LlamaIndex CypherTemplateRetriever, Qdrant via LlamaIndex hybrid dense+sparse, PostgreSQL via direct query) are independently validated against real loaded data with data freshness checks built into every retrieval function — before any retriever is embedded inside a LangGraph node
 **Depends on**: Phase 4
-**Requirements**: AI-01, AI-02, AI-03, AI-04, AI-05, AI-06, AI-07, AI-08, RPT-01, RPT-02, RPT-03, RPT-05
+**Requirements**: RETR-01, RETR-02, RETR-03, RETR-04
 **Success Criteria** (what must be TRUE):
-  1. EntryQualityScorer produces a qualitative tier (Favorable / Neutral / Cautious / Avoid) with reasoning decomposition that shows all three sub-assessments (macro, valuation, structure) before the composite — never a numeric score alone
-  2. Every numeric claim in a generated report is traceable to a specific retrieved database record — a grounding check node at the end of the chain fails noisily if any number cannot be attributed to a source
-  3. Conflicting signals are surfaced explicitly with "strong thesis, weak structure — wait for structural confirmation" type language — not silently averaged away
-  4. Report language uses probabilistic framing throughout ("suggests," "conditions consistent with") and contains no instances of "buy," "sell," or "entry confirmed"
-  5. Reports are generated in both Vietnamese (primary) and English, with Vietnamese as native generation (not translation), using a consistent Vietnamese financial terminology dictionary
-  6. If one reasoning step fails, the system completes the remaining steps and flags the missing component in the report rather than aborting — partial reports are better than no report
-  7. LangGraph StateGraph uses named nodes (MacroRegimeClassifier, ValuationContextualizer, StructureAnalyzer, EntryQualityScorer, ReportComposer) and each step logs its input, data source, and output to the state
+  1. A test call to the Neo4j CypherTemplateRetriever with a representative macro query returns regime analogue nodes with full `HAS_ANALOGUE` relationship properties — result includes `similarity_score`, `dimensions_matched`, `period_start`, `period_end` on every returned relationship
+  2. A test call to the Qdrant hybrid retriever (dense + sparse) with a representative financial query returns more relevant results than dense-only search — validated by manual inspection of the top-5 results for at least three representative queries
+  3. Direct PostgreSQL query functions for fundamentals, structure_markers, and fred_indicators tables return structured data matching the schema — each function is called with a real asset identifier and returns non-empty results
+  4. Every retrieval function emits an explicit warning (logged and returned in the result payload) when `data_as_of` exceeds the freshness threshold — validated by running each retriever against a row with a deliberately stale `data_as_of` date and confirming the warning appears
 **Plans**: TBD
 
 Plans:
-- [ ] 05-01: EntryQualityScorer node with qualitative tier output and sub-assessment decomposition
-- [ ] 05-02: Grounding check node — numeric claim attribution validation
-- [ ] 05-03: ReportComposer node — bilingual structured report generation
-- [ ] 05-04: Vietnamese financial terminology dictionary and bilingual generation quality validation
-- [ ] 05-05: Partial-failure handling and conflicting signal output
-- [ ] 05-06: langgraph-checkpoint-postgres integration and end-to-end reasoning pipeline test
+- [ ] 05-01: LlamaIndex Neo4j CypherTemplateRetriever implementation and validation
+- [ ] 05-02: LlamaIndex Qdrant hybrid retriever implementation and validation
+- [ ] 05-03: PostgreSQL direct query patterns and data_as_of freshness check implementation
 
-### Phase 6: API Layer and Platform
-**Goal**: FastAPI exposes the reasoning pipeline with background task execution, SSE streaming of step progress, and watchlist CRUD — with LangGraph state persisted for audit and recovery, and the monthly report cadence and on-demand generation triggered correctly
+### Phase 6: LangGraph Reasoning Nodes
+**Goal**: Five LangGraph nodes (structure, valuation, macro_regime, entry_quality, grounding_check) and one special-case handler (conflicting_signals) are built and validated individually with mock state — each produces Pydantic-validated structured output, consumes only what the next node needs, and handles edge cases (mixed signals, missing data, conflicting sub-assessments) explicitly
 **Depends on**: Phase 5
-**Requirements**: INFRA-03, INFRA-04, USER-01, USER-02, USER-03
+**Requirements**: REAS-01, REAS-02, REAS-03, REAS-04, REAS-05, REAS-07
 **Success Criteria** (what must be TRUE):
-  1. POST /reports/generate returns a job_id immediately and executes report generation as a background task — the HTTP connection is never held open for the full 30–120 second pipeline run
-  2. GET /reports/stream/{job_id} streams SSE events showing reasoning step progress (MacroRegimeClassifier running, ValuationContextualizer complete, etc.) in real time
-  3. User can add and remove assets from their watchlist via CRUD endpoints, and adding a new asset triggers immediate on-demand report generation using the latest available data
-  4. Monthly report generation runs automatically for all watchlist assets via scheduled execution — no manual trigger required
-  5. LangGraph state is persisted via langgraph-checkpoint-postgres — an interrupted report generation run can be inspected for audit and the state is recoverable
+  1. The macro_regime node outputs a probability distribution over regime types — when the top confidence is below 70%, the output explicitly labels the result "Mixed Signal Environment" and surfaces the two most likely analogues rather than forcing a single-label answer
+  2. The valuation node produces regime-relative assessments for VN equities (P/E, P/B vs historical analogues from Neo4j) and gold (real yield context, ETF flow) — the output cites the specific retrieved analogue and period used for comparison
+  3. The structure node interprets pre-computed v1.0 markers (MAs, drawdown from ATH, percentile) into a price structure narrative without recomputing any values — the node reads only from PostgreSQL structure_markers and produces narrative output referencing those stored values
+  4. The entry_quality node outputs a qualitative tier (Favorable / Neutral / Cautious / Avoid) with all three sub-assessments (macro, valuation, structure) explicitly present in the output before the composite tier — no numeric score is produced
+  5. The grounding_check node verifies that every numeric claim in intermediate node outputs traces to a specific retrieved database record ID — it raises an explicit error (not a warning) if any number cannot be attributed to a source
+  6. When sub-assessments disagree (e.g., strong macro thesis but weak price structure), the conflicting signal handler produces an explicit "strong thesis, weak structure" output type — the disagreement is surfaced in the node output, not silently averaged
 **Plans**: TBD
 
 Plans:
-- [ ] 06-01: FastAPI application setup with Supabase JWT verification middleware
-- [ ] 06-02: Report generation endpoint with BackgroundTask and job status polling
-- [ ] 06-03: SSE streaming endpoint for reasoning step progress
-- [ ] 06-04: Watchlist CRUD endpoints and on-demand report trigger
-- [ ] 06-05: Monthly report cadence scheduler and langgraph-checkpoint-postgres integration
+- [ ] 06-01: ReportState TypedDict with documented reducers and structure node implementation
+- [ ] 06-02: Valuation node with regime-relative context and PostgreSQL + Qdrant retrieval integration
+- [ ] 06-03: Macro regime classification node with probability distribution and mixed-signal handling
+- [ ] 06-04: Entry quality assessment node with qualitative tier and conflicting signal handler
+- [ ] 06-05: Grounding check node with numeric claim attribution validation
 
-### Phase 7: Frontend
-**Goal**: The Next.js application delivers the research-report aesthetic with structured report cards, real-time pipeline progress, price structure charts, Supabase authentication, and the watchlist management UI — making the platform usable end-to-end by the first user
+### Phase 7: Graph Assembly and End-to-End Report Generation
+**Goal**: The LangGraph StateGraph assembles all validated nodes into a complete pipeline with PostgreSQL checkpointing, produces a first end-to-end bilingual report for a single test asset, stores it in the PostgreSQL reports table, and the report passes grounding check, data freshness validation, and Vietnamese term consistency review
 **Depends on**: Phase 6
-**Requirements**: RPT-04, USER-04
+**Requirements**: REAS-06, REPT-01, REPT-02, REPT-03, REPT-04, REPT-05
 **Success Criteria** (what must be TRUE):
-  1. User can log in via Supabase auth and access their watchlist — unauthenticated users cannot access any report or watchlist data
-  2. Report view presents four structured cards (macro regime, valuation, price structure, entry quality) with the three sub-assessments visible before the composite entry quality tier — the entry quality tier is never the headline
-  3. Reports feel like research documents, not trading terminals: narrative text is primary, lightweight-charts OHLCV with structure markers support the story, no candlestick-heavy trading UI elements
-  4. SSE step-progress UI shows the reasoning pipeline executing in real time — user sees which node is running and which have completed, giving clear feedback during the 30–120 second generation window
-  5. Data freshness is visible in the report UI for each data source, and missing data components display specific unavailability messages rather than generic "N/A"
+  1. The LangGraph StateGraph definition assembles all nodes with explicit linear edges, an explicit TypedDict state schema with all reducers documented, and PostgreSQL AsyncPostgresSaver checkpointing — the graph definition can be imported and instantiated without errors
+  2. A complete pipeline run for a single VN30 test asset produces a JSON report with four structured card sections (macro regime, valuation, structure, entry quality) — each section has the required fields and passes Pydantic schema validation
+  3. The same pipeline run produces a Markdown report with human-readable narrative — the narrative uses probabilistic framing throughout and contains no instances of "buy," "sell," or "entry confirmed"
+  4. The report is generated in both Vietnamese (primary) and English — the Vietnamese output uses the financial term dictionary throughout, and the bilingual generation is from structured data (not translation of English output)
+  5. When `data_as_of` for any data source exceeds its freshness threshold, the report includes an explicit "DATA WARNING" section naming the specific data source and the staleness duration — reports with the WGC gold data gap explicitly flag it
+  6. The completed report is written to the PostgreSQL `reports` table with full JSON payload and metadata — a `SELECT` query against `reports` returns the stored record with correct `report_id`, `asset_id`, `generated_at`, and `report_json` fields
 **Plans**: TBD
 
 Plans:
-- [ ] 07-01: Supabase SSR auth integration and protected routing
-- [ ] 07-02: Watchlist management UI
-- [ ] 07-03: Report card layout and structured report viewer
-- [ ] 07-04: SSE pipeline progress UI
-- [ ] 07-05: lightweight-charts integration for price structure context
-- [ ] 07-06: Bilingual UI, Vietnamese term glossary sidebar, and data freshness indicators
+- [ ] 07-01: LangGraph StateGraph assembly with AsyncPostgresSaver checkpointing
+- [ ] 07-02: JSON structured report output and Pydantic schema validation
+- [ ] 07-03: Markdown report rendering and bilingual generation with Vietnamese term dictionary
+- [ ] 07-04: Data freshness flag integration and DATA WARNING section generation
+- [ ] 07-05: PostgreSQL report storage and end-to-end pipeline integration test
+
+### Phase 8: FastAPI Gateway and Docker Service
+**Goal**: A FastAPI reasoning-engine service wraps the validated LangGraph pipeline with a background-task report generation endpoint, a report retrieval endpoint, an SSE progress streaming endpoint, and a health endpoint — packaged as a Docker service on the reasoning network with the `reasoning` profile
+**Depends on**: Phase 7
+**Requirements**: SRVC-01, SRVC-02, SRVC-03, SRVC-04, SRVC-05
+**Success Criteria** (what must be TRUE):
+  1. A POST to `/reports/generate` returns a `job_id` immediately (HTTP 202) and runs report generation as a background task — the HTTP connection is not held open for the full pipeline run duration
+  2. A GET to `/reports/{id}` returns the completed report JSON when generation is finished, and returns a pending status response when the job is still running
+  3. A GET to `/reports/stream/{id}` establishes an SSE connection that emits events for each node transition (node name, status, timestamp) as the pipeline executes — the stream closes cleanly when the pipeline completes
+  4. A GET to `/health` returns a 200 response with service status — the health check is callable from within the Docker network without authentication
+  5. The reasoning-engine is defined in `docker-compose.yml` on the `reasoning` network with `profiles: ["reasoning"]` and explicit `mem_limit` — `docker compose --profile reasoning up` starts the service cleanly and it connects to PostgreSQL, Neo4j, and Qdrant without errors
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: FastAPI application skeleton with health endpoint and Dockerfile
+- [ ] 08-02: Report generation endpoint with BackgroundTask and job status tracking
+- [ ] 08-03: SSE streaming endpoint for reasoning node progress
+- [ ] 08-04: Docker Compose reasoning-engine service definition and end-to-end HTTP trigger test
+
+### Phase 9: Production Hardening and Batch Validation
+**Goal**: The v2.0 system is validated under realistic production conditions — a 20-stock batch workload completes within memory limits, Gemini API spend alerts are configured and testable, and a checkpoint cleanup job prevents unbounded PostgreSQL growth
+**Depends on**: Phase 8
+**Requirements**: SRVC-06, SRVC-07, SRVC-08
+**Success Criteria** (what must be TRUE):
+  1. A batch run generating reports for 20 VN30 stocks completes without OOM kills to any Docker service — `docker stats` during the run shows all services staying within their configured `mem_limit` values
+  2. Gemini API spend alerts are configured with tiered thresholds — a test alert fires correctly at the configured threshold and the configuration is documented in the project
+  3. The checkpoint cleanup job runs against the PostgreSQL checkpoint tables and removes records older than the configured TTL — a test run with synthetic old records confirms deletion and the job does not affect records newer than the TTL
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: Batch report generation test against 20-stock workload with memory baseline
+- [ ] 09-02: Gemini API spend alert configuration with tiered thresholds
+- [ ] 09-03: Checkpoint cleanup job implementation with TTL-based purge
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Infrastructure and Storage Foundation | v1.0 | 2/2 | Complete | 2026-03-03 |
 | 2. Data Ingestion Pipeline | v1.0 | 5/5 | Complete | 2026-03-08 |
-| 3. Retrieval Layer Validation | — | 0/3 | Not started | - |
-| 4. Analytical Reasoning Nodes | — | 0/5 | Not started | - |
-| 5. Synthesis, Reports, and Explainability | — | 0/6 | Not started | - |
-| 6. API Layer and Platform | — | 0/5 | Not started | - |
-| 7. Frontend | — | 0/6 | Not started | - |
+| 3. Infrastructure Hardening and Database Migrations | v2.0 | 0/3 | Not started | - |
+| 4. Knowledge Graph and Document Corpus Population | v2.0 | 0/4 | Not started | - |
+| 5. Retrieval Layer Validation | v2.0 | 0/3 | Not started | - |
+| 6. LangGraph Reasoning Nodes | v2.0 | 0/5 | Not started | - |
+| 7. Graph Assembly and End-to-End Report Generation | v2.0 | 0/5 | Not started | - |
+| 8. FastAPI Gateway and Docker Service | v2.0 | 0/4 | Not started | - |
+| 9. Production Hardening and Batch Validation | v2.0 | 0/3 | Not started | - |
