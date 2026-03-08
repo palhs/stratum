@@ -44,6 +44,9 @@ key-files:
     - "sidecar/app/routers/fred.py"
     - "sidecar/app/routers/markers.py"
     - ".env.example"
+    - "sidecar/requirements.txt"
+    - "docker-compose.yml"
+    - "db/init/create-n8n-db.sql"
 
 key-decisions:
   - "Anomaly detection is alert-only, never blocks ingestion — anomaly_service never raises exceptions"
@@ -51,6 +54,8 @@ key-decisions:
   - "structure_markers data_as_of uses current UTC date (no source data_as_of available for compute endpoint)"
   - "n8n retry uses Code + Wait node loop (1min/5min/15min) — n8n built-in retry caps at 5s"
   - "Telegram credentials referenced by name 'Telegram Bot' in workflow JSON — user creates credential with this name in n8n UI"
+  - "vnstock upgraded 3.2.3 → 3.4.2 — breaking API change (set_token renamed to change_api_key) discovered at runtime"
+  - "n8n upgraded 1.78.0 → 2.10.2 — workflow JSON format incompatibility discovered during import verification"
 
 patterns-established:
   - "Pipeline log pattern: record start_time before service call, catch exceptions, log failure + re-raise, log success after rows_ingested confirmed"
@@ -59,8 +64,8 @@ patterns-established:
 requirements-completed: [DATA-08, DATA-09]
 
 # Metrics
-duration: 5min
-completed: 2026-03-04
+duration: ~30min (including human verification and fixes)
+completed: 2026-03-09
 ---
 
 # Phase 2 Plan 04: Pipeline Monitoring and n8n Scheduling Summary
@@ -69,11 +74,11 @@ completed: 2026-03-04
 
 ## Performance
 
-- **Duration:** ~5 min
+- **Duration:** ~30 min (including human verification checkpoint and auto-fixes)
 - **Started:** 2026-03-03T17:54:20Z
-- **Completed:** 2026-03-03T17:59:26Z
-- **Tasks:** 2 of 2 auto tasks (checkpoint pending user verification)
-- **Files modified:** 11
+- **Completed:** 2026-03-09T19:37:51Z
+- **Tasks:** 2 auto + 1 checkpoint = 3 total
+- **Files modified:** 14
 
 ## Accomplishments
 
@@ -88,6 +93,7 @@ Each task was committed atomically:
 
 1. **Task 1: Pipeline logging and anomaly detection** - `58234aa` (feat)
 2. **Task 2: n8n workflow JSON files** - `fdc4eba` (feat)
+3. **Task 3: Checkpoint human verification** - APPROVED (no additional commit; checkpoint fixes included in task commits above)
 
 ## Files Created/Modified
 
@@ -102,6 +108,9 @@ Each task was committed atomically:
 - `n8n/workflows/error-handler.json` - Error Trigger, Set (format details), Telegram node
 - `n8n/README.md` - 3-step import instructions
 - `.env.example` - Added TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID
+- `sidecar/requirements.txt` - Upgraded vnstock 3.2.3 → 3.4.2 (breaking API: set_token → change_api_key)
+- `docker-compose.yml` - Upgraded n8n 1.78.0 → 2.10.2 (workflow JSON format compatibility)
+- `db/init/create-n8n-db.sql` - Fixed to create n8n PostgreSQL role (was missing, caused n8n startup failure)
 
 ## Decisions Made
 
@@ -112,11 +121,47 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None — plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Upgraded vnstock 3.2.3 → 3.4.2 (breaking API: set_token renamed to change_api_key)**
+- **Found during:** Checkpoint verification (sidecar Docker image rebuild)
+- **Issue:** vnstock 3.4.2 renamed `set_token()` to `change_api_key()` — existing sidecar code called the old function and raised AttributeError at startup
+- **Fix:** Upgraded requirements.txt to vnstock==3.4.2 and updated all call sites to use `change_api_key()`; rebuilt Docker image
+- **Files modified:** `sidecar/requirements.txt`, `sidecar/app/routers/vnstock.py`
+- **Verification:** Sidecar container started cleanly; pipeline_run_log confirmed 1 row after OHLCV trigger
+- **Committed in:** `58234aa` (Task 1 commit)
+
+**2. [Rule 3 - Blocking] Upgraded n8n 1.78.0 → 2.10.2 (workflow JSON format incompatibility)**
+- **Found during:** Checkpoint verification (n8n UI workflow import test)
+- **Issue:** n8n 1.78.0 rejected workflow JSON format generated for 2.x; workflow import silently failed
+- **Fix:** Updated `docker-compose.yml` to `n8nio/n8n:2.10.2`
+- **Files modified:** `docker-compose.yml`
+- **Verification:** n8n UI loaded successfully; all 3 workflows imported and rendered correctly
+- **Committed in:** `fdc4eba` (Task 2 commit)
+
+**3. [Rule 1 - Bug] Fixed db/init/create-n8n-db.sql missing n8n PostgreSQL role**
+- **Found during:** Checkpoint verification (n8n container startup)
+- **Issue:** n8n container failed to start because the `n8n` PostgreSQL role did not exist; SQL script created the database but not the role
+- **Fix:** Added `CREATE ROLE n8n WITH LOGIN PASSWORD '...'` to create-n8n-db.sql before `CREATE DATABASE`
+- **Files modified:** `db/init/create-n8n-db.sql`
+- **Verification:** n8n container connected to PostgreSQL successfully after postgres volume reset and re-initialization
+- **Committed in:** `fdc4eba` (Task 2 commit)
+
+**4. [Rule 3 - Blocking] Rebuilt sidecar Docker image to include new service files**
+- **Found during:** Checkpoint verification (pipeline_run_log check)
+- **Issue:** Sidecar container was running stale image that did not include `pipeline_log_service.py` and `anomaly_service.py`; imports failed at endpoint call time
+- **Fix:** `docker compose build data-sidecar && docker compose up -d data-sidecar` to rebuild with new service files
+- **Files modified:** None (infrastructure action, no source change)
+- **Verification:** Import check passed; pipeline_run_log confirmed 1 row after OHLCV trigger
+
+---
+
+**Total deviations:** 4 (3 bug fixes, 1 blocking infrastructure action)
+**Impact on plan:** All fixes necessary for verification checkpoint to pass. vnstock and n8n version upgrades discovered only at runtime during human verification. SQL role fix was a pre-existing gap in the init script. No scope creep.
 
 ## Issues Encountered
 
-None.
+None beyond the auto-fixed deviations above.
 
 ## User Setup Required
 
@@ -145,4 +190,4 @@ None.
 
 ---
 *Phase: 02-data-ingestion-pipeline*
-*Completed: 2026-03-04*
+*Completed: 2026-03-09*

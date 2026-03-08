@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** Phase 2 in progress — Plans 01, 02, 03, 04 complete
+**Current focus:** Phase 2 in progress — Plans 01, 02, 03, 04 complete (checkpoint verified); Plan 05 next
 
 ## Current Position
 
 Phase: 2 of 7 (Data Ingestion Pipeline) — IN PROGRESS
 Plan: 4 of 5 in Phase 2 complete (02-01, 02-02, 02-03, 02-04 complete)
-Status: Phase 2 in progress — checkpoint awaiting human verification of pipeline logging and n8n workflows
-Last activity: 2026-03-04 — Phase 2 Plan 4 complete: pipeline_run_log wired into all 7 endpoints, anomaly detection for vnstock, n8n weekly/monthly/error-handler workflows
+Status: Phase 2 in progress — Plan 04 checkpoint verified and approved; ready for Plan 05
+Last activity: 2026-03-09 — Phase 2 Plan 04 checkpoint approved: pipeline_run_log confirmed working (1 row), all 3 n8n workflows imported successfully; auto-fixes: vnstock 3.4.2, n8n 2.10.2, create-n8n-db.sql role fix
 
 Progress: [█████░░░░░] 35% (5/14 plans total)
 
@@ -79,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 02-data-ingestion-pipeline]: WGC wgc-flows 501 stub NOT logged to pipeline_run_log — permanent stub, not a failed run
 - [Phase 02-data-ingestion-pipeline]: n8n retry uses Code + Wait node loop (1min/5min/15min) — n8n built-in retry caps at 5s
 - [Phase 02-data-ingestion-pipeline]: Anomaly detection is alert-only, never blocks ingestion — anomaly_service never raises exceptions
+- [Phase 02-04]: vnstock pinned to 3.4.2 — 3.2.3 → 3.4.2 was a breaking change (set_token renamed to change_api_key); version pinned in requirements.txt
+- [Phase 02-04]: n8n pinned to 2.10.2 — 1.78.0 workflow JSON format rejected by import UI; upgraded to 2.10.2 for format compatibility
+- [Phase 02-04]: db/init/create-n8n-db.sql must create role before database — PostgreSQL requires role to exist before assigning it as database owner
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04
-Stopped at: Checkpoint human-verify — Completed 02-data-ingestion-pipeline 02-04-PLAN.md (Tasks 1 and 2 done; awaiting verification of pipeline logging and n8n workflows)
+Last session: 2026-03-09
+Stopped at: Completed 02-data-ingestion-pipeline 02-04-PLAN.md — checkpoint approved, deviations documented (vnstock upgrade, n8n upgrade, DB role fix)
 Resume file: .planning/phases/02-data-ingestion-pipeline/02-05-PLAN.md
