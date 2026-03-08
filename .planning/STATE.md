@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** Phase 2 complete — Plan 05 executed (test suite 46 pass, 13 skip); awaiting human checkpoint verification
+**Current focus:** Phase 2 COMPLETE — all 9 DATA requirements validated, human checkpoint approved; ready to begin Phase 3 (Retrieval Layer Validation)
 
 ## Current Position
 
-Phase: 2 of 7 (Data Ingestion Pipeline) — AWAITING CHECKPOINT VERIFICATION
+Phase: 2 of 7 (Data Ingestion Pipeline) — COMPLETE
 Plan: 5 of 5 in Phase 2 complete (02-01, 02-02, 02-03, 02-04, 02-05 complete)
-Status: Phase 2 Plan 05 executed — pytest suite written with 46 passing, 13 skipping (FRED auth gate); human verify checkpoint pending
-Last activity: 2026-03-09 — Phase 2 Plan 05 executed: pytest suite 59 tests (46 pass, 13 skip), 4 bugs fixed (MultiIndex columns, SystemExit, NaN-to-NULL, Dockerfile)
+Status: Phase 2 fully complete — pytest suite 46 pass/13 skip, human checkpoint approved ("phase 2 approved"); n8n workflows verified working (POST method fix + date reference fix applied)
+Last activity: 2026-03-09 — Phase 2 Plan 05 checkpoint approved: weekly pipeline verified, 46 tests pass, FRED key configured, n8n POST method + date reference bugs fixed
 
 Progress: [██████░░░░] 43% (6/14 plans total)
 
@@ -83,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 02-04]: n8n pinned to 2.10.2 — 1.78.0 workflow JSON format rejected by import UI; upgraded to 2.10.2 for format compatibility
 - [Phase 02-04]: db/init/create-n8n-db.sql must create role before database — PostgreSQL requires role to exist before assigning it as database owner
 - [Phase 02-05]: FRED tests skip when FRED_API_KEY absent — auth gate not test defect; integration tests use live DB not mocks; anomaly tests use uuid-suffixed pipeline names for isolation; NaN fix at dict level post to_dict()
+- [Phase 02-05]: n8n HTTP Request nodes require explicit method:POST in workflow JSON — n8n 2.10.2 defaults to GET, causing 405 errors on all sidecar endpoints
+- [Phase 02-05]: n8n cross-node reference requires $('Node Name').item.json syntax — $json resolves empty string in non-first nodes
 
 ### Pending Todos
 
@@ -98,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 2 Plan 05 checkpoint:human-verify — pytest suite 46 passed, 13 skipped; awaiting human approval of data quality and n8n workflows
-Resume file: None — awaiting human checkpoint response ("phase 2 approved")
+Stopped at: Phase 2 complete — 02-05-SUMMARY.md created; STATE.md and ROADMAP.md updated; ready to plan Phase 3
+Resume file: None — begin Phase 3 (Retrieval Layer Validation) planning

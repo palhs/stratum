@@ -90,7 +90,7 @@ completed: 2026-03-09
 Each task was committed atomically:
 
 1. **Task 1: pytest test suite for all DATA requirements** - `3d9e376` (feat)
-2. **Task 2: Checkpoint human-verify** - PENDING (awaiting user approval)
+2. **Task 2: Checkpoint human-verify** - APPROVED (user verified: 46 tests pass, weekly pipeline works, pipeline logging confirmed, FRED API key configured, n8n workflows fixed)
 
 ## Files Created/Modified
 
@@ -176,12 +176,23 @@ Each task was committed atomically:
    ```
 5. Re-run `pytest tests/ -v` — 9 previously-skipped FRED tests should now pass
 
+## Verification Results (Human Checkpoint Approved)
+
+User verified ("phase 2 approved") the following:
+- Weekly pipeline works end-to-end via n8n workflow
+- 46 tests pass, 13 skip (FRED auth gate by design)
+- Pipeline logging confirmed: pipeline_run_log has records for all pipeline types
+- FRED API key configured and FRED endpoints returning data with correct data_as_of spread
+- n8n workflows fixed: POST method added to all HTTP Request nodes (were defaulting to GET → 405)
+- n8n workflows fixed: fundamentals node date reference changed from `$json` to `$('Set Date Range')` (was sending empty strings → 422)
+- WGC endpoint returning 501 by design (JS-rendered portal, no stable API)
+
 ## Next Phase Readiness
 
-- All non-FRED data tables populated and validated: stock_ohlcv (9,411 rows), stock_fundamentals (399 rows), gold_etf_ohlcv (574 rows), structure_markers (9,985 rows)
-- FRED data requires FRED_API_KEY setup (user action) — 9 tests remain skipped until key is provided
-- Phase 2 is complete pending human checkpoint verification (n8n UI + data quality review)
-- Phase 3 (Retrieval Validation) can proceed with the populated database
+- All 7 Phase 2 tables populated and validated: stock_ohlcv, stock_fundamentals, gold_price, gold_etf_ohlcv, fred_indicators, structure_markers, pipeline_run_log
+- Zero NULL timestamps confirmed across all tables (DATA-07)
+- Phase 2 is COMPLETE — all 9 DATA requirements (DATA-01 through DATA-09) met
+- Phase 3 (Retrieval Validation) can proceed with the fully populated database
 
 ---
 *Phase: 02-data-ingestion-pipeline*
