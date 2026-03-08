@@ -1,17 +1,19 @@
 # Project Research Summary
 
-**Project:** Stratum — Long-Term Investment Advisor Platform
-**Domain:** AI-powered macro-fundamental investment research (Vietnamese market)
-**Researched:** 2026-03-03
-**Confidence:** MEDIUM-HIGH
+**Project:** Stratum v2.0 — Analytical Reasoning Engine
+**Domain:** AI-powered macro regime classification, multi-store RAG retrieval, and bilingual investment report generation layered over an operational v1.0 data ingestion platform
+**Researched:** 2026-03-09
+**Confidence:** HIGH (stack verified against PyPI and official docs; architecture confirmed against existing codebase; pitfalls cross-verified across official docs and community post-mortems)
+
+---
 
 ## Executive Summary
 
-Stratum is a structured AI reasoning platform that produces institutional-quality investment research reports for Vietnamese retail investors covering VN stocks and gold. The product is not a trading terminal or portfolio manager — it is a research advisor that answers "are conditions favorable for long-term entry?" through a layered analysis of macro regime, asset valuation, and higher time-frame price structure. Expert implementation of this type of platform uses a two-pipeline architecture with a hard storage boundary: a scheduled ingestion pipeline (n8n) that pre-computes all numeric metrics before writing to storage, and a separate reasoning pipeline (LangGraph + LlamaIndex) that reads from storage and produces explainable reports. The ingestion and reasoning pipelines share no runtime state and communicate exclusively through PostgreSQL, Neo4j, and Qdrant.
+Stratum v2.0 adds an AI analytical reasoning engine on top of a fully operational v1.0 data ingestion platform. The architecture is additive, not a rewrite: one new Docker service (`reasoning-engine`) joins an existing Docker Compose stack and attaches to the pre-existing `reasoning` network. The storage layer (PostgreSQL, Neo4j, Qdrant) is already dual-networked and requires no structural changes — only new data (Neo4j regime nodes, Qdrant document corpus) and two new Flyway migrations (V6 `reports`, V7 `report_jobs`). The recommended technical pattern is LangGraph (explicit StateGraph, not an autonomous agent) orchestrating LlamaIndex retrievers as deterministic Python functions, with Gemini 2.0/2.5 Flash as the LLM for structured analytical output. This is the dominant production pattern for analytical AI systems as of 2025–2026, with clear library boundaries: LangGraph owns orchestration, LlamaIndex owns retrieval, Gemini owns inference.
 
-The recommended stack is well-validated and internally consistent. LangGraph 1.0 (stable as of Oct 2025) provides the explicit state machine needed for reproducible, auditable multi-step reasoning. LlamaIndex 0.14.15 wraps Qdrant and Neo4j retrieval in a unified interface. FastAPI with SSE streaming surfaces the reasoning pipeline to the frontend in real-time. The two gaps the founder's original stack did not address are: (1) a background task queue for long-running report generation (recommend `arq` on Redis, or LangGraph's built-in PostgreSQL checkpointer as an alternative), and (2) an embedding model for LlamaIndex + Qdrant (recommend FastEmbed for zero-cost local embedding). Both gaps have clean solutions that fit the existing architecture.
+The platform's core intellectual property is macro regime classification with historical analogue matching — a capability absent from all Vietnamese retail investment platforms (Vietstock, CafeF) and from general-purpose platforms (Simply Wall St, Stockopedia). The pipeline runs five sequential LangGraph nodes (macro_regime → valuation → structure → entry_quality → compose_report), each producing Pydantic-validated structured output that feeds downstream nodes through explicit state. Bilingual output (Vietnamese primary, English secondary) is generated natively from structured data using Gemini — not by translating English output — with a mandatory Vietnamese financial term dictionary as a content prerequisite. The entry quality assessment intentionally outputs a qualitative tier (Favorable / Neutral / Cautious / Avoid), not a numeric score, to prevent false precision from propagating to investment decisions.
 
-The dominant risks are not technical infrastructure risks — the stack is sound. The critical risks are data and reasoning quality risks: LLM hallucination of financial numbers, stale data silently entering reports, overconfident macro regime classification collapsing a probabilistic signal into a single label, and the entry quality score being interpreted as a buy/sell signal rather than a structured research summary. All four risks must be treated as first-class architectural constraints from the start of implementation, not as polish steps. The Vietnamese market data dependency on vnstock (an unofficial community library) is a known fragility that requires defensive error handling and version pinning from day one.
+The dominant risk category is data integrity, not engineering complexity. Three independent failure modes can silently corrupt reports: LLM hallucination of financial numbers, stale data presented as current, and LangGraph state reducer misuse that silently corrupts intermediate analysis. All three require defensive patterns built into the architecture from the first node — a grounding check node, `data_as_of` freshness gates, and explicit `TypedDict` reducer annotations with unit tests per node. A second major risk is infrastructure: an 8GB VPS running 7+ Docker services requires explicit memory limits, VPS swap, and Neo4j JVM heap configuration before the reasoning service is added. Missing any of these produces OOM kills of random services rather than the reasoning engine that triggered the spike.
 
 ---
 
@@ -19,156 +21,167 @@ The dominant risks are not technical infrastructure risks — the stack is sound
 
 ### Recommended Stack
 
-The stack spans four functional layers: AI reasoning (LangGraph 1.0.10 + google-genai 1.65.0 + Ollama), retrieval (LlamaIndex 0.14.15 with llama-index-vector-stores-qdrant and llama-index-graph-stores-neo4j), storage (PostgreSQL 17 + TimescaleDB optional, Neo4j Community 5.x, Qdrant 1.17.0), and ingestion/orchestration (n8n 2.9.4 + vnstock 3.4.2 + fredapi). The frontend is Next.js 16.1.6 with lightweight-charts 5.1.0 and Supabase self-hosted for auth. All services run in a single Docker Compose file on a VPS. The old `google-generativeai` package reached EOL November 2025 — the `google-genai` 1.65.0 SDK is mandatory.
+The v2.0 stack builds entirely on libraries that reached stable production quality in late 2025. LangGraph reached v1.0 stable GA in October 2025 (current: 1.0.10, Feb 27, 2026); `langchain-google-genai` v4.0.0 (February 2026) completed the mandatory migration from the deprecated `google-generativeai` SDK to `google-genai`; `llama-index-core` 0.14.15 (February 2026) provides the unified retrieval abstraction. These are not experimental choices — they are the officially recommended integration path per Google AI, Neo4j Labs, and Qdrant documentation as of March 2026.
 
 **Core technologies:**
-- **LangGraph 1.0.10:** Multi-step reasoning graph — the only framework with programmatic, auditable control over each reasoning step; required for explainability constraint
-- **LlamaIndex 0.14.15:** Retrieval abstraction over Qdrant (semantic) and Neo4j (graph); called as a retrieval function inside LangGraph nodes, not as a reasoning orchestrator
-- **google-genai 1.65.0:** Unified Gemini SDK (new GA package; old SDK is deprecated); supports Gemini 2.5 Flash and 3.1 Pro Preview
-- **Qdrant 1.17.0:** Vector store for earnings transcripts, Fed minutes, macro reports; Relevance Feedback in v1.17 directly improves financial document retrieval
-- **Neo4j Community 5.x:** Knowledge graph for macro regime relationships, historical analogues, asset correlations; supports Text2Cypher via LlamaIndex
-- **PostgreSQL 17 + TimescaleDB:** Structured time-series, fundamentals, pre-computed structure markers, reports — TimescaleDB extension recommended from the start for OHLCV compression
-- **n8n 2.9.4:** Pipeline orchestration with visual debugger — the right tool for single-operator self-hosted ingestion; communicates with reasoning layer only via storage, never direct API calls
-- **vnstock 3.4.2:** Only maintained Python library for Vietnamese market data; must be version-pinned and wrapped with defensive error handling
-- **arq (async Redis queue):** Gap fill for background task queue — FastAPI cannot hold HTTP connections open for 30–120 second report generation runs
-- **FastEmbed (llama-index-embeddings-fastembed):** Gap fill for embedding model — zero-cost local quantized embedding, no GPU required, adequate for weekly/monthly ingestion cadence
-- **langgraph-checkpoint-postgres:** Gap fill for LangGraph state persistence — required for explainability audit trail and interrupted run recovery
+- `langgraph==1.0.10`: Explicit StateGraph orchestration — five named nodes with deterministic linear edges. Required over autonomous agent frameworks because the analytical sequence (macro → valuation → structure → entry quality) must be fixed and auditable for every report.
+- `langchain-google-genai>=4.0.0`: Gemini integration for LangGraph nodes. Provides `bind_tools()` and `.with_structured_output()` that LangGraph requires. The `google-generativeai` package it replaces was deprecated November 30, 2025 and does not support Gemini 2.x.
+- `llama-index-core==0.14.15`: RAG retrieval abstraction over all three stores. Called as a Python function from LangGraph nodes — never as an orchestrator. Manages Neo4j property graph traversal, Qdrant hybrid vector search, and PostgreSQL SQL queries behind a unified interface.
+- `llama-index-graph-stores-neo4j==0.5.1`: Neo4j integration for LlamaIndex. Supports `TextToCypherRetriever` and `CypherTemplateRetriever` — the only two retrievers compatible with externally-created graphs (Stratum's Neo4j was built by n8n, not LlamaIndex).
+- `llama-index-vector-stores-qdrant==0.9.1`: Qdrant hybrid dense+sparse retrieval for the curated document corpus.
+- `langgraph-checkpoint-postgres==3.0.4`: PostgreSQL-backed LangGraph state persistence for audit trail and interrupted run recovery. Requires psycopg3 (`psycopg[binary]>=3.1.0`) specifically — psycopg2 is incompatible.
+- `fastembed>=0.3.0` with `BAAI/bge-small-en-v1.5` (384-dim): Locked from v1.0 Qdrant collection initialization. Changing the embedding model requires re-embedding all existing vectors — treat as immutable.
+- `jinja2>=3.1.0` + `pydantic>=2.0.0`: Structured output validation and bilingual report template rendering. Raw LLM string output as a report body is explicitly an anti-feature.
 
-See `.planning/research/STACK.md` for full version pinning, installation commands, and alternatives considered.
+**Critical version constraints:**
+- `langgraph==1.0.10` requires Python >=3.10. The reasoning service Dockerfile must use `python:3.12-slim`.
+- `langchain-google-genai>=4.0.0` and `llama-index-llms-google-genai==0.3.0` replace deprecated packages that must not be used under any circumstance.
+- Gemini temperature must be 0.1–0.3 for analytical nodes — temperature 0.0 degrades reasoning quality on Gemini 2.0+ per Google official documentation.
+
+See `.planning/research/STACK.md` for full `requirements.txt` and Docker Compose service definition.
 
 ### Expected Features
 
-Macro regime classification is the root dependency for the entire platform. Valuation assessment, entry quality score, and historical analogues all require regime as their primary context layer. This means regime classification must be built and validated before any downstream feature is reliable.
+The v2.0 feature scope is constrained by a strict dependency chain. No feature can be built before its upstream dependencies are complete and validated. All 12 P1 features must be present for the first valid report to be produced.
 
-**Must have (table stakes — v1 launch):**
-- Watchlist management — entry point for report generation; infrastructure dependency for on-demand triggering
-- Per-asset structured research report (card format) — core deliverable; nothing else matters without this
-- Macro regime classification with historical analogues — intellectual core and root dependency for all analysis
-- Asset valuation assessment relative to historical range and regime context — regime-relative valuation is the differentiated view
-- Higher time-frame price structure analysis (weekly/monthly MAs, drawdown from ATH) — entry context layer
-- AI-derived entry quality assessment with explicit reasoning chain — synthesis and primary output; must show sub-assessments per layer, not a single number
-- Bilingual output (Vietnamese primary, English secondary) — Vietnamese-language native generation, not translation
-- Explicit data freshness indicators and stale data handling — required given known data lag patterns (WGC 45-day lag, vnstock fragility)
-- Mixed-signal and low-confidence regime representation — must be first-class output, not an edge case
-- Explainable reasoning steps per analytical layer — each step must cite its data source and inputs
-- On-demand report generation for new watchlist additions — users adding an asset cannot wait 30 days
-- Report history archive per asset — baseline for any research platform
+**Must have — table stakes (P1, all required for first valid report):**
+- Retrieval layer (LlamaIndex) validated independently over all three stores — blocks all reasoning nodes
+- Neo4j regime graph seeded with historical macro regime nodes — blocks regime classification
+- Qdrant document corpus populated (Fed minutes, SBV reports, VN earnings) — required for narrative grounding
+- Macro regime classification with probability distribution output and mixed-signal handling — root dependency for everything downstream
+- Regime-relative valuation assessment for VN equities (P/E, P/B vs historical analogues) and gold (real yield, ETF flow)
+- Price structure interpretation node (reads pre-computed v1.0 markers, produces narrative — zero recomputation in the reasoning layer)
+- Entry quality assessment with qualitative tier (Favorable / Neutral / Cautious / Avoid) and three visible sub-assessments (macro, valuation, structure)
+- Grounding check node verifying all report numbers trace to retrieved database records — non-negotiable, prevents hallucination from propagating
+- Structured report output in JSON + Markdown card format (macro regime, valuation, structure, entry quality cards)
+- Vietnamese financial term dictionary (content artifact, not code — prerequisite for bilingual output quality)
+- Bilingual generation (Vietnamese primary, English secondary) from structured data, not translation
+- Explicit data freshness flags and "DATA WARNING" sections when `data_as_of` exceeds freshness thresholds
+- Conflicting signal representation ("strong thesis, weak structure") as a first-class report type
 
-**Should have (competitive differentiation, add post-validation):**
-- Email digest notification on report updates (weekly cadence-aligned, not price-triggered)
-- PDF report export
-- Improved chart rendering for price structure context in report cards
+**Should have — after first report validates (P2):**
+- LangGraph checkpoint persistence for audit trail and interrupted run recovery
+- Additional VN30 assets beyond initial 2–3 stock test set
+- Automated Neo4j regime graph update on new FRED data ingestion
 
-**Defer (v2+):**
-- Additional asset classes (BTC, bonds, US stocks) — only after VN stocks + gold analysis is excellent
-- Multi-user accounts, auth, billing — productization; single-user at launch
-- Screener / asset discovery — requires large asset coverage first
-- AI chat / Q&A over reports — explicitly an anti-feature; expands report depth instead
+**Defer — out of scope for v2.0:**
+- FastAPI API layer (report structure must stabilize before API shapes are designed)
+- Frontend / Next.js UI — reports are JSON + Markdown files stored in PostgreSQL
+- On-demand report generation via API — requires stable API layer
+- PDF export (WeasyPrint system dependencies are overhead for a JSON + Markdown milestone)
+- AI chat / Q&A over reports (unstructured chat creates unpredictable quality and cost)
+- Real-time regime updates (regime classification is monthly cadence; real-time adds noise, not value)
+- Per-asset portfolio context (moves the product toward portfolio management, out of scope)
 
-**Anti-features to explicitly exclude:**
-- Real-time/intraday price data — contradicts the weekly/monthly analytical frame
-- Portfolio holdings tracking and P&L — scope creep into brokerage-adjacent features
-- Buy/sell trade signals — regulatory risk (Vietnam SSC); defeats probabilistic framing
-- Short-term technical analysis (RSI, MACD) — different user persona than the platform serves
-
-See `.planning/research/FEATURES.md` for full feature dependency graph and competitor analysis.
+See `.planning/research/FEATURES.md` for full dependency graph and competitor analysis table.
 
 ### Architecture Approach
 
-The platform is a two-pipeline system separated at a hard storage boundary. n8n handles all ingestion and pre-computation, writing to PostgreSQL/Neo4j/Qdrant. LangGraph handles all reasoning, reading from storage via LlamaIndex retrievers. FastAPI is a thin async gateway that invokes LangGraph as a background task and streams step progress to the frontend via SSE. Next.js + Supabase Auth is the rendering layer. The storage boundary is the core architectural constraint: n8n and LangGraph share no runtime state, no direct API calls, no queue messages — only the storage layer.
+The v2.0 architecture is a single new Docker service (`reasoning-engine`) joining the pre-existing `reasoning` network. No new database services are required — existing PostgreSQL, Neo4j, and Qdrant services are already dual-networked. The service co-locates FastAPI (HTTP gateway) and LangGraph (reasoning pipeline) in one container — appropriate for single-user VPS scale. The component boundary is strict and topologically enforced: n8n (ingestion network only) and reasoning-engine (reasoning network only) cannot communicate; the only interface between them is the shared storage layer. n8n writes data; reasoning-engine reads data and writes only to `reports` and `report_jobs`.
 
 **Major components:**
-1. **n8n Ingestion Pipeline** — fetches from external APIs (vnstock, FRED, World Gold Council), transforms, pre-computes all derived metrics (MAs, drawdown, valuation percentiles), and writes to all three stores. Never calls LangGraph or FastAPI.
-2. **Storage Layer (PostgreSQL + Neo4j + Qdrant)** — the only interface between ingestion and reasoning. PostgreSQL stores structured time-series, fundamentals, pre-computed markers, completed reports, and job status. Neo4j stores macro regime graph with historical analogues and weighted RESEMBLES relationships. Qdrant stores semantic vectors over unstructured documents.
-3. **LangGraph Reasoning Pipeline** — explicit StateGraph (not a freeform agent) with five nodes: MacroRegimeClassifier, ValuationContextualizer, StructureAnalyzer, EntryQualityScorer, ReportComposer. Calls LlamaIndex retrievers as tool functions. Outputs bilingual structured report to PostgreSQL. State is persisted via langgraph-checkpoint-postgres.
-4. **LlamaIndex Retrieval Layer** — retrieval abstraction only; not a reasoning orchestrator. GraphRAGRetriever for Neo4j, HybridRetriever (dense + sparse) for Qdrant. Called by LangGraph nodes, not the other way around.
-5. **FastAPI API Layer** — async gateway; invokes LangGraph as BackgroundTask; streams reasoning step progress as SSE; validates Supabase JWTs locally; writes job status to PostgreSQL. Contains no business logic.
-6. **Next.js + Supabase Frontend** — thin rendering layer; consumes FastAPI endpoints; uses SSE for real-time step progress; renders structured report cards with lightweight-charts for price context.
+1. `reasoning-engine` (new Docker service) — FastAPI gateway + LangGraph StateGraph + LlamaIndex retrievers; `python:3.12-slim`; `reasoning` network only; no host port mapping in production
+2. LangGraph StateGraph — five named nodes with linear edges and PostgreSQL checkpointing; explicit state machine with deterministic execution path, not an autonomous agent
+3. LlamaIndex retrieval layer — `Neo4jPropertyGraphStore` (Cypher template retrieval of regime analogues), `QdrantVectorStore` (hybrid dense+sparse document retrieval); called as Python functions from nodes, never as orchestrators
+4. Gemini API (external) — invoked via `ChatGoogleGenerativeAI.with_structured_output(PydanticSchema)` from every reasoning node; all output enforced as Pydantic-validated structured JSON
+5. PostgreSQL `reports` and `report_jobs` tables (new Flyway V6 and V7) — all report state persists here; FastAPI is fully stateless
+6. Neo4j — populated with `Regime` nodes, `TimePeriod` nodes, and `HAS_ANALOGUE` relationships (carrying `similarity_score`, `dimensions_matched`, `period_start`, `period_end`) for analogue retrieval
+7. Qdrant — populated with `macro_docs` and `earnings_docs` collections using BAAI/bge-small-en-v1.5 (384-dim, locked from v1.0)
 
-See `.planning/research/ARCHITECTURE.md` for full data flow diagrams, anti-patterns, and build order dependencies.
+See `.planning/research/ARCHITECTURE.md` for complete data flow diagrams, 7-phase build order, project directory structure, and all architectural anti-patterns.
 
 ### Critical Pitfalls
 
-1. **LLM hallucinating financial numbers** — Every numeric claim in a report must be traceable to a retrieved database record, not LLM output. Use Gemini structured JSON output so the pipeline fails noisily when a number cannot be grounded. Add a grounding-check node at the end of the reasoning chain. Never ask the LLM to recall historical figures from memory. Recovery cost if discovered post-publication: HIGH.
+The research identified 13 pitfalls. The top 6 require architectural decisions before the first line of reasoning code is written:
 
-2. **Stale data presented as current** — Every ingested row needs both `ingested_at` (when fetched) and `data_as_of` (the period the data covers). n8n must write to a `pipeline_run_log` table on every run. LangGraph reads `data_as_of` before reasoning and emits "DATA WARNING" sections when freshness threshold is exceeded. World Gold Council's 45-day publication lag must be modeled as a property in Neo4j, not treated as a current data point.
+1. **LangGraph state bloat causes Gemini context overflow and VPS OOM** — Each node must output only what the next node needs; raw retrieved documents must not live in LangGraph state; every Gemini call needs a token budget check before invocation; use compact `TypedDict` state schema from day one. Test with a realistic 20-stock batch before adding nodes, not a 3-stock toy example.
 
-3. **Macro regime classification as overconfident single label** — Regime classification must output a probability distribution, not a string. If top confidence is below 70%, the report must surface "Mixed Signal Environment" with two likely analogues rather than forcing a single label. Neo4j `RESEMBLES` relationships must carry `similarity_score`, `dimensions_matched`, and `period` properties from inception — retrofitting this is a full graph rebuild.
+2. **LlamaIndex cannot use most retrievers against the existing Neo4j graph** — Only `CypherTemplateRetriever` and `TextToCypherRetriever` are compatible with externally-created graphs. Write all Cypher templates explicitly before building the retrieval layer. Never attempt `VectorContextRetriever` or `LLMSynonymRetriever` against the Stratum Neo4j instance.
 
-4. **Entry quality score as an authoritative buy/sell signal** — The entry quality output must be a qualitative tier with reasoning decomposition (Favorable/Neutral/Cautious/Avoid), not a numeric score. Every report must show three sub-assessments (macro, valuation, structure) before any composite. Report copy must use probabilistic language ("suggests," "conditions consistent with") and must never contain "buy," "sell," or "entry confirmed."
+3. **LLM hallucination of financial numbers propagates silently through the multi-step chain** — Every numeric claim must cite a specific database record ID in structured output. A grounding check node must verify every number in the narrative appears in retrieved context verbatim. JSON schema compliance does not prevent semantic hallucination — two separate validation steps are required.
 
-5. **vnstock as a silent single point of failure** — vnstock wraps unofficial broker APIs that break without notice (KRX migration May 2025 is documented). All vnstock calls must distinguish between API error, empty result, and anomalously low row count. Implement row-count anomaly detection in n8n (compare to 4-week moving average; alert on >50% deviation). Pin the version in requirements.txt. Accept 1–3 day data outages following broker infrastructure changes.
+4. **LangGraph reducer misuse causes silent state corruption** — Document the expected reducer (REPLACE or ACCUMULATE) for every `TypedDict` field. Use `Annotated[list, operator.add]` for accumulating fields; `Overwrite` for replacement fields. Write unit tests for node state shape after each node runs, not just that nodes complete without error.
 
-See `.planning/research/PITFALLS.md` for full pitfall details, integration gotchas, performance traps, and security mistakes.
+5. **VPS memory exhaustion during concurrent service operation** — Set explicit `mem_limit` in Docker Compose for every service before adding the reasoning-engine (Neo4j 2GB, Qdrant 1GB, PostgreSQL 512MB, n8n 512MB, reasoning-engine 2GB). Configure 4GB VPS swap. Set Neo4j JVM heap explicitly — Neo4j defaults consume 25% of system RAM (2GB on an 8GB VPS).
+
+6. **Macro regime misclassification as overconfident single label** — Regime classification must output a probability distribution, not a point estimate. If top confidence < 70%, the report explicitly surfaces "Mixed Signal Environment" with two most likely analogues. Neo4j `HAS_ANALOGUE` relationships must carry `similarity_score` from inception — retrofitting is a full graph rebuild.
+
+Additional pitfalls: Gemini free tier is not viable for production batch workloads post-December 2025 (use Tier 1 paid with exponential backoff and configurable inter-request delay); Vietnamese financial terminology inconsistency requires a `glossary/vn_financial_terms.json` artifact included in every bilingual generation prompt; LangGraph checkpoint writes should use `AsyncPostgresSaver` in a separate database to avoid I/O contention; stale data freshness checks must be built into every retrieval node (read `data_as_of`, compare to threshold, emit explicit DATA WARNING).
+
+See `.planning/research/PITFALLS.md` for all 13 pitfalls with phase assignments and warning signs.
 
 ---
 
 ## Implications for Roadmap
 
-Based on research, the architecture has clear build-order dependencies that directly constrain phase structure. Each layer depends on the one below it being stable. Six phases are implied.
+The build order is strictly constrained by data and retrieval dependencies. Reasoning nodes cannot be tested without real data in the stores. Report generation cannot be validated without validated reasoning nodes. The architecture research provides an explicit 7-phase build order that the roadmap should follow directly.
 
-### Phase 1: Infrastructure and Storage Foundation
-**Rationale:** All other components depend on the storage layer being accessible and the schema being correct. Neo4j schema is particularly irreversible — designing it incorrectly before data is loaded requires a full graph rebuild. This phase establishes the non-negotiable base.
-**Delivers:** VPS running Docker Compose with all storage services; PostgreSQL schema with `data_as_of`, `ingested_at`, and `pipeline_run_log` from the start; Neo4j schema with full relationship properties (RESEMBLES with similarity_score, dimensions_matched, period); Qdrant collections versioned; Supabase auth configured; Nginx reverse proxy with SSE headers.
-**Addresses:** Watchlist management schema; report archive schema; job status table.
-**Avoids:** Neo4j schema mismatch pitfall (design retrieval queries first, work backward to schema); stale data pitfall (add staleness columns to the first migration, not as an afterthought).
-**Research flag:** Standard patterns — Docker Compose, PostgreSQL, Supabase self-hosted all have official documentation. Neo4j schema design for analogue retrieval is the one non-standard element; may benefit from targeted research during planning.
+### Phase 1: Infrastructure Hardening and Database Migrations
 
-### Phase 2: Data Ingestion Pipeline (n8n)
-**Rationale:** LangGraph cannot reason without data. The storage layer must be populated with realistic data before the reasoning pipeline can be tested end-to-end. Pre-computation of all structure markers (MAs, drawdown, valuation percentiles) happens here — not in the reasoning pipeline.
-**Delivers:** Fully populated storage layer: vnstock → PostgreSQL OHLCV + fundamentals (weekly/monthly); FRED → PostgreSQL macro series; World Gold Council → PostgreSQL gold data; document embedding → Qdrant; regime relationships → Neo4j. All data rows include `data_as_of` and `ingested_at`. Pipeline run log writes success/failure on every execution. Row-count anomaly detection alerts on empty-but-successful runs.
-**Addresses:** Data ingestion (VN stocks, gold, macro) P1 features; data freshness indicators; stale data handling.
-**Avoids:** vnstock silent failure pitfall (version pinned, row-count checks); stale data pitfall (pipeline_run_log from day one); n8n type precision gotcha (typed PostgreSQL inserts, not JSON passthrough).
-**Research flag:** vnstock-specific n8n integration patterns are sparse; may benefit from a focused research spike. FRED and WGC ingestion are straightforward HTTP.
+**Rationale:** The reasoning-engine service will fail to start if PostgreSQL tables and memory limits are not in place first. This phase has no code risk — only configuration and SQL. Do it before any reasoning code is written.
+**Delivers:** Flyway V6 (`reports` table) and V7 (`report_jobs` table); Docker memory limits and VPS swap configured; PostgreSQL checkpoint database schema initialized; Neo4j JVM heap explicitly set; `GEMINI_API_KEY` added to `.env`.
+**Addresses:** Pitfall 5 (VPS OOM prevention), Pitfall 6 (checkpoint I/O isolation), Pitfall 1 (memory headroom required before state bloat can be validated)
+**Avoids:** Debugging OOM kills instead of reasoning logic when the first reasoning service is added.
 
-### Phase 3: Retrieval Layer Validation (LlamaIndex)
-**Rationale:** Retrieval must be verified independently before being embedded in LangGraph nodes. Retrieval bugs are extremely difficult to debug from inside a multi-node reasoning graph. This phase validates that LlamaIndex can execute the specific Cypher patterns needed for analogue retrieval and that Qdrant hybrid search returns useful financial documents before wiring them into reasoning.
-**Delivers:** Validated LlamaIndex GraphRAGRetriever for Neo4j with custom Cypher templates (not auto-generated queries); validated HybridRetriever (dense + sparse BM25) for Qdrant; FastEmbed embedding model integrated; retrieval quality confirmed with test queries against real loaded data.
-**Addresses:** Historical analogues retrieval quality; semantic retrieval over earnings transcripts and macro documents.
-**Avoids:** LlamaIndex auto-generated Cypher causing full graph scans (write Cypher templates first); Qdrant dense-only retrieval missing financial identifiers (hybrid search mandatory for financial documents).
-**Research flag:** Targeted research may be needed on LlamaIndex + Neo4j custom Cypher query registration patterns. This is an integration detail with sparse documentation beyond official examples.
+### Phase 2: Knowledge Graph and Document Corpus Population
 
-### Phase 4: AI Reasoning Pipeline (LangGraph)
-**Rationale:** Cannot build reasoning nodes without verified data (Phase 2) and verified retrieval (Phase 3). This is the intellectual core of the platform and the highest-risk phase from a quality perspective. All four critical pitfalls (hallucination, overconfident regime, score framing, state growth) must be addressed here.
-**Delivers:** Working LangGraph StateGraph with five named nodes (MacroRegimeClassifier, ValuationContextualizer, StructureAnalyzer, EntryQualityScorer, ReportComposer); regime classification outputs probability distribution with mixed-signal handling; entry quality outputs qualitative tier with three sub-assessments; every numeric claim is grounded to a retrieved source; bilingual report generation (Vietnamese primary); LangGraph state TypedDict with strict size constraints and pruning; langgraph-checkpoint-postgres for audit trail; test cases for mixed-signal inputs.
-**Addresses:** Macro regime classification + analogues; asset valuation assessment; price structure analysis; entry quality assessment; explainable reasoning chain; mixed-signal representation; bilingual output — all P1 features.
-**Avoids:** LLM hallucination pitfall (grounding check node, structured JSON output); regime overconfidence pitfall (distribution output, confidence threshold); entry quality framing pitfall (qualitative tiers, no numeric-only score); LangGraph state growth pitfall (TypedDict constraints, token budget checks); anti-pattern of single monolithic LLM prompt.
-**Research flag:** HIGH priority for phase research — this phase involves the most novel integrations (LangGraph + LlamaIndex + Gemini structured output for financial analysis) and has the highest failure cost. Recommend `/gsd:research-phase` before detailed planning.
+**Rationale:** Neo4j regime graph and Qdrant document corpus are content prerequisites, not code tasks. Regime classification cannot produce meaningful output against an empty graph. Retrieval quality must be validated before being embedded in LangGraph nodes.
+**Delivers:** Historical macro regime nodes in Neo4j with `HAS_ANALOGUE` relationships carrying `similarity_score`, `dimensions_matched`, `period_start`, `period_end`; `macro_docs` and `earnings_docs` collections in Qdrant populated with Fed minutes, SBV reports, VN earnings using BAAI/bge-small-en-v1.5 (384-dim); Vietnamese financial term dictionary (`glossary/vn_financial_terms.json`).
+**Addresses:** Pitfall 10 (Neo4j schema must be designed from retrieval query patterns, not the other way around), Pitfall 9 (regime nodes must carry confidence weights from inception), Pitfall 5 (Vietnamese terminology dictionary prerequisite for bilingual quality)
+**Content note:** Write the Cypher retrieval queries first, then design the Neo4j schema to support them. The `HAS_ANALOGUE` relationship property set must be final before any data is loaded.
 
-### Phase 5: API Layer (FastAPI)
-**Rationale:** FastAPI is a thin gateway. It cannot be built until the pipeline it invokes (Phase 4) is functional. Building API shapes before the pipeline is stable causes wasted iteration as endpoint signatures change.
-**Delivers:** POST /reports/generate with BackgroundTask + job_id response; GET /reports/stream/{job_id} SSE endpoint for step progress; GET /reports/{id} for stored report retrieval; watchlist CRUD endpoints; Supabase JWT verification middleware (local verification against public key, not per-request Supabase API calls); arq Redis queue integration for production-grade background task handling.
-**Addresses:** On-demand report generation; watchlist management API; SSE step-progress streaming.
-**Avoids:** FastAPI holding HTTP connections open during 30–120 second pipeline runs (BackgroundTask + arq); in-memory report storage anti-pattern (all reports written to PostgreSQL, retrieved by query).
-**Research flag:** Standard patterns — FastAPI BackgroundTasks, SSE streaming with LangGraph, Supabase JWT verification are all well-documented. Skip phase research.
+### Phase 3: Retrieval Layer Validation
 
-### Phase 6: Frontend (Next.js)
-**Rationale:** Frontend has no value until all backend layers are functional. Building the UI before API shapes are stable causes double work. Build last to minimize wasted iteration.
-**Delivers:** Supabase Auth integration (SSR with @supabase/ssr); watchlist management UI; report viewer with structured card layout (macro regime card, valuation card, price structure card, entry quality card); SSE step-progress UI showing reasoning pipeline execution in real-time; lightweight-charts 5.1.0 integration for weekly/monthly OHLCV with structure markers; report history list per asset; Vietnamese as primary display language; bilingual term glossary sidebar for financial terms; data freshness indicators in report UI.
-**Addresses:** Structured card report format; bilingual UX; data freshness display; on-demand generation feedback (visible trigger, not silent background job); report history archive.
-**Avoids:** UX pitfalls — entry quality as headline number without component breakdown (sub-assessments are primary display); bilingual inconsistency (term mapping dictionary used by Gemini generation must be validated in UI); "N/A without explanation" for missing data (specific messages per data unavailability reason).
-**Research flag:** lightweight-charts v5 multi-pane integration and Next.js 16 App Router with Supabase SSR are well-documented. Skip phase research unless specific chart integration patterns prove complex during planning.
+**Rationale:** LlamaIndex retrievers must be independently tested against real data before being embedded in LangGraph nodes. Bugs inside a 5-node reasoning graph are extremely difficult to root-cause.
+**Delivers:** `reasoning/app/retrieval/neo4j_retriever.py` (CypherTemplateRetriever wrappers validated against loaded regime data); `reasoning/app/retrieval/qdrant_retriever.py` (hybrid dense+sparse validated against document corpus); PostgreSQL direct query patterns confirmed against fundamentals, structure_markers, fred_indicators tables; `data_as_of` freshness checks built into every retrieval function.
+**Addresses:** Pitfall 2 (LlamaIndex retriever compatibility with externally-created graphs), Pitfall 11 (CypherTemplateRetriever preferred over TextToCypherRetriever for production paths), Pitfall 8 (freshness checks must be in retrieval layer, not as post-processing)
+**Validation gate:** Each retriever must return relevant content against representative queries before Phase 4 begins.
+
+### Phase 4: LangGraph Reasoning Nodes (one at a time, bottom-up)
+
+**Rationale:** Build and validate each node in isolation before wiring into the graph. Start with the node with fewest dependencies (`structure` — PostgreSQL only, no LLM retrieval) to establish node patterns before adding LlamaIndex and Gemini complexity.
+**Delivers:** Five independently tested LangGraph nodes: `structure.py` (PostgreSQL direct, Gemini interpretation), `valuation.py` (PostgreSQL + Qdrant + Gemini), `macro_regime.py` (Neo4j + Gemini, probability distribution output), `entry_quality.py` (state synthesis + Gemini, qualitative tier output), `compose_report.py` (bilingual generation + PostgreSQL write); grounding check node; `ReportState` TypedDict with all reducer annotations documented; Vietnamese term dictionary integrated into compose_report prompt.
+**Addresses:** Pitfall 1 (strict state schema, token budget checks before every Gemini call), Pitfall 3 (explicit reducer annotations, unit tests for state shape), Pitfall 4 (Gemini Tier 1 rate-limit handling with exponential backoff from first node), Pitfall 7 (grounding check node, source citation IDs in structured output), Pitfall 9 (regime node outputs probability distribution, not point estimate)
+**Node build order within phase:** structure → valuation → macro_regime → entry_quality → compose_report
+
+### Phase 5: LangGraph Graph Assembly and End-to-End Validation
+
+**Rationale:** Assemble the StateGraph only after all five nodes are independently verified. The first end-to-end run is an integration test, not a production run.
+**Delivers:** `reasoning/app/graph/graph.py` (StateGraph with five nodes, linear edges, AsyncPostgresSaver checkpointer in separate database); `reasoning/app/graph/state.py` (ReportState TypedDict finalized); one complete report for a single test asset written to PostgreSQL `reports` table and validated against the founder's analytical standard.
+**Addresses:** Pitfall 6 (AsyncPostgresSaver in isolated checkpoint database), Pitfall 13 (semantic grounding check separate from JSON schema validation)
+**Validation gate:** Report must pass grounding check (all numbers traceable to retrieved records), data freshness check, and Vietnamese term consistency check before Phase 6 begins.
+
+### Phase 6: FastAPI Gateway and Docker Service
+
+**Rationale:** FastAPI is a thin HTTP wrapper over the validated LangGraph pipeline. It cannot be built meaningfully before the pipeline is functional. This is the final engineering delivery of the v2.0 milestone.
+**Delivers:** `reasoning/app/main.py` with `POST /reports/generate` (BackgroundTask), `GET /reports/{id}`, `GET /reports/stream/{id}` (SSE), `GET /health`; `reasoning/Dockerfile`; reasoning-engine added to `docker-compose.yml` with `profiles: ["reasoning"]`; end-to-end test of HTTP trigger → LangGraph pipeline → PostgreSQL report storage.
+**Addresses:** Pattern 6 (FastAPI BackgroundTask for long-running pipeline), Anti-Pattern 4 (stateless FastAPI — no in-memory report state), Anti-Pattern 5 (LangGraph runs inside FastAPI container as a library, not as a separate server)
+
+### Phase 7: Production Hardening and Batch Validation
+
+**Rationale:** Single-asset end-to-end success does not validate batch behavior. Critical pitfalls around state bloat, OOM, and rate limits only surface at realistic batch scale.
+**Delivers:** Batch report generation validated against realistic 20-stock workload; Docker memory stats baselined; Gemini API spend alerts configured ($5/$10/$25/month thresholds); checkpoint cleanup job implemented (TTL-based purge beyond 24 hours); n8n ingestion and batch report scheduling coordinated to prevent concurrent memory spikes; `data_as_of` freshness logic validated with real-world WGC 45-day lag.
+**Addresses:** Pitfall 1 (full batch test, not toy example), Pitfall 4 (Tier 1 Gemini rate limits validated in production conditions), Pitfall 12 (memory budget validated under production load), Pitfall 8 (freshness logic validated with known lag patterns)
 
 ### Phase Ordering Rationale
 
-- **Storage before ingestion:** Schema errors discovered after data is loaded require migrations or full rebuilds, especially in Neo4j. Design schema against retrieval query patterns first.
-- **Ingestion before reasoning:** LangGraph nodes cannot be tested or debugged without realistic data. Toy data hides state growth bugs and retrieval quality issues that surface with real volumes.
-- **Retrieval validation before reasoning integration:** Embedding a broken retriever inside a 5-node reasoning graph makes root-cause analysis near-impossible. Validate retrieval in isolation.
-- **Reasoning before API:** API endpoint shapes depend on the data structures LangGraph produces (report schema, job status, streaming events). Building API before these are stable causes rework.
-- **API before frontend:** Frontend cannot function without API endpoints. Frontend built last ensures all API contracts are stable before UI iteration begins.
-- **Phase 4 (Reasoning) is the highest-risk phase:** It involves the most novel integrations, all four critical pitfalls originate here or materialize here, and the output quality directly determines whether the product's core value proposition is realized.
+- **Infrastructure before code (Phase 1 first):** A missing migration or missing memory limit is harder to debug when mixed with reasoning failures. Isolate infrastructure concerns.
+- **Data before retrieval, retrieval before reasoning (Phases 2–4):** The dependency chain is strict and unidirectional. Skipping any step means the next phase cannot be meaningfully tested.
+- **Nodes before graph, graph before gateway (Phases 4–6):** Integration bugs in a 5-node graph are expensive to isolate. Test each node with mock state before wiring them together.
+- **Batch validation last (Phase 7):** Single-asset success is necessary but not sufficient for production readiness. The critical pitfalls (OOM, rate limits, state bloat) only manifest at scale.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 4 (AI Reasoning Pipeline):** Novel LangGraph + LlamaIndex + Gemini integration for structured financial analysis; mixed-signal regime classification design; grounding check implementation patterns; bilingual generation quality. Recommend `/gsd:research-phase` before this phase is planned in detail.
-- **Phase 2 (Ingestion Pipeline) — vnstock specifically:** vnstock n8n integration patterns and row-count anomaly detection implementation are sparsely documented. Worth a targeted spike to confirm the specific n8n Python code node patterns needed.
-- **Phase 3 (Retrieval Validation) — Neo4j custom Cypher in LlamaIndex:** Registering custom Cypher templates as LlamaIndex query tools rather than using auto-generated Cypher is not covered in official quick-start docs. Needs targeted research before implementation.
+Phases likely needing per-phase deeper research during planning:
 
-Phases with standard patterns (skip `/gsd:research-phase`):
-- **Phase 1 (Infrastructure):** Docker Compose, PostgreSQL, Supabase self-hosted, Nginx are fully documented. Neo4j schema design is the only novel element but is addressable with schema planning, not research.
-- **Phase 5 (API Layer):** FastAPI BackgroundTasks, SSE streaming, JWT verification, arq integration are all well-documented with high-confidence sources.
-- **Phase 6 (Frontend):** Next.js 16 App Router + Supabase SSR + lightweight-charts v5 are well-documented. Standard patterns apply.
+- **Phase 2 (Knowledge Graph Population):** Historical macro regime schema design and `HAS_ANALOGUE` relationship property definitions require query-first design. Research which macro periods (2008–2025) are representable from FRED data alone vs. requiring supplemental sources. Research Vietnamese financial market history coverage for Neo4j seeding.
+- **Phase 4 (LangGraph Nodes):** Gemini context caching implementation (minimum 1,024 tokens for 2.5 Flash) needs validation against the specific model version in use. The interplay between `.with_structured_output()` and Gemini's function calling activation (December 2025 known behavior) needs validation before building all five nodes.
+
+Phases with standard patterns (research phase can be skipped):
+
+- **Phase 1 (Infrastructure):** Standard Docker Compose configuration and Flyway migration patterns. Well-documented. No research needed.
+- **Phase 3 (Retrieval Layer):** LlamaIndex Neo4j and Qdrant integration patterns are well-documented in official sources. Cypher template patterns for this schema are the only unknown and can be resolved during implementation.
+- **Phase 6 (FastAPI Gateway):** Standard FastAPI BackgroundTask + SSE patterns. Mirrors existing data-sidecar structure in the codebase.
 
 ---
 
@@ -176,70 +189,56 @@ Phases with standard patterns (skip `/gsd:research-phase`):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Core packages (LangGraph, LlamaIndex, FastAPI, Qdrant, Neo4j driver, vnstock, google-genai) all confirmed on PyPI with exact version numbers. Frontend versions (Next.js 16.1.6, lightweight-charts 5.1.0) are MEDIUM — confirmed via search, not direct npm registry reads. |
-| Features | MEDIUM | Global investment platform feature patterns are HIGH confidence. Vietnamese market-specific expectations are MEDIUM (fewer authoritative Vietnamese-language sources). AI-driven analysis features are LOW-MEDIUM — novel space with limited direct precedent but CFA Institute and academic sources validate the explainability requirement. |
-| Architecture | MEDIUM-HIGH | Core patterns (storage boundary isolation, LangGraph state machine, LlamaIndex as retrieval-only, FastAPI BackgroundTask for long-running jobs) confirmed across multiple official documentation sources and academic references. Supabase + Next.js + FastAPI JWT pattern has only one non-official source — treat as MEDIUM. |
-| Pitfalls | MEDIUM | Financial LLM hallucination research is HIGH confidence (peer-reviewed sources). vnstock fragility is HIGH confidence (official vnstock docs confirm KRX breakage). Neo4j schema pitfalls are HIGH confidence (official Neo4j blog). LangGraph state memory leak is HIGH confidence (official GitHub issue). Domain-specific pitfalls (regime overconfidence, score framing) are MEDIUM based on institutional investment platform analogues. |
+| Stack | HIGH | All package versions verified against PyPI as of March 2026. Deprecation notices confirmed via official GitHub and PyPI. Google AI official docs confirm LangGraph + langchain-google-genai as the canonical integration path. |
+| Features | MEDIUM-HIGH | Table stakes and anti-features are HIGH confidence (CFA Institute, institutional platform patterns). AI-native entry quality scoring with LangGraph is MEDIUM (nascent but growing 2025–2026 precedent). Vietnamese-language generation with Gemini is MEDIUM (Gemini supports Vietnamese natively; financial domain consistency depends on term dictionary quality). |
+| Architecture | HIGH | Existing codebase fully inspected at the time of research. Build order derived from actual v1.0 service topology and Docker network constraints. All integration patterns verified against official Neo4j Labs, Qdrant, and LangChain documentation. |
+| Pitfalls | MEDIUM-HIGH | LangGraph-specific pitfalls (state bloat, reducer misuse) cross-verified across official docs and community post-mortems. Financial hallucination rates cited from FinanceBench benchmark. VPS infrastructure pitfalls derived from actual v1.0 service memory footprints. |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH for infrastructure and stack decisions. MEDIUM for regime classification accuracy and Vietnamese output quality — both depend on content assets (regime graph data quality, term dictionary scope) not yet created.
 
 ### Gaps to Address
 
-- **arq vs. LangGraph PostgreSQL checkpointer for background tasks:** Both are viable. arq adds a Redis dependency (one more container); the LangGraph checkpointer avoids this but adds complexity to the polling/notification pattern. Decision should be made at Phase 5 planning with a concrete implementation spike. If Redis is acceptable, arq is cleaner. If minimizing container count matters, use LangGraph's native checkpointer with a polling endpoint.
+- **Neo4j historical regime data coverage:** The quality of regime classification is entirely dependent on the historical analogue dataset loaded into Neo4j. An explicit plan for which macro periods (2008–2025) to seed and from which data sources must be resolved before Phase 2 begins. This is a content gap, not a code gap.
 
-- **Ollama model selection for local fallback:** The stack specifies Ollama as the local LLM runtime but does not identify a specific model. For a single-VPS deployment with the report generation workload (Vietnamese language, financial analysis, bilingual generation), model selection requires a brief evaluation against available Ollama models and VPS RAM constraints before Phase 4 begins.
+- **WGC central bank buying data:** The v1.0 WGC stub cannot be resolved without a paid WGC data subscription or a manual CSV import process. Gold valuation must function without this data for v2.0 launch, flagging it as a known gap in reports. Not a blocker, but must be explicitly handled in the stale data warning logic.
 
-- **Vietnamese financial terminology mapping:** Bilingual report generation requires a consistent Vietnamese financial term dictionary. This dictionary does not exist yet and must be authored before Phase 4 (ReportComposer node) and Phase 6 (glossary sidebar) can be implemented. It is a content asset, not a technical one, but it blocks quality bilingual generation.
+- **Gemini model selection (2.0-flash vs 2.5-flash):** The cost-quality tradeoff for the specific prompt patterns in this pipeline has not been benchmarked. Should be validated during Phase 4 node development with both models before committing to production configuration.
 
-- **World Gold Council data ingestion method:** The WGC data has known 45-day publication lag and requires modeling this lag in Neo4j as a source property. The specific WGC API endpoint structure and authentication requirements are not confirmed in the research. Validate before Phase 2 planning.
-
-- **Neo4j initial regime graph seed data:** The reasoning pipeline depends on Neo4j being populated with historical macro regime nodes, analogue relationships, and period metadata. Where this seed data comes from (manual curation, automated historical ingestion, or a one-time import) is not fully resolved. This is a Phase 2 concern that needs an explicit plan.
+- **Vietnamese term dictionary scope:** The `glossary/vn_financial_terms.json` artifact is identified as a prerequisite but its scope — how many terms, which VAS vs. IFRS distinctions matter for this domain — has not been defined. Needs an authoring session before Phase 4 `compose_report` node is built.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- LangGraph PyPI — version 1.0.10 confirmed: https://pypi.org/project/langgraph/
-- LlamaIndex Core PyPI — version 0.14.15 confirmed: https://pypi.org/project/llama-index-core/
-- FastAPI PyPI — version 0.135.1 confirmed: https://pypi.org/project/fastapi/
-- Qdrant client PyPI — version 1.17.0 confirmed: https://pypi.org/project/qdrant-client/
-- Neo4j Python driver PyPI — version 6.1.0 confirmed: https://pypi.org/project/neo4j/
-- vnstock PyPI — version 3.4.2 confirmed; KRX breakage documented: https://pypi.org/project/vnstock/
-- google-genai PyPI — version 1.65.0 confirmed; old SDK EOL official: https://pypi.org/project/google-genai/
-- LlamaIndex + Neo4j integration — official Neo4j Labs: https://neo4j.com/labs/genai-ecosystem/llamaindex/
-- Qdrant hybrid search + LlamaIndex — official LlamaIndex docs: https://docs.llamaindex.ai/en/stable/examples/vector_stores/qdrant_hybrid/
-- langgraph-checkpoint-postgres — PyPI: https://pypi.org/project/langgraph-checkpoint-postgres/
-- Supabase self-hosting — official docs: https://supabase.com/docs/guides/self-hosting
-- Supabase Auth with Next.js SSR — official docs: https://supabase.com/docs/guides/auth/server-side/nextjs
-- google-generativeai EOL — official deprecation notice: https://github.com/google-gemini/deprecated-generative-ai-python
-- LLM hallucination in finance — peer-reviewed: https://arxiv.org/abs/2311.15548
-- Neo4j worst practices — official Neo4j blog: https://neo4j.com/blog/cypher-and-gql/dark-side-neo4j-worst-practices/
-- LangGraph memory leak — official GitHub issue: https://github.com/langchain-ai/langgraph/issues/3898
-- OWASP LLM prompt injection — official: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
-- CFA Institute Explainable AI in Finance: https://rpc.cfainstitute.org/research/reports/2025/explainable-ai-in-finance
-- Gemini API pricing and context caching — official Google docs: https://ai.google.dev/gemini-api/docs/pricing
-- vnstock breaking changes — official docs: https://vnstocks.com/docs/vnstock-insider-api/lich-su-phien-ban
+
+- [LangGraph PyPI](https://pypi.org/project/langgraph/) — v1.0.10 stable, Feb 27, 2026; StateGraph patterns
+- [langchain-google-genai PyPI](https://pypi.org/project/langchain-google-genai/) — v4.0.0 SDK migration; structured output; bind_tools interface
+- [llama-index-core PyPI](https://pypi.org/project/llama-index-core/) — v0.14.15, Feb 18, 2026; multi-store retrieval
+- [llama-index-graph-stores-neo4j PyPI](https://pypi.org/project/llama-index-graph-stores-neo4j/) — v0.5.1; TextToCypherRetriever and CypherTemplateRetriever
+- [llama-index-vector-stores-qdrant PyPI](https://pypi.org/project/llama-index-vector-stores-qdrant/) — v0.9.1, Jan 13, 2026
+- [langgraph-checkpoint-postgres PyPI](https://pypi.org/project/langgraph-checkpoint-postgres/) — v3.0.4; psycopg3 requirement confirmed
+- [Google AI for Developers — LangGraph + Gemini example](https://ai.google.dev/gemini-api/docs/langgraph-example) — canonical integration pattern; official Google documentation
+- [Google GenAI SDK libraries overview](https://ai.google.dev/gemini-api/docs/libraries) — `google-generativeai` deprecation confirmed
+- [google-generativeai deprecated GitHub](https://github.com/google-gemini/deprecated-generative-ai-python) — deprecated Nov 30, 2025
+- [Neo4j Labs — LlamaIndex integration](https://neo4j.com/labs/genai-ecosystem/llamaindex/) — TextToCypherRetriever patterns; externally-created graph caveat
+- [Qdrant — GraphRAG with Neo4j](https://qdrant.tech/documentation/examples/graphrag-qdrant-neo4j/) — hybrid retrieval over graph + vector stores
+- [LlamaIndex — Qdrant hybrid search docs](https://docs.llamaindex.ai/en/stable/examples/vector_stores/qdrant_hybrid/) — enable_hybrid, sparse_top_k patterns
+- [CFA Institute — Explainable AI in Finance (2025)](https://rpc.cfainstitute.org/research/reports/2025/explainable-ai-in-finance) — explainability as table-stakes expectation for investment research
 
 ### Secondary (MEDIUM confidence)
-- LangGraph + FastAPI SSE streaming guide 2025-26: https://dev.to/kasi_viswanath/streaming-ai-agent-with-fastapi-langgraph-2025-26-guide-1nkn
-- n8n + LangGraph separation pattern: https://www.samirsaci.com/build-an-ai-agent-for-strategic-budget-planning-with-langgraph-and-n8n/
-- GraphRAG with Qdrant + Neo4j — official Qdrant docs: https://qdrant.tech/documentation/examples/graphrag-qdrant-neo4j/
-- Mastering LangGraph state management 2025: https://sparkco.ai/blog/mastering-langgraph-state-management-in-2025
-- Multi-Agent RAG for investment advisory — academic: https://www.researchgate.net/publication/390816837
-- arq vs Celery comparison: https://leapcell.io/blog/celery-versus-arq-choosing-the-right-task-queue-for-python-applications
-- FactSet macro regime framework: https://insight.factset.com/mapping-asset-returns-to-economic-regimes-a-practical-investors-guide
-- World Gold Council ETF flow data — official source: https://www.gold.org/goldhub/data/gold-etfs-holdings-and-flows
-- Vietstock platform features — official: https://en.vietstock.vn/about-us.htm
-- Simply Wall St features — official: https://simplywall.st/
-- Vietnam emerging market context — FTSE Russell official: https://www.lseg.com/en/insights/ftse-russell/vietnam-the-asean-powerhouse
-- BlackRock ML for macro investing: https://www.blackrock.com/institutions/en-us/insights/machine-learning-macro-investing
 
-### Tertiary (LOW confidence)
-- Investment platform features survey — aggregator: https://visualping.io/blog/investment-research-tools
-- Vietnam retail investor behavior — peer-reviewed survey (2018): https://pmc.ncbi.nlm.nih.gov/articles/PMC6140283/
-- Are AI trading signals reliable 2024–2025: https://www.moneymarketinsights.com/p/are-ai-trading-signals-reliable-data-from-2024-2025
+- [ZenML — LlamaIndex vs LangGraph](https://www.zenml.io/blog/llamaindex-vs-langgraph) — LlamaIndex for retrieval + LangGraph for orchestration as dominant production pattern
+- [FactSet — Asset returns to economic regimes](https://insight.factset.com/mapping-asset-returns-to-economic-regimes-a-practical-investors-guide) — institutional regime classification frameworks
+- [Two Sigma — Machine learning approach to regime modeling](https://www.twosigma.com/articles/a-machine-learning-approach-to-regime-modeling/) — quantitative regime modeling at institutional scale
+- [AlphaArchitect — K-means macro regime clustering](https://alphaarchitect.com/clustering-macroeconomic-regimes/) — k-means over FRED series for regime detection
+- [AWS — LangGraph financial analysis agent](https://aws.amazon.com/blogs/machine-learning/build-an-intelligent-financial-analysis-agent-with-langgraph-and-strands-agents/) — production LangGraph financial analysis patterns
+- [LangGraph GitHub discussions — PostgreSQL checkpointer](https://github.com/langchain-ai/langgraph/discussions/3691) — PostgresSaver.setup() autocommit requirement; community-verified
+- [Zestminds — FastAPI + LangGraph production pattern](https://www.zestminds.com/blog/build-ai-workflows-fastapi-langgraph/) — verified against official patterns
+- [llama-index-llms-gemini PyPI deprecation notice](https://pypi.org/project/llama-index-llms-gemini/) — deprecated at v0.6.2; replaced by llama-index-llms-google-genai
+- [LLM Pro Finance Suite (2025 preprint)](https://arxiv.org/html/2511.08621v1) — multilingual financial LLM capabilities including Vietnamese
 
 ---
-*Research completed: 2026-03-03*
+
+*Research completed: 2026-03-09*
 *Ready for roadmap: yes*
