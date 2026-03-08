@@ -12,7 +12,17 @@ Protect investors from being fundamentally right but entering at a structurally 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Vietnamese stock OHLCV data ingestion via vnstock — v1.0
+- ✓ Vietnamese stock fundamental data ingestion via vnstock — v1.0
+- ✓ Gold price data ingestion from FRED — v1.0
+- ✓ Gold ETF flow and central bank buying data ingestion (WGC 501 stub, GLD ETF working) — v1.0
+- ✓ FRED macroeconomic indicator ingestion (GDP, CPI, unemployment, rates) — v1.0
+- ✓ Pre-computed structure markers (MAs, drawdowns, percentiles) — v1.0
+- ✓ Timestamp convention (data_as_of + ingested_at) on every row — v1.0
+- ✓ Pipeline run logging with success/failure status — v1.0
+- ✓ Row-count anomaly detection for vnstock — v1.0
+- ✓ Docker Compose infrastructure on self-hosted VPS — v1.0
+- ✓ Storage layer as hard boundary between n8n and LangGraph — v1.0
 
 ### Active
 
@@ -22,9 +32,6 @@ Protect investors from being fundamentally right but entering at a structurally 
 - [ ] AI-derived entry quality score combining all three layers
 - [ ] Plain-language narrative reports in structured card format
 - [ ] Bilingual report generation (Vietnamese and English)
-- [ ] Vietnamese stock data ingestion via vnstock
-- [ ] Gold fundamental data ingestion (World Gold Council, ETF flows)
-- [ ] Macroeconomic data ingestion (FRED)
 - [ ] User watchlist management
 - [ ] Monthly report generation cadence with on-demand capability for new watchlist additions
 - [ ] Graceful handling of missing/stale data with explicit flagging in reports
@@ -44,14 +51,13 @@ Protect investors from being fundamentally right but entering at a structurally 
 
 ## Context
 
-- The founder is both the domain expert and first user — currently performs this macro-fundamental analysis manually and wants to automate and eventually productize the process
-- Vietnamese stock market data comes from vnstock (https://github.com/thinh-vu/vnstock.git), an open-source Python library
-- All external data sources are free tier at launch (FRED, Simfin, World Gold Council, vnstock)
-- Gold data from World Gold Council has significant publication lag (1–2 months) — reasoning pipeline must account for this
-- Central bank gold buying data is often revised after initial publication
-- Some macro environments produce mixed signals that don't fit clean regime labels
-- Asset valuations can reach historically unprecedented levels — system must handle out-of-range values
-- v1 success is defined by report quality matching the founder's manual analytical standard, not by UI polish or user scale
+Shipped v1.0 with 3,801 lines of Python, 317 lines of SQL, 216 lines of Docker Compose.
+
+Tech stack operational: Docker Compose (7 services), PostgreSQL (Flyway V1-V5), Neo4j (constraints + APOC triggers), Qdrant (384-dim FastEmbed), n8n (weekly/monthly workflows), FastAPI data-sidecar.
+
+Data flowing: VN30 stocks (9,411 OHLCV rows, 399 fundamentals), gold (FRED spot + GLD ETF), FRED macro indicators (GDP, CPI, unemployment, rates), structure markers (9,985 rows).
+
+Known limitations: WGC Goldhub is JS-rendered — no automated ingestion, returns 501. Telegram alerts not yet wired (env vars not injected into n8n container).
 
 ## Constraints
 
@@ -90,8 +96,16 @@ Protect investors from being fundamentally right but entering at a structurally 
 | Bilingual reports (VN + EN) | Primary audience is Vietnamese investors, English for broader reach | — Pending |
 | Self-hosted VPS over cloud managed | Cost control at launch, single-user scale doesn't need managed services | — Pending |
 | Free-tier data sources at launch | Validate analysis quality before investing in premium data | — Pending |
-| n8n/LangGraph separation at storage boundary | Keep ingestion pipeline decoupled from AI reasoning — each layer focused | — Pending |
+| n8n/LangGraph separation at storage boundary | Keep ingestion pipeline decoupled from AI reasoning — each layer focused | ✓ Good — enforced via Docker dual-network isolation |
 | Report quality as v1 success metric over UI/scale | One excellent report proves the concept; polish and users follow | — Pending |
+| VCI source exclusively for vnstock | TCBS source broken as of 2025 | ✓ Good — VCI stable through v1.0 |
+| VN30 symbols fetched dynamically | Never hard-coded; uses Listing.symbols_by_group() | ✓ Good — adapts to VN30 composition changes |
+| SQLAlchemy Core over ORM declarative | Required for pg_insert().on_conflict_do_update() upsert pattern | ✓ Good — clean upsert across all services |
+| FastEmbed 384-dim over OpenAI 1536-dim | Memory-efficient for 8GB VPS; BAAI/bge-small-en-v1.5 | ✓ Good — locked for Qdrant collections |
+| Full recompute for structure markers | At VN30 scale (~7,800 rows) < 5s; incremental adds complexity with no gain | ✓ Good — simplicity preserved |
+| WGC 501 stub (no Playwright) | Goldhub JS-rendered, no stable API; Chromium too heavy for sidecar | ⚠️ Revisit — manual CSV import needed |
+| vnstock pinned to 3.4.2 | 3.2.3 → 3.4.2 breaking change; version locked | ✓ Good — prevents silent breakage |
+| n8n pinned to 2.10.2 | 1.78.0 workflow JSON format incompatible | ✓ Good — stable import format |
 
 ---
-*Last updated: 2026-03-03 after initialization*
+*Last updated: 2026-03-09 after v1.0 milestone*
