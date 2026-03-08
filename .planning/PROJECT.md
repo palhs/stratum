@@ -24,20 +24,29 @@ Protect investors from being fundamentally right but entering at a structurally 
 - ✓ Docker Compose infrastructure on self-hosted VPS — v1.0
 - ✓ Storage layer as hard boundary between n8n and LangGraph — v1.0
 
-### Active
+### Active (v2.0)
 
-- [ ] Macro regime classification against historical analogues
+- [ ] Macro regime classification against historical analogues (quantitative similarity + LLM interpretation)
 - [ ] Asset valuation assessment relative to historical range and current regime
 - [ ] Higher time-frame price structure analysis (weekly/monthly) for entry timing context
 - [ ] AI-derived entry quality score combining all three layers
-- [ ] Plain-language narrative reports in structured card format
+- [ ] Plain-language narrative reports in structured card format (JSON + Markdown output)
 - [ ] Bilingual report generation (Vietnamese and English)
-- [ ] User watchlist management
-- [ ] Monthly report generation cadence with on-demand capability for new watchlist additions
 - [ ] Graceful handling of missing/stale data with explicit flagging in reports
 - [ ] Mixed-signal macro regime representation (partial matches, low-confidence analogues)
 - [ ] Conflicting signal handling — "strong thesis, weak structure" outputs
 - [ ] Explainable multi-step reasoning — each step has clear input, data source, and output
+- [ ] Retrieval layer: LlamaIndex over PostgreSQL + Neo4j + Qdrant (manually curated document corpus)
+- [ ] Document corpus: Fed minutes, SBV reports, VN company earnings (manually curated for v2.0)
+
+### Deferred (v3.0)
+
+- [ ] User watchlist management
+- [ ] Monthly report generation cadence with on-demand capability for new watchlist additions
+- [ ] API layer (FastAPI endpoints for frontend)
+- [ ] Frontend (Next.js report UI with TradingView charts)
+- [ ] Automated document ingestion pipelines (Fed, SBV, earnings)
+- [ ] Local LLM fallback (Ollama)
 
 ### Out of Scope
 
@@ -48,6 +57,19 @@ Protect investors from being fundamentally right but entering at a structurally 
 - US/global stock markets — VN-primary, global expansion later
 - Mobile app — web-first
 - Multi-user scale infrastructure — single user (self) at launch, productize later
+
+## Current Milestone: v2.0 Analytical Reasoning Engine
+
+**Goal:** Build the multi-step AI reasoning pipeline that transforms raw market data into actionable entry quality assessments with explainable analysis.
+
+**Target features:**
+- Retrieval layer (LlamaIndex) over all three storage backends
+- Macro regime classification: quantitative similarity search → LLM interpretation
+- Asset valuation assessment relative to historical range and current regime
+- HTF price structure analysis for entry timing context
+- AI-derived entry quality score combining all three layers
+- Bilingual report generation (JSON + Markdown) via Gemini API
+- Manually curated document corpus (Fed minutes, SBV reports, VN earnings)
 
 ## Context
 
@@ -77,7 +99,7 @@ Known limitations: WGC Goldhub is JS-rendered — no automated ingestion, return
 | Pipeline orchestration | n8n | Cron, retry, visual debugging, error alerting built-in |
 | AI reasoning | LangGraph | Multi-step chain control, programmatic agent behavior |
 | RAG & retrieval | LlamaIndex | Native Qdrant + Neo4j integration in single retrieval layer |
-| LLM | Gemini API / local LLM | Gemini for quality, local LLM for cost/privacy flexibility |
+| LLM (v2.0) | Gemini API | Gemini only for v2.0; local LLM fallback deferred to v3.0 |
 | Structured storage | PostgreSQL | Fundamental data + weekly/monthly OHLCV — sufficient at this cadence |
 | Knowledge graph | Neo4j | Macro regime relationships, historical analogues, asset correlations |
 | Vector store | Qdrant | Semantic retrieval over earnings transcripts, Fed minutes, macro reports |
@@ -107,5 +129,10 @@ Known limitations: WGC Goldhub is JS-rendered — no automated ingestion, return
 | vnstock pinned to 3.4.2 | 3.2.3 → 3.4.2 breaking change; version locked | ✓ Good — prevents silent breakage |
 | n8n pinned to 2.10.2 | 1.78.0 workflow JSON format incompatible | ✓ Good — stable import format |
 
+| Gemini API only for v2.0 | Simplify reasoning pipeline; validate quality before adding fallback complexity | — Pending |
+| Manual document corpus for v2.0 | Validate reasoning quality with curated docs before automating ingestion | — Pending |
+| Split v2.0 (engine) / v3.0 (UI) | Ship analytical quality first; frontend delivery layer follows | — Pending |
+| Both-layer regime classification | Quantitative similarity for candidate analogues, LLM for interpretation and narration | — Pending |
+
 ---
-*Last updated: 2026-03-09 after v1.0 milestone*
+*Last updated: 2026-03-09 after v2.0 milestone start*
