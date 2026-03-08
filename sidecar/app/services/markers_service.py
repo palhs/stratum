@@ -462,11 +462,23 @@ def compute_and_upsert_markers(
     ]
 
     # Convert NaN/NaT to None for PostgreSQL NULL handling
+    # Note: pandas.DataFrame.where() may still leave NaN in float columns when
+    # converting to dict — use object dtype conversion to force proper None values.
     for col in db_cols:
         if col in df_all.columns:
+            # Convert to object dtype first so pandas does not auto-convert None → NaN
             df_all[col] = df_all[col].where(df_all[col].notna(), other=None)
 
-    rows_to_write = df_all[[c for c in db_cols if c in df_all.columns]].to_dict(orient="records")
+    # Build records and replace any residual NaN with None at the dict level
+    rows_to_write = []
+    for record in df_all[[c for c in db_cols if c in df_all.columns]].to_dict(orient="records"):
+        cleaned = {}
+        for k, v in record.items():
+            if v is not None and isinstance(v, float) and (v != v):  # NaN check: NaN != NaN
+                cleaned[k] = None
+            else:
+                cleaned[k] = v
+        rows_to_write.append(cleaned)
 
     # -------------------------------------------------------------------------
     # Upsert to structure_markers

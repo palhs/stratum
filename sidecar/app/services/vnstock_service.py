@@ -18,6 +18,7 @@ Authentication:
 
 import logging
 import os
+import time
 from typing import Optional
 
 import pandas as pd
@@ -39,12 +40,16 @@ if _VNSTOCK_API_KEY:
     try:
         # Community tier: 60 req/min (vs 20 req/min guest)
         import vnstock as _vnstock_module
-        if hasattr(_vnstock_module, "set_token"):
+        if hasattr(_vnstock_module, "change_api_key"):
+            # vnstock >=3.4.0 renamed set_token → change_api_key
+            _vnstock_module.change_api_key(_VNSTOCK_API_KEY)
+            logger.info("vnstock: authenticated with Community tier API key")
+        elif hasattr(_vnstock_module, "set_token"):
             _vnstock_module.set_token(_VNSTOCK_API_KEY)
             logger.info("vnstock: authenticated with Community tier API key")
         else:
             logger.warning(
-                "vnstock: set_token() not available in this version — "
+                "vnstock: no authentication method available in this version — "
                 "proceeding with guest tier (20 req/min)"
             )
     except Exception as exc:  # noqa: BLE001
@@ -220,8 +225,18 @@ def fetch_and_upsert_ohlcv(
 # ---------------------------------------------------------------------------
 
 # vnstock financial ratio column name → stock_fundamentals column name
+# vnstock VCI returns MultiIndex columns; the second level (display name) is mapped here.
+# The first level is the Vietnamese category name (ignored — we use the second level).
 _FUNDAMENTALS_COLUMN_MAP = {
-    # Common vnstock VCI column names (may vary by version)
+    # VCI MultiIndex second-level column names (lang="en")
+    "P/E": "pe_ratio",
+    "P/B": "pb_ratio",
+    "EPS (VND)": "eps",
+    "Market Capital (Bn. VND)": "market_cap",
+    "ROE (%)": "roe",
+    "ROA (%)": "roa",
+    "Net Profit Margin (%)": "net_margin",
+    # Alternative English column names seen in some vnstock versions
     "priceToEarning": "pe_ratio",
     "priceToBook": "pb_ratio",
     "earningPerShare": "eps",
@@ -230,7 +245,6 @@ _FUNDAMENTALS_COLUMN_MAP = {
     "roa": "roa",
     "revenueGrowth": "revenue_growth",
     "netProfitMargin": "net_margin",
-    # Alternative column names seen in some vnstock versions
     "pe": "pe_ratio",
     "pb": "pb_ratio",
     "eps": "eps",
@@ -269,18 +283,45 @@ def fetch_and_upsert_fundamentals(
                 .stock(symbol=sym, source="VCI")
                 .finance.ratio(period="year", lang="en", dropna=True)
             )
+        except SystemExit as exc:
+            # vnstock rate limit handler calls sys.exit() — catch it to avoid crashing
+            # the container. Treat as a rate limit error and skip remaining symbols.
+            logger.warning(
+                "Fundamentals fetch for %s: vnstock rate limit exit (SystemExit) — "
+                "stopping symbol loop to avoid container crash: %s",
+                sym, exc,
+            )
+            failed_symbols.append(sym)
+            break  # Cannot continue — rate limited for this minute
         except Exception as exc:
             logger.warning("Fundamentals fetch failed for %s: %s", sym, exc)
             failed_symbols.append(sym)
             continue
 
+        # Small delay between symbols to avoid rate limit (60 req/min community tier)
+        # 1.5s delay = ~40 symbols/min max, well within 60/min limit
+        time.sleep(1.5)
+
         if df is None or df.empty:
             logger.debug("No fundamentals data returned for %s", sym)
             continue
 
-        # Flatten MultiIndex columns if present (vnstock sometimes returns them)
+        # Flatten MultiIndex columns if present (vnstock VCI returns them)
+        # Strategy: use the second level (display name) as the column key for mapping.
+        # This correctly maps "P/E", "ROE (%)", etc. from the VCI MultiIndex.
+        # The period column ("yearReport") lives in the "Meta" first-level group,
+        # so we check both the raw second-level name and fallback full-join.
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = ["_".join(str(c) for c in col).strip("_") for col in df.columns]
+            # Preserve second-level names for column mapping; fall back to full join
+            # for columns without a meaningful second level
+            new_cols = []
+            for col in df.columns:
+                second_level = str(col[-1]).strip()
+                if second_level:
+                    new_cols.append(second_level)
+                else:
+                    new_cols.append("_".join(str(c) for c in col).strip("_"))
+            df.columns = new_cols
 
         # Identify the date/period column
         period_col = None

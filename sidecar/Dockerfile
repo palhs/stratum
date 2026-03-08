@@ -21,6 +21,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 
+# Copy test suite and pytest configuration
+COPY tests/ ./tests/
+COPY pytest.ini .
+
 # Healthcheck: verify the FastAPI /health endpoint responds
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=30s \
     CMD curl -sf http://localhost:8000/health || exit 1
