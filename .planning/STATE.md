@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-09T07:35:00Z"
+last_updated: "2026-03-09T07:45:00Z"
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 4 of 9 in progress (Knowledge Graph and Document Corpus Population)
-Plan: 3 of 4 complete — Phase 4 Plan 03 DONE (stopped at Task 2 human-verify checkpoint)
-Status: Phase 4 in progress
-Last activity: 2026-03-09 — 04-03 complete: macro_docs seed script + FOMC manifest (15 docs) + SBV manifest (22 registry entries)
+Plan: 4 of 4 complete — Phase 4 Plan 04 DONE (stopped at Task 2 human-verify checkpoint for document curation)
+Status: Phase 4 in progress (Plans 01-04 complete; awaiting human-verify steps for docs population before Phase 5)
+Last activity: 2026-03-09 — 04-04 complete: earnings_docs manifest (120 entries, 30 VN30 tickers) + seed script
 
-Progress: [██░░░░░░░░] 22% (6/27 plans)
+Progress: [███░░░░░░░] 26% (7/27 plans)
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [██░░░░░░░░] 22% (6/27 plans)
 | 03-04 | ~1 min | 2 | 2 |
 | 04-01 | ~3 min | 2 | 3 |
 | 04-03 | ~8 min | 1 | 3 |
+| 04-04 | ~15 min | 1 | 2 |
 
 *Updated after each plan completion*
 
@@ -80,6 +81,9 @@ Key decisions active for v2.0:
 - [Phase 04-01]: 17 regime nodes defined (within 15-20 range); natural era boundaries drove count — no forced truncation
 - [Phase 04-01]: VN macro values (sbv_rate, vn_cpi, vnd_usd) manually curated from SBV/World Bank; null only for new_regime_2025 gdp_avg (still unfolding)
 - [Phase 04-01]: Seed script excludes neo4j from sidecar/requirements.txt — runs standalone or in dedicated seed container
+- [Phase 04-04]: All 120 manifest entries start filename=null — intentional; seed script skips null entries with count log; user downloads then updates filename and re-runs
+- [Phase 04-04]: 12 large-cap VN30 tickers marked lang=en (English IR reports available); 18 marked lang=vi with degraded-embedding-quality warning
+- [Phase 04-04]: Batch-per-ticker upload pattern for earnings_docs — all chunks for a ticker accumulated then uploaded in single upload_points call
 
 ### Pending Todos
 
@@ -95,5 +99,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 04-03-PLAN.md Task 1 — macro_docs seed script and FOMC/SBV manifests created; Task 2 is human-verify checkpoint (non-blocking — verify FOMC downloads and SBV curation plan)
+Stopped at: Completed 04-04-PLAN.md Task 1 — earnings_docs manifest (120 entries, 30 VN30 tickers) and seed script created; Task 2 is human-verify checkpoint (non-blocking — review manifest and download VN30 earnings documents from hsx.vn)
 Resume file: None

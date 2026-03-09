@@ -74,7 +74,7 @@ Plans:
 - [ ] 04-01: Neo4j regime node seed data and Python seed script + Qdrant macro_docs/earnings_docs collection creation
 - [ ] 04-02: HAS_ANALOGUE relationship computation with cosine similarity and Gemini static narratives
 - [ ] 04-03: Qdrant macro_docs population — Fed FOMC minutes download and SBV report manifests
-- [ ] 04-04: Qdrant earnings_docs population — VN30 company financial report manifests and seed script
+- [x] 04-04: Qdrant earnings_docs population — VN30 company financial report manifests and seed script
 
 ### Phase 5: Retrieval Layer Validation
 **Goal**: All three retrieval paths (Neo4j via LlamaIndex CypherTemplateRetriever, Qdrant via LlamaIndex hybrid dense+sparse, PostgreSQL via direct query) are independently validated against real loaded data with data freshness checks built into every retrieval function — before any retriever is embedded inside a LangGraph node
@@ -175,7 +175,7 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 | 1. Infrastructure and Storage Foundation | v1.0 | 2/2 | Complete | 2026-03-03 |
 | 2. Data Ingestion Pipeline | v1.0 | 5/5 | Complete | 2026-03-08 |
 | 3. Infrastructure Hardening and Database Migrations | v2.0 | 4/4 | Complete | 2026-03-09 |
-| 4. Knowledge Graph and Document Corpus Population | 2/4 | In Progress|  | - |
+| 4. Knowledge Graph and Document Corpus Population | v2.0 | 4/4 | Plans complete (docs pending download) | - |
 | 5. Retrieval Layer Validation | v2.0 | 0/3 | Not started | - |
 | 6. LangGraph Reasoning Nodes | v2.0 | 0/5 | Not started | - |
 | 7. Graph Assembly and End-to-End Report Generation | v2.0 | 0/5 | Not started | - |
