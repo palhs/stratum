@@ -19,7 +19,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 ### Data Population
 
 - [x] **DATA-01**: Neo4j seeded with historical macro regime nodes covering major economic periods (2008-2025) with FRED series values
-- [ ] **DATA-02**: Neo4j regime nodes connected via `HAS_ANALOGUE` relationships carrying `similarity_score`, `dimensions_matched`, `period_start`, `period_end`
+- [x] **DATA-02**: Neo4j regime nodes connected via `HAS_ANALOGUE` relationships carrying `similarity_score`, `dimensions_matched`, `period_start`, `period_end`
 - [x] **DATA-03**: Qdrant `macro_docs` collection populated with curated Fed FOMC minutes and SBV reports
 - [x] **DATA-04**: Qdrant `earnings_docs` collection populated with curated VN30 company earnings transcripts
 
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 3 | Complete |
 | INFRA-06 | Phase 3 | Complete |
 | DATA-01 | Phase 4 | Complete |
-| DATA-02 | Phase 4 | Pending |
+| DATA-02 | Phase 4 | Complete |
 | DATA-03 | Phase 4 | Complete |
 | DATA-04 | Phase 4 | Complete |
 | RETR-01 | Phase 5 | Pending |

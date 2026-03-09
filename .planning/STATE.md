@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-09T07:45:00Z"
+last_updated: "2026-03-09T07:40:06.820Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
   completed_plans: 8
 ---
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 4 of 9 in progress (Knowledge Graph and Document Corpus Population)
-Plan: 4 of 4 complete — Phase 4 Plan 04 DONE (stopped at Task 2 human-verify checkpoint for document curation)
-Status: Phase 4 in progress (Plans 01-04 complete; awaiting human-verify steps for docs population before Phase 5)
-Last activity: 2026-03-09 — 04-04 complete: earnings_docs manifest (120 entries, 30 VN30 tickers) + seed script
+Plan: 02 of 4 complete — Phase 4 Plan 02 DONE (HAS_ANALOGUE seed script created)
+Status: Phase 4 in progress (Plans 01, 02 complete; Plans 03-04 previously completed; all 4 Phase 4 plans now done)
+Last activity: 2026-03-09 — 04-02 complete: seed-neo4j-analogues.py (cosine similarity + Gemini narratives + MERGE HAS_ANALOGUE)
 
 Progress: [███░░░░░░░] 26% (7/27 plans)
 
@@ -46,6 +46,7 @@ Progress: [███░░░░░░░] 26% (7/27 plans)
 | 04-01 | ~3 min | 2 | 3 |
 | 04-03 | ~8 min | 1 | 3 |
 | 04-04 | ~15 min | 1 | 2 |
+| 04-02 | ~2 min | 1 | 1 |
 
 *Updated after each plan completion*
 
@@ -84,6 +85,9 @@ Key decisions active for v2.0:
 - [Phase 04-04]: All 120 manifest entries start filename=null — intentional; seed script skips null entries with count log; user downloads then updates filename and re-runs
 - [Phase 04-04]: 12 large-cap VN30 tickers marked lang=en (English IR reports available); 18 marked lang=vi with degraded-embedding-quality warning
 - [Phase 04-04]: Batch-per-ticker upload pattern for earnings_docs — all chunks for a ticker accumulated then uploaded in single upload_points call
+- [Phase 04-02]: SIMILARITY_THRESHOLD=0.75 chosen as conservative starting point — sparse connectivity for edge regimes is acceptable
+- [Phase 04-02]: Both-direction HAS_ANALOGUE creation: if A is analogue of B, also create B->A relationship for Phase 5/6 directional traversal
+- [Phase 04-02]: new_regime_2025 excluded from similarity computation due to null gdp_avg — 16 of 17 regimes participate in analogue graph
 
 ### Pending Todos
 
@@ -99,5 +103,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 04-04-PLAN.md Task 1 — earnings_docs manifest (120 entries, 30 VN30 tickers) and seed script created; Task 2 is human-verify checkpoint (non-blocking — review manifest and download VN30 earnings documents from hsx.vn)
+Stopped at: Completed 04-02-PLAN.md — seed-neo4j-analogues.py created (MinMaxScaler cosine similarity on FRED dims, Gemini 2.0 Flash narrative caching, UNWIND+MERGE HAS_ANALOGUE into Neo4j)
 Resume file: None
