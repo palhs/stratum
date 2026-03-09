@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: in_progress
-last_updated: "2026-03-09T00:10:00.000Z"
+last_updated: "2026-03-09T02:21:19.711Z"
 progress:
   total_phases: 7
   completed_phases: 0
@@ -56,6 +56,8 @@ Key decisions active for v2.0:
 - mem_limit via legacy Docker key (not deploy.resources) — project uses non-Swarm Docker deployment [03-02]
 - Neo4j heap initial=max=1G to eliminate GC heap-growth pauses — total JVM 1.5GB within 2g container [03-02]
 - GEMINI_API_KEY env block in docker-compose deferred to Phase 8 when reasoning-engine service exists [03-02]
+- [Phase 03-01]: Include report_markdown column alongside report_json in reports table — pre-rendered Markdown for Phase 7 API speed
+- [Phase 03-01]: report_jobs FK to reports is nullable — job created at pending state before report_id exists, set on completion
 
 ### Pending Todos
 
@@ -71,5 +73,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 03-02-PLAN.md — Docker memory limits (5 services), Neo4j JVM tuning, GEMINI_API_KEY env template
+Stopped at: Completed 03-01-PLAN.md — Flyway V6 (reports) and V7 (report_jobs) migrations applied, SUMMARY created
 Resume file: None
