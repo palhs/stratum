@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-09T02:57:19.948Z"
+last_updated: "2026-03-09T07:30:35.571Z"
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 8
+  completed_plans: 6
 ---
 
 # Project State
@@ -23,12 +23,12 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 3 of 9 complete (Infrastructure Hardening and Database Migrations)
-Plan: 4 of 4 complete — Phase 3 DONE
-Status: Phase 3 complete, Phase 4 not started
-Last activity: 2026-03-09 — 03-04 complete: ROADMAP.md and REQUIREMENTS.md documentation gap closure
+Phase: 4 of 9 in progress (Knowledge Graph and Document Corpus Population)
+Plan: 1 of 4 complete — Phase 4 Plan 01 DONE
+Status: Phase 4 in progress
+Last activity: 2026-03-09 — 04-01 complete: regime seed data JSON + Neo4j seed script + Qdrant doc collections
 
-Progress: [█░░░░░░░░░] 15% (4/27 plans)
+Progress: [█░░░░░░░░░] 19% (5/27 plans)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: [█░░░░░░░░░] 15% (4/27 plans)
 | 03-02 | ~10 min | - | - |
 | 03-03 | ~2 min | 2 | 2 |
 | 03-04 | ~1 min | 2 | 2 |
+| 04-01 | ~3 min | 2 | 3 |
 
 *Updated after each plan completion*
 
@@ -72,12 +73,18 @@ Key decisions active for v2.0:
 - [Phase 03-04]: ROADMAP.md Phase 3 SC #2 lists 5 existing services with data-sidecar 512MB; reasoning-engine mem_limit deferred to Phase 8 when SRVC-05 creates the service
 - [Phase 03-04]: ROADMAP.md Phase 3 SC #4 references .env.example as deliverable; live Gemini API validation deferred to Phase 8
 - [Phase 03-04]: INFRA-03 scope is 5 existing services; reasoning-engine 2GB is not a Phase 3 deliverable
+- [Phase 04-03]: FOMC manifest covers 15 key monetary policy turning points (2008-2024) focused on regime-defining moments rather than complete coverage
+- [Phase 04-03]: SBV manifest uses null-filename sentinel pattern — script skips entries gracefully, user downloads PDFs manually and updates manifest
+- [Phase 04-03]: uuid5 with fixed namespace UUID for deterministic Qdrant point IDs — idempotent re-runs overwrite same points without duplication
+- [Phase 04-01]: 17 regime nodes defined (within 15-20 range); natural era boundaries drove count — no forced truncation
+- [Phase 04-01]: VN macro values (sbv_rate, vn_cpi, vnd_usd) manually curated from SBV/World Bank; null only for new_regime_2025 gdp_avg (still unfolding)
+- [Phase 04-01]: Seed script excludes neo4j from sidecar/requirements.txt — runs standalone or in dedicated seed container
 
 ### Pending Todos
 
 - Vietnamese financial term dictionary must be authored before Phase 6 compose_report node is built (content asset, not code)
 - Gemini model selection (2.0-flash vs 2.5-flash) — benchmark during Phase 6 before committing to production config
-- Neo4j historical regime data coverage plan — which macro periods (2008-2025) are representable from FRED data alone
+- Neo4j historical regime data coverage plan — RESOLVED in 04-01: 17 regime nodes defined with FRED averages; pending: compute actual FRED period averages from fred_indicators table (Plans 04-02+)
 
 ### Blockers/Concerns
 
@@ -87,5 +94,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 03-04-PLAN.md — ROADMAP.md and REQUIREMENTS.md Phase 3 scope documentation gaps closed
+Stopped at: Completed 04-01-PLAN.md — regime seed data JSON + Python seed script + Qdrant macro_docs/earnings_docs collections
 Resume file: None
