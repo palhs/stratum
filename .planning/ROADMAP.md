@@ -31,7 +31,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 **Milestone Goal:** Build the multi-step AI reasoning pipeline that transforms raw market data into actionable entry quality assessments with explainable, bilingual analysis.
 
-- [ ] **Phase 3: Infrastructure Hardening and Database Migrations** - Flyway migrations, memory limits, VPS swap, and checkpoint schema in place before any reasoning code is written
+- [x] **Phase 3: Infrastructure Hardening and Database Migrations** - Flyway migrations, memory limits, VPS swap, and checkpoint schema in place before any reasoning code is written (completed 2026-03-09)
 - [ ] **Phase 4: Knowledge Graph and Document Corpus Population** - Neo4j regime nodes with analogue relationships and Qdrant document collections populated with curated content
 - [ ] **Phase 5: Retrieval Layer Validation** - LlamaIndex retrievers confirmed working against real loaded data across all three stores before embedding in reasoning nodes
 - [ ] **Phase 6: LangGraph Reasoning Nodes** - Five individual reasoning nodes built and validated in isolation with correct state schemas and Gemini structured output
@@ -173,7 +173,7 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 |-------|-----------|----------------|--------|-----------|
 | 1. Infrastructure and Storage Foundation | v1.0 | 2/2 | Complete | 2026-03-03 |
 | 2. Data Ingestion Pipeline | v1.0 | 5/5 | Complete | 2026-03-08 |
-| 3. Infrastructure Hardening and Database Migrations | 2/3 | In Progress|  | - |
+| 3. Infrastructure Hardening and Database Migrations | 3/3 | Complete   | 2026-03-09 | - |
 | 4. Knowledge Graph and Document Corpus Population | v2.0 | 0/4 | Not started | - |
 | 5. Retrieval Layer Validation | v2.0 | 0/3 | Not started | - |
 | 6. LangGraph Reasoning Nodes | v2.0 | 0/5 | Not started | - |

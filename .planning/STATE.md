@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: in_progress
-last_updated: "2026-03-09T02:21:19.711Z"
+last_updated: "2026-03-09T02:24:03Z"
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 27
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,24 +18,30 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v2.0 Analytical Reasoning Engine — Phase 3 in progress (Plan 02 complete).
+**Current focus:** v2.0 Analytical Reasoning Engine — Phase 3 in progress (Plan 03 complete).
 
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 3 of 9 (Infrastructure Hardening and Database Migrations)
-Plan: 2 of 4 complete (next: 03-03)
+Plan: 3 of 4 complete (next: 03-04)
 Status: In progress
-Last activity: 2026-03-09 — 03-02 complete: Docker memory limits, Neo4j JVM tuning, GEMINI_API_KEY env template
+Last activity: 2026-03-09 — 03-03 complete: LangGraph checkpoint schema init script + langgraph-init Docker service
 
-Progress: [█░░░░░░░░░] 7% (2/27 plans)
+Progress: [█░░░░░░░░░] 11% (3/27 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2 (v2.0)
-- Average duration: ~10 min
-- Total execution time: ~20 min
+- Total plans completed: 3 (v2.0)
+- Average duration: ~7 min
+- Total execution time: ~22 min
+
+| Phase-Plan | Duration | Tasks | Files |
+|---|---|---|---|
+| 03-01 | ~10 min | - | - |
+| 03-02 | ~10 min | - | - |
+| 03-03 | ~2 min | 2 | 2 |
 
 *Updated after each plan completion*
 
@@ -58,6 +64,10 @@ Key decisions active for v2.0:
 - GEMINI_API_KEY env block in docker-compose deferred to Phase 8 when reasoning-engine service exists [03-02]
 - [Phase 03-01]: Include report_markdown column alongside report_json in reports table — pre-rendered Markdown for Phase 7 API speed
 - [Phase 03-01]: report_jobs FK to reports is nullable — job created at pending state before report_id exists, set on completion
+- [Phase 03-03]: Checkpoints in langgraph schema (not public) — avoids table collision, Phase 6 connects via ?options=-csearch_path=langgraph
+- [Phase 03-03]: psycopg3 synchronous (not async) for init script — async unnecessary for one-shot DDL
+- [Phase 03-03]: Raw DDL instead of AsyncPostgresSaver.setup() — library targets public schema only with no schema parameter
+- [Phase 03-03]: langgraph-init profiles reasoning only — checkpoint schema not needed for ingestion-only deployments
 
 ### Pending Todos
 
@@ -73,5 +83,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 03-01-PLAN.md — Flyway V6 (reports) and V7 (report_jobs) migrations applied, SUMMARY created
+Stopped at: Completed 03-03-PLAN.md — LangGraph checkpoint schema init script and langgraph-init Docker service created
 Resume file: None
