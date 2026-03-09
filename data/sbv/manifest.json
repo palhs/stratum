@@ -1,0 +1,222 @@
+[
+  {
+    "doc_id": "sbv_rate_2008q4",
+    "filename": null,
+    "date": "2008-12-01",
+    "title": "SBV Refinancing Rate Cut Q4 2008 (Crisis Response, Rate Cut from 14% to 8.5%)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "gfc_credit_crisis",
+    "notes": "Place English PDF in data/sbv/ and update filename field. Source: sbv.gov.vn/en monetary policy decisions 2008."
+  },
+  {
+    "doc_id": "sbv_rate_2009q1",
+    "filename": null,
+    "date": "2009-02-01",
+    "title": "SBV Monetary Policy Report Q1 2009 (Post-Crisis Easing, Rate Cut to 7%)",
+    "doc_type": "sbv_policy_report",
+    "lang": "en",
+    "regime_context": "gfc_qe1_response",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2010q4",
+    "filename": null,
+    "date": "2010-11-01",
+    "title": "SBV Rate Hike Q4 2010 (Inflation Control, Rate Rise to 9%)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_inflation_2010",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2011q1",
+    "filename": null,
+    "date": "2011-03-01",
+    "title": "SBV Emergency Rate Hike March 2011 (VN Inflation >20%, Rate to 12-13%)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_high_inflation_2011",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2011",
+    "filename": null,
+    "date": "2011-12-31",
+    "title": "SBV Annual Report 2011 (High Inflation Year, Monetary Tightening Summary)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "vn_high_inflation_2011",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2012q2",
+    "filename": null,
+    "date": "2012-06-01",
+    "title": "SBV Rate Cut Cycle 2012 (Easing as Inflation Falls, Rate to 9%)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_stabilization_2012",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2013",
+    "filename": null,
+    "date": "2013-12-31",
+    "title": "SBV Annual Report 2013 (Credit Growth Normalization, Dong Stability Focus)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "vn_stabilization_2013",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_policy_2015q3",
+    "filename": null,
+    "date": "2015-08-01",
+    "title": "SBV VND Devaluation Response August 2015 (USD/VND Band Widened, CNY Depreciation Impact)",
+    "doc_type": "sbv_policy_report",
+    "lang": "en",
+    "regime_context": "vn_fx_pressure_2015",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2015",
+    "filename": null,
+    "date": "2015-12-31",
+    "title": "SBV Annual Report 2015 (Stable Rate Year, USD Pressure from Fed Hike)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "rate_normalization_2015",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2018",
+    "filename": null,
+    "date": "2018-12-31",
+    "title": "SBV Annual Report 2018 (Credit Control, Property Sector Cooling)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "vn_credit_tightening_2018",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_policy_2020q1",
+    "filename": null,
+    "date": "2020-03-01",
+    "title": "SBV COVID-19 Emergency Policy Response March 2020 (Rate Cut, Credit Restructuring Circular)",
+    "doc_type": "sbv_policy_report",
+    "lang": "en",
+    "regime_context": "covid_emergency_response",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2020q3",
+    "filename": null,
+    "date": "2020-09-01",
+    "title": "SBV Rate Cut September 2020 (Support Recovery, Rate to 4.0% Refinancing)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "covid_emergency_response",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2020",
+    "filename": null,
+    "date": "2020-12-31",
+    "title": "SBV Annual Report 2020 (COVID Response Year, Three Rate Cuts, Debt Restructuring)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "covid_emergency_response",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2021",
+    "filename": null,
+    "date": "2021-12-31",
+    "title": "SBV Annual Report 2021 (Post-COVID Recovery, Credit Growth Acceleration, VND Stable)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "post_covid_recovery",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2022q9",
+    "filename": null,
+    "date": "2022-09-01",
+    "title": "SBV Rate Hike September 2022 (Tightening Cycle Start, Rate to 5.0%, USD/VND Pressure)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_tightening_2022",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2022q10",
+    "filename": null,
+    "date": "2022-10-01",
+    "title": "SBV Emergency Rate Hike October 2022 (Rate to 6.0%, VND Defense)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_tightening_2022",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2022",
+    "filename": null,
+    "date": "2022-12-31",
+    "title": "SBV Annual Report 2022 (Tightening Year, Bond Market Scandal, VND Pressure)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "vn_tightening_2022",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2023q3",
+    "filename": null,
+    "date": "2023-03-01",
+    "title": "SBV Rate Cut March 2023 (Easing Pivot, Rate to 5.5% as VN Economy Slows)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_easing_2023",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_rate_2023q6",
+    "filename": null,
+    "date": "2023-06-01",
+    "title": "SBV Rate Cut June 2023 (Fourth Cut in 2023, Rate to 4.0%, GDP Support)",
+    "doc_type": "sbv_rate_decision",
+    "lang": "en",
+    "regime_context": "vn_easing_2023",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2023",
+    "filename": null,
+    "date": "2023-12-31",
+    "title": "SBV Annual Report 2023 (Four Rate Cuts, Credit Stimulus, Property Sector Support)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "vn_easing_2023",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_policy_2024q1",
+    "filename": null,
+    "date": "2024-01-01",
+    "title": "SBV Monetary Policy Direction 2024 (Stable Rate, Credit Growth Target 15%)",
+    "doc_type": "sbv_policy_report",
+    "lang": "en",
+    "regime_context": "vn_stable_2024",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  },
+  {
+    "doc_id": "sbv_annual_2024",
+    "filename": null,
+    "date": "2024-12-31",
+    "title": "SBV Annual Report 2024 (Stable Rate Year, Credit Growth Support, Export Recovery)",
+    "doc_type": "sbv_annual_report",
+    "lang": "en",
+    "regime_context": "vn_stable_2024",
+    "notes": "Place English PDF in data/sbv/ and update filename field."
+  }
+]

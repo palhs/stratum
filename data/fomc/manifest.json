@@ -1,0 +1,122 @@
+[
+  {
+    "doc_id": "fomc_20081029",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20081029.pdf",
+    "date": "2008-10-29",
+    "title": "FOMC Minutes — October 2008 (Emergency Rate Cut to 1%)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "gfc_credit_crisis"
+  },
+  {
+    "doc_id": "fomc_20081216",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20081216.pdf",
+    "date": "2008-12-16",
+    "title": "FOMC Minutes — December 2008 (Rate Cut to 0-0.25%, ZLB)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "gfc_credit_crisis"
+  },
+  {
+    "doc_id": "fomc_20090318",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20090318.pdf",
+    "date": "2009-03-18",
+    "title": "FOMC Minutes — March 2009 (QE1 Expansion, MBS Purchases)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "gfc_qe1_response"
+  },
+  {
+    "doc_id": "fomc_20101103",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20101103.pdf",
+    "date": "2010-11-03",
+    "title": "FOMC Minutes — November 2010 (QE2 Announcement, $600B Treasury Purchases)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "qe2_recovery"
+  },
+  {
+    "doc_id": "fomc_20130619",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20130619.pdf",
+    "date": "2013-06-19",
+    "title": "FOMC Minutes — June 2013 (Taper Tantrum, Tapering Signal)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "taper_tantrum"
+  },
+  {
+    "doc_id": "fomc_20151216",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20151216.pdf",
+    "date": "2015-12-16",
+    "title": "FOMC Minutes — December 2015 (First Rate Hike in 9 Years, 0.25%)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "rate_normalization_2015"
+  },
+  {
+    "doc_id": "fomc_20190731",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20190731.pdf",
+    "date": "2019-07-31",
+    "title": "FOMC Minutes — July 2019 (Rate Cut Pivot, Insurance Cut)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "mid_cycle_adjustment_2019"
+  },
+  {
+    "doc_id": "fomc_20200315",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20200315.pdf",
+    "date": "2020-03-15",
+    "title": "FOMC Minutes — March 2020 (COVID Emergency Cut to 0-0.25%, QE Restart)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "covid_emergency_response"
+  },
+  {
+    "doc_id": "fomc_20211103",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20211103.pdf",
+    "date": "2021-11-03",
+    "title": "FOMC Minutes — November 2021 (Taper Announcement, Inflation Signals)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "inflation_buildup_2021"
+  },
+  {
+    "doc_id": "fomc_20220615",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20220615.pdf",
+    "date": "2022-06-15",
+    "title": "FOMC Minutes — June 2022 (75bp Hike, Peak Hawkishness)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "aggressive_tightening_2022"
+  },
+  {
+    "doc_id": "fomc_20220921",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20220921.pdf",
+    "date": "2022-09-21",
+    "title": "FOMC Minutes — September 2022 (75bp Hike, Higher for Longer Signal)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "aggressive_tightening_2022"
+  },
+  {
+    "doc_id": "fomc_20230614",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20230614.pdf",
+    "date": "2023-06-14",
+    "title": "FOMC Minutes — June 2023 (Skip/Pause, Terminal Rate Assessment)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "rate_plateau_2023"
+  },
+  {
+    "doc_id": "fomc_20231101",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20231101.pdf",
+    "date": "2023-11-01",
+    "title": "FOMC Minutes — November 2023 (Hold at 5.25-5.50%, Peak Rate Confirmation)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "rate_plateau_2023"
+  },
+  {
+    "doc_id": "fomc_20240918",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20240918.pdf",
+    "date": "2024-09-18",
+    "title": "FOMC Minutes — September 2024 (First Rate Cut, 50bp, Easing Cycle Start)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "easing_cycle_2024"
+  },
+  {
+    "doc_id": "fomc_20241218",
+    "url": "https://www.federalreserve.gov/monetarypolicy/files/fomcminutes20241218.pdf",
+    "date": "2024-12-18",
+    "title": "FOMC Minutes — December 2024 (25bp Cut, Slower Easing Outlook for 2025)",
+    "doc_type": "fomc_minutes",
+    "regime_context": "easing_cycle_2024"
+  }
+]
