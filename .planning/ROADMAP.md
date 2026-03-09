@@ -68,13 +68,13 @@ Plans:
   2. Neo4j `HAS_ANALOGUE` relationships exist between regime nodes, each carrying `similarity_score`, `dimensions_matched`, `period_start`, and `period_end` — a Cypher query traversing these relationships returns full relationship properties (not just node IDs)
   3. Qdrant `macro_docs` collection is populated — a similarity search for "Federal Reserve rate decision" returns relevant Fed FOMC minutes or SBV report chunks with scores above 0.7
   4. Qdrant `earnings_docs` collection is populated — a similarity search for a VN30 company ticker returns relevant earnings transcript chunks from that company's filings
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 04-01: Neo4j historical macro regime node schema design and Cypher seed scripts (query-first design)
-- [ ] 04-02: Neo4j regime analogue relationship population with similarity scores (2008-2025 periods)
-- [ ] 04-03: Qdrant macro_docs collection population — Fed FOMC minutes and SBV reports
-- [ ] 04-04: Qdrant earnings_docs collection population — VN30 company earnings transcripts
+- [ ] 04-01: Neo4j regime node seed data and Python seed script + Qdrant macro_docs/earnings_docs collection creation
+- [ ] 04-02: HAS_ANALOGUE relationship computation with cosine similarity and Gemini static narratives
+- [ ] 04-03: Qdrant macro_docs population — Fed FOMC minutes download and SBV report manifests
+- [ ] 04-04: Qdrant earnings_docs population — VN30 company financial report manifests and seed script
 
 ### Phase 5: Retrieval Layer Validation
 **Goal**: All three retrieval paths (Neo4j via LlamaIndex CypherTemplateRetriever, Qdrant via LlamaIndex hybrid dense+sparse, PostgreSQL via direct query) are independently validated against real loaded data with data freshness checks built into every retrieval function — before any retriever is embedded inside a LangGraph node
