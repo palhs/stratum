@@ -54,9 +54,10 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: Flyway V6 and V7 migrations — reports and report_jobs tables
-- [ ] 03-02: Docker Compose memory limits, VPS swap, Neo4j JVM heap, and GEMINI_API_KEY configuration
-- [ ] 03-03: LangGraph checkpoint schema initialization and validation
+- [x] 03-01: Flyway V6 and V7 migrations — reports and report_jobs tables
+- [x] 03-02: Docker Compose memory limits, VPS swap, Neo4j JVM heap, and GEMINI_API_KEY configuration
+- [x] 03-03: LangGraph checkpoint schema initialization and validation
+- [x] 03-04: Documentation gap closure — ROADMAP.md and REQUIREMENTS.md Phase 3 scope alignment
 
 ### Phase 4: Knowledge Graph and Document Corpus Population
 **Goal**: The Neo4j knowledge graph contains historical macro regime nodes covering 2008-2025 with HAS_ANALOGUE relationships carrying full similarity metadata, Qdrant macro_docs and earnings_docs collections are populated with curated documents, and a Vietnamese financial term dictionary exists as a content artifact — all three are prerequisites for any retrieval or reasoning work
@@ -173,7 +174,7 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 |-------|-----------|----------------|--------|-----------|
 | 1. Infrastructure and Storage Foundation | v1.0 | 2/2 | Complete | 2026-03-03 |
 | 2. Data Ingestion Pipeline | v1.0 | 5/5 | Complete | 2026-03-08 |
-| 3. Infrastructure Hardening and Database Migrations | 3/3 | Complete   | 2026-03-09 | - |
+| 3. Infrastructure Hardening and Database Migrations | v2.0 | 4/4 | Complete | 2026-03-09 |
 | 4. Knowledge Graph and Document Corpus Population | v2.0 | 0/4 | Not started | - |
 | 5. Retrieval Layer Validation | v2.0 | 0/3 | Not started | - |
 | 6. LangGraph Reasoning Nodes | v2.0 | 0/5 | Not started | - |
