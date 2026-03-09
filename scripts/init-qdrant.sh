@@ -122,6 +122,17 @@ create_alias "valuation_embeddings" "valuation_embeddings_v1"
 create_collection_if_missing "structure_embeddings_v1" 384 "Cosine"
 create_alias "structure_embeddings" "structure_embeddings_v1"
 
+# Document corpus collections (Phase 4 — DATA-03, DATA-04)
+# For curated document storage: Fed FOMC minutes, SBV reports, VN30 earnings
+
+# Macro document corpus (Fed FOMC minutes + SBV monetary policy reports)
+create_collection_if_missing "macro_docs_v1" 384 "Cosine"
+create_alias "macro_docs" "macro_docs_v1"
+
+# Earnings document corpus (VN30 company quarterly/annual reports)
+create_collection_if_missing "earnings_docs_v1" 384 "Cosine"
+create_alias "earnings_docs" "earnings_docs_v1"
+
 echo ""
 echo "================================================="
 echo "Qdrant initialization complete."
