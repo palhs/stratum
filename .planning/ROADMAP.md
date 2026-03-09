@@ -47,9 +47,9 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06
 **Success Criteria** (what must be TRUE):
   1. Running `flyway migrate` applies V6 and V7 cleanly — the `reports` table and `report_jobs` table exist in PostgreSQL with all columns and constraints visible via `\d reports` and `\d report_jobs`
-  2. All Docker services in `docker-compose.yml` have explicit `mem_limit` values (Neo4j 2GB, Qdrant 1GB, PostgreSQL 512MB, n8n 512MB, reasoning-engine 2GB) — `docker inspect` confirms limits on running containers
+  2. All existing Docker services in `docker-compose.yml` have explicit `mem_limit` values (Neo4j 2GB, Qdrant 1GB, PostgreSQL 512MB, n8n 512MB, data-sidecar 512MB) — `docker inspect` confirms limits on running containers. reasoning-engine `mem_limit: 2g` is set when the service is created in Phase 8.
   3. VPS swap is active at 4GB (`free -h` shows 4G swap) and Neo4j JVM heap is explicitly set in docker-compose.yml — Neo4j starts without defaulting to 25% of system RAM
-  4. `GEMINI_API_KEY` is present in the environment configuration and accessible to the reasoning-engine service — a curl test against the Gemini API returns a valid response
+  4. `GEMINI_API_KEY` is present in `.env.example` as a documented environment variable template — live API validation is a runtime verification item performed when the reasoning-engine service is deployed in Phase 8
   5. LangGraph checkpoint schema is initialized in PostgreSQL — the checkpoint tables created by `AsyncPostgresSaver.setup()` exist and are queryable
 **Plans**: TBD
 
