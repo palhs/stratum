@@ -6,6 +6,15 @@ name: stratum
 #   - reasoning: future LangGraph/FastAPI + storage services
 #   Storage services join BOTH; consumer services join ONE only.
 # =============================================================================
+# VPS PREREQUISITE (INFRA-04): 4GB swap must be configured on the host.
+# Run on VPS (not inside Docker):
+#   sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile
+#   sudo mkswap /swapfile && sudo swapon /swapfile
+#   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+#   sudo sysctl vm.swappiness=10
+#   echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+# Verify: free -h (should show 4G swap)
+# =============================================================================
 networks:
   ingestion:
     driver: bridge
@@ -31,6 +40,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    mem_limit: 512m
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -53,11 +63,14 @@ services:
 
   neo4j:
     image: neo4j:5.26.21
+    mem_limit: 2g
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
       NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_server_memory_heap_initial__size: "512m"
+      # JVM tuning: heap(1G) + pagecache(512m) = 1.5GB within 2g mem_limit
+      # initial=max prevents GC pause spikes from heap growth (Neo4j recommendation)
+      NEO4J_server_memory_heap_initial__size: "1G"
       NEO4J_server_memory_heap_max__size: "1G"
       NEO4J_server_memory_pagecache_size: "512m"
       NEO4J_apoc_trigger_enabled: "true"
@@ -80,6 +93,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:v1.15.3
+    mem_limit: 1g
     restart: unless-stopped
     environment:
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
@@ -163,7 +177,8 @@ services:
   # ===========================================================================
 
   n8n:
-    image: n8nio/n8n:1.78.0
+    image: n8nio/n8n:2.10.2
+    mem_limit: 512m
     restart: unless-stopped
     depends_on:
       postgres:
@@ -196,6 +211,7 @@ services:
     build:
       context: ./sidecar
       dockerfile: Dockerfile
+    mem_limit: 512m
     restart: unless-stopped
     depends_on:
       postgres:
