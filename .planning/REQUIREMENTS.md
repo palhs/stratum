@@ -11,9 +11,9 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 
 - [ ] **INFRA-01**: Flyway V6 migration creates `reports` table for storing generated report JSON and metadata
 - [ ] **INFRA-02**: Flyway V7 migration creates `report_jobs` table for tracking pipeline run status
-- [ ] **INFRA-03**: Docker Compose has explicit `mem_limit` on all services (Neo4j 2GB, Qdrant 1GB, PostgreSQL 512MB, n8n 512MB, reasoning-engine 2GB)
-- [ ] **INFRA-04**: VPS swap configured at 4GB and Neo4j JVM heap explicitly set
-- [ ] **INFRA-05**: `GEMINI_API_KEY` added to environment configuration
+- [x] **INFRA-03**: Docker Compose has explicit `mem_limit` on all services (Neo4j 2GB, Qdrant 1GB, PostgreSQL 512MB, n8n 512MB, reasoning-engine 2GB)
+- [x] **INFRA-04**: VPS swap configured at 4GB and Neo4j JVM heap explicitly set
+- [x] **INFRA-05**: `GEMINI_API_KEY` added to environment configuration
 - [ ] **INFRA-06**: LangGraph checkpoint database schema initialized (psycopg3-based PostgresSaver)
 
 ### Data Population
@@ -98,9 +98,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | INFRA-01 | Phase 3 | Pending |
 | INFRA-02 | Phase 3 | Pending |
-| INFRA-03 | Phase 3 | Pending |
-| INFRA-04 | Phase 3 | Pending |
-| INFRA-05 | Phase 3 | Pending |
+| INFRA-03 | Phase 3 | Complete |
+| INFRA-04 | Phase 3 | Complete |
+| INFRA-05 | Phase 3 | Complete |
 | INFRA-06 | Phase 3 | Pending |
 | DATA-01 | Phase 4 | Pending |
 | DATA-02 | Phase 4 | Pending |
