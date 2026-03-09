@@ -171,6 +171,29 @@ services:
     profiles: ["storage", "ingestion", "reasoning"]
     # No restart policy — one-shot init
 
+  # langgraph-init: Creates checkpoint tables in 'langgraph' schema for AsyncPostgresSaver
+  # One-shot — exits after schema creation. Idempotent (IF NOT EXISTS).
+  langgraph-init:
+    image: python:3.12-slim
+    depends_on:
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+    volumes:
+      - ./scripts/init-langgraph-schema.py:/init-langgraph-schema.py:ro
+    entrypoint: >
+      bash -c "
+        pip install 'psycopg[binary]' --quiet &&
+        python /init-langgraph-schema.py
+      "
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    networks:
+      - reasoning
+    profiles: ["reasoning"]
+    # No restart policy — one-shot init; creates langgraph schema for checkpoint tables
+
   # ===========================================================================
   # INGESTION TIER — ingestion network ONLY (INFRA-02 enforcement)
   # n8n has no path to the reasoning network
