@@ -60,7 +60,7 @@ Plans:
 - [x] 03-04: Documentation gap closure — ROADMAP.md and REQUIREMENTS.md Phase 3 scope alignment
 
 ### Phase 4: Knowledge Graph and Document Corpus Population
-**Goal**: The Neo4j knowledge graph contains historical macro regime nodes covering 2008-2025 with HAS_ANALOGUE relationships carrying full similarity metadata, Qdrant macro_docs and earnings_docs collections are populated with curated documents, and a Vietnamese financial term dictionary exists as a content artifact — all three are prerequisites for any retrieval or reasoning work
+**Goal**: The Neo4j knowledge graph contains historical macro regime nodes covering 2008-2025 with HAS_ANALOGUE relationships carrying full similarity metadata, and Qdrant macro_docs and earnings_docs collections are populated with curated content — both are prerequisites for any retrieval or reasoning work
 **Depends on**: Phase 3
 **Requirements**: DATA-01, DATA-02, DATA-03, DATA-04
 **Success Criteria** (what must be TRUE):
@@ -71,10 +71,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 04-01: Neo4j regime node seed data and Python seed script + Qdrant macro_docs/earnings_docs collection creation
-- [ ] 04-02: HAS_ANALOGUE relationship computation with cosine similarity and Gemini static narratives
-- [ ] 04-03: Qdrant macro_docs population — Fed FOMC minutes download and SBV report manifests
-- [x] 04-04: Qdrant earnings_docs population — VN30 company financial report manifests and seed script
+- [x] 04-01: Neo4j regime node seed data and Python seed script + Qdrant macro_docs/earnings_docs collection creation
+- [x] 04-02: HAS_ANALOGUE relationship computation with cosine similarity and Gemini static narratives
+- [x] 04-03: Qdrant macro_docs population — Fed FOMC minutes download and SBV report manifests
+- [x] 04-04: Qdrant earnings_docs population — VN30 structured financials via vnstock API
 
 ### Phase 5: Retrieval Layer Validation
 **Goal**: All three retrieval paths (Neo4j via LlamaIndex CypherTemplateRetriever, Qdrant via LlamaIndex hybrid dense+sparse, PostgreSQL via direct query) are independently validated against real loaded data with data freshness checks built into every retrieval function — before any retriever is embedded inside a LangGraph node
