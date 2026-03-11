@@ -248,7 +248,7 @@ def process_sbv_documents() -> list[dict]:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=gemini_api_key)
-                gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+                gemini_model = genai.GenerativeModel("gemini-2.5-pro")
                 logger.info("Gemini API available — will generate SBV policy summaries")
             except Exception as exc:
                 logger.warning("Failed to initialize Gemini: %s — entries without PDFs will be skipped", exc)
