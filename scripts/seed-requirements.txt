@@ -1,0 +1,15 @@
+# Dependencies for Phase 4 seed scripts
+# Used by the seed-runner docker compose service
+neo4j>=5.0
+qdrant-client>=1.9.0
+fastembed>=0.3.0
+langchain-text-splitters>=0.2.0
+pdfplumber>=0.11.0
+google-generativeai>=0.8.0
+vnstock>=3.4.2
+numpy>=1.26.0
+scipy>=1.12.0
+scikit-learn>=1.4.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+pandas>=2.2.0

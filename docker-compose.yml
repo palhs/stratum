@@ -171,6 +171,37 @@ services:
     profiles: ["storage", "ingestion", "reasoning"]
     # No restart policy — one-shot init
 
+  # ===========================================================================
+  # SEED RUNNER — one-shot container for Phase 4 seed scripts
+  # Joins both networks to reach Neo4j, Qdrant, Postgres.
+  # Usage: docker compose run --rm seed-runner python scripts/<script>.py
+  # ===========================================================================
+
+  seed-runner:
+    image: python:3.12-slim
+    # No depends_on — storage services must already be running.
+    # Start storage first: docker compose --profile storage up -d
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./neo4j/seed:/app/neo4j/seed
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    working_dir: /app
+    entrypoint: ["bash", "-c", "pip install --no-cache-dir -q -r scripts/seed-requirements.txt && exec \"$@\"", "--"]
+    command: ["echo", "Seed runner ready. Pass a command via: docker compose run --rm seed-runner python scripts/<name>.py"]
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    networks:
+      - ingestion
+      - reasoning
+    profiles: ["seed"]
+    # No restart policy — one-shot runner
+
   # langgraph-init: Creates checkpoint tables in 'langgraph' schema for AsyncPostgresSaver
   # One-shot — exits after schema creation. Idempotent (IF NOT EXISTS).
   langgraph-init:
