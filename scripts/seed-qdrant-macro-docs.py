@@ -6,8 +6,9 @@ Phase 4 | Plan 03 | Requirement: DATA-03
 Usage:
     python scripts/seed-qdrant-macro-docs.py
 
-Downloads FOMC PDFs from federalreserve.gov, reads SBV PDFs from data/sbv/,
-chunks, embeds with FastEmbed, and upserts to Qdrant macro_docs collection.
+Downloads FOMC PDFs from federalreserve.gov. For SBV documents, reads PDFs from
+data/sbv/ when available, or generates structured policy summaries via Gemini API
+from manifest metadata (with JSON caching for idempotent re-runs).
 
 Requires: macro_docs_v1 collection must exist (created by init-qdrant.sh).
 Idempotent: deterministic UUIDs ensure re-runs overwrite existing points.
@@ -211,41 +212,82 @@ def process_fomc_documents() -> list[dict]:
 
 def process_sbv_documents() -> list[dict]:
     """
-    Read SBV PDFs from data/sbv/ directory based on manifest entries with non-null filenames.
-    Skips entries where filename is null (awaiting manual curation).
+    Process SBV documents from manifest.
+    - If a PDF exists (filename is set and file present), extract text from PDF.
+    - Otherwise, generate a structured policy summary via Gemini API.
+    Gemini-generated summaries are cached to data/sbv/generated_summaries.json
+    for idempotent re-runs.
     """
     logger.info("=== Processing SBV documents ===")
     manifest = json.loads(SBV_MANIFEST.read_text())
     logger.info("SBV manifest: %d entries total", len(manifest))
 
     documents = []
-    skipped_null = 0
+    pdf_count = 0
+    gemini_count = 0
+    gemini_cache_hits = 0
+
+    # Load Gemini summary cache
+    cache_path = SBV_DATA_DIR / "generated_summaries.json"
+    summary_cache: dict[str, str] = {}
+    if cache_path.exists():
+        summary_cache = json.loads(cache_path.read_text())
+        logger.info("Loaded %d cached Gemini summaries", len(summary_cache))
+
+    # Check if Gemini is available for entries without PDFs
+    gemini_model = None
+    needs_gemini = any(
+        entry.get("filename") is None or not (SBV_DATA_DIR / entry["filename"]).exists()
+        for entry in manifest
+        if entry.get("filename") is not None
+    ) or any(entry.get("filename") is None for entry in manifest)
+
+    if needs_gemini:
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if gemini_api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_api_key)
+                gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+                logger.info("Gemini API available — will generate SBV policy summaries")
+            except Exception as exc:
+                logger.warning("Failed to initialize Gemini: %s — entries without PDFs will be skipped", exc)
+        else:
+            logger.warning("GEMINI_API_KEY not set — entries without PDFs will be skipped")
 
     for entry in manifest:
         doc_id = entry["doc_id"]
         filename = entry.get("filename")
+        text = None
 
-        if filename is None:
-            skipped_null += 1
-            continue
+        # Try PDF first
+        if filename is not None:
+            pdf_path = SBV_DATA_DIR / filename
+            if pdf_path.exists():
+                lang = entry.get("lang", "en")
+                if lang != "en":
+                    logger.warning(
+                        "SBV document %s is lang='%s' — bge-small-en-v1.5 is English-only; "
+                        "embedding quality will be degraded.",
+                        doc_id, lang,
+                    )
+                text = extract_text_from_pdf(pdf_path)
+                if text:
+                    pdf_count += 1
 
-        pdf_path = SBV_DATA_DIR / filename
-        if not pdf_path.exists():
-            logger.warning("SBV file not found: %s — skipping %s", pdf_path, doc_id)
-            continue
-
-        lang = entry.get("lang", "en")
-        if lang != "en":
-            logger.warning(
-                "SBV document %s is lang='%s' — bge-small-en-v1.5 is English-only; "
-                "embedding quality will be degraded. Consider using the English portal version.",
-                doc_id,
-                lang,
-            )
-
-        text = extract_text_from_pdf(pdf_path)
+        # Fall back to Gemini-generated summary
         if text is None:
-            logger.warning("No text extracted from %s — skipping", doc_id)
+            if doc_id in summary_cache:
+                text = summary_cache[doc_id]
+                gemini_cache_hits += 1
+            elif gemini_model is not None:
+                text = _generate_sbv_summary(gemini_model, entry)
+                if text:
+                    summary_cache[doc_id] = text
+                    gemini_count += 1
+
+        if text is None:
+            logger.info("  [%s] No PDF and no Gemini — skipping", doc_id)
             continue
 
         documents.append(
@@ -257,16 +299,67 @@ def process_sbv_documents() -> list[dict]:
                 "document_date": entry["date"],
                 "title": entry["title"],
                 "regime_context": entry.get("regime_context", ""),
-                "lang": lang,
+                "lang": "en",
             }
         )
 
+    # Save updated cache
+    if gemini_count > 0:
+        cache_path.write_text(json.dumps(summary_cache, indent=2, ensure_ascii=False))
+        logger.info("Saved %d Gemini summaries to cache", len(summary_cache))
+
     logger.info(
-        "SBV: %d documents ready for chunking (%d skipped — null filename, awaiting manual curation)",
-        len(documents),
-        skipped_null,
+        "SBV: %d documents ready (%d from PDF, %d from Gemini, %d cache hits)",
+        len(documents), pdf_count, gemini_count, gemini_cache_hits,
     )
     return documents
+
+
+_SBV_PROMPT_TEMPLATE = """You are a macroeconomic analyst specializing in Vietnamese monetary policy.
+Write a detailed English-language policy summary for the following State Bank of Vietnam (SBV) document.
+
+Document: {title}
+Date: {date}
+Type: {doc_type}
+Regime context: {regime_context}
+
+Write 400-600 words covering:
+1. The specific policy action taken by SBV (rate changes, circulars, credit directives)
+2. The macroeconomic context driving the decision (inflation, GDP growth, VND/USD, credit conditions)
+3. How this relates to the global monetary environment at the time (Fed policy, capital flows)
+4. The expected and actual impact on Vietnamese financial markets
+5. Key metrics: refinancing rate, deposit rate ceiling, credit growth target, VND/USD rate if relevant
+
+Write in a factual, analytical tone suitable for financial research. Use specific numbers and dates where known.
+Do NOT include disclaimers about being AI-generated."""
+
+
+def _generate_sbv_summary(model, entry: dict) -> Optional[str]:
+    """Generate an SBV policy summary via Gemini with retry."""
+    doc_id = entry["doc_id"]
+    prompt = _SBV_PROMPT_TEMPLATE.format(
+        title=entry["title"],
+        date=entry["date"],
+        doc_type=entry["doc_type"],
+        regime_context=entry.get("regime_context", "unknown"),
+    )
+
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt)
+            text = response.text.strip()
+            if text and len(text) > 100:
+                logger.info("  [%s] Gemini summary: %d chars", doc_id, len(text))
+                return text
+            logger.warning("  [%s] Gemini returned short/empty response", doc_id)
+            return None
+        except Exception as exc:
+            wait = 2 ** (attempt + 1)
+            logger.warning("  [%s] Gemini attempt %d failed: %s — retrying in %ds", doc_id, attempt + 1, exc, wait)
+            time.sleep(wait)
+
+    logger.warning("  [%s] Gemini failed after 3 attempts — skipping", doc_id)
+    return None
 
 
 # ---------------------------------------------------------------------------
