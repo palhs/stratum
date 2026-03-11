@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 
 SIMILARITY_THRESHOLD = 0.75
 TOP_N_ANALOGUES = 5
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-pro"
 NARRATIVE_CACHE_PATH = Path("neo4j/seed/analogue_narratives.json")
 REGIME_DATA_PATH = Path("neo4j/seed/regime_data.json")
 FRED_DIMENSIONS = ["gdp_avg", "cpi_avg", "unrate_avg", "fedfunds_avg"]
