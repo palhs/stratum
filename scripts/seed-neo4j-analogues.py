@@ -190,12 +190,15 @@ def save_narrative_cache(path: Path, cache: dict) -> None:
         json.dump(cache, f, indent=2)
 
 
-def call_gemini_with_retry(model, prompt: str, max_retries: int = 3) -> str:
+def call_gemini_with_retry(client, prompt: str, max_retries: int = 3) -> str:
     """Call Gemini with exponential backoff on failure."""
     delay = 2
     for attempt in range(max_retries):
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+            )
             return response.text.strip()
         except Exception as exc:
             if attempt < max_retries - 1:
@@ -228,10 +231,9 @@ def generate_narratives(
             pair["narrative"] = ""
         return pairs, cache
 
-    import google.generativeai as genai
+    from google import genai
 
-    genai.configure(api_key=gemini_api_key)
-    model = genai.GenerativeModel(GEMINI_MODEL)
+    client = genai.Client(api_key=gemini_api_key)
 
     new_calls = 0
     for pair in pairs:
@@ -263,7 +265,7 @@ def generate_narratives(
             similarity_score=pair["similarity_score"],
         )
 
-        narrative = call_gemini_with_retry(model, prompt)
+        narrative = call_gemini_with_retry(client, prompt)
         pair["narrative"] = narrative
         cache[cache_key] = narrative
         new_calls += 1

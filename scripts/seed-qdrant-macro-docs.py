@@ -246,9 +246,8 @@ def process_sbv_documents() -> list[dict]:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
         if gemini_api_key:
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=gemini_api_key)
-                gemini_model = genai.GenerativeModel("gemini-2.5-flash")
+                from google import genai
+                gemini_model = genai.Client(api_key=gemini_api_key)
                 logger.info("Gemini API available — will generate SBV policy summaries")
             except Exception as exc:
                 logger.warning("Failed to initialize Gemini: %s — entries without PDFs will be skipped", exc)
@@ -334,7 +333,7 @@ Write in a factual, analytical tone suitable for financial research. Use specifi
 Do NOT include disclaimers about being AI-generated."""
 
 
-def _generate_sbv_summary(model, entry: dict) -> Optional[str]:
+def _generate_sbv_summary(client, entry: dict) -> Optional[str]:
     """Generate an SBV policy summary via Gemini with retry."""
     doc_id = entry["doc_id"]
     prompt = _SBV_PROMPT_TEMPLATE.format(
@@ -346,7 +345,10 @@ def _generate_sbv_summary(model, entry: dict) -> Optional[str]:
 
     for attempt in range(3):
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
             text = response.text.strip()
             if text and len(text) > 100:
                 logger.info("  [%s] Gemini summary: %d chars", doc_id, len(text))
