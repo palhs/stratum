@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-12T17:36:00Z"
+last_updated: "2026-03-13T01:15:00Z"
 progress:
   total_phases: 2
   completed_phases: 2
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 5 of 9 in progress (Retrieval Layer Validation)
-Plan: 01 of 3 complete — Phase 5 Plan 01 DONE (reasoning/ scaffold, freshness types, Qdrant hybrid migration)
-Status: Phase 5 in progress (Plan 01 complete; Plans 02-03 next)
-Last activity: 2026-03-12 — 05-01 complete: reasoning/ scaffold with Pydantic types, check_freshness(), Qdrant named-vector hybrid migration, 21 unit tests pass
+Plan: 02 of 3 complete — Phase 5 Plan 02 DONE (Neo4j + PostgreSQL retrievers, 26 integration tests)
+Status: Phase 5 in progress (Plans 01-02 complete; Plan 03 next)
+Last activity: 2026-03-13 — 05-02 complete: Neo4j CypherTemplateRetriever, PostgreSQL 5-table retrievers, freshness warnings, NoDataError pattern, 10+16 integration tests pass
 
-Progress: [████░░░░░░] 30% (8/27 plans)
+Progress: [████░░░░░░] 33% (9/27 plans)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 30% (8/27 plans)
 | 04-04 | ~15 min | 1 | 2 |
 | 04-02 | ~2 min | 1 | 1 |
 | 05-01 | ~7 min | 2 | 11 |
+| 05-02 | ~15 min | 2 | 6 |
 
 *Updated after each plan completion*
 
@@ -94,6 +95,10 @@ Key decisions active for v2.0:
 - [Phase 05-01]: BM25 sparse vectors computed at index time by seed scripts — LlamaIndex only generates sparse query vectors at search time
 - [Phase 05-01]: warnings: list[str] = [] on all Pydantic return types — freshness/data-quality warnings propagate through pipeline without exceptions
 - [Phase 05-01]: now_override parameter on check_freshness() — deterministic test assertions without mocking datetime
+- [Phase 05-02]: Neo4jPropertyGraphStore used (not PropertyGraphIndex.from_documents) — Phase 4 graph already exists; avoid re-indexing
+- [Phase 05-02]: get_regime_analogues() falls back to empty list on LLM failure — graceful degradation for Phase 6 nodes
+- [Phase 05-02]: PostgreSQL tests run in Docker reasoning network — postgres has no host port mapping (locked INFRA decision)
+- [Phase 05-02]: RegimeParams Field descriptions include actual node ID format hints — mitigates LLM hallucination on keyword extraction
 
 ### Pending Todos
 
@@ -108,6 +113,6 @@ Key decisions active for v2.0:
 
 ## Session Continuity
 
-Last session: 2026-03-12
-Stopped at: Completed 05-01-PLAN.md — reasoning/ scaffold with Pydantic v2 types, check_freshness(), Qdrant named-vector hybrid migration (text-dense + BM25 text-sparse), 21 unit tests pass
+Last session: 2026-03-13
+Stopped at: Completed 05-02-PLAN.md — Neo4j CypherTemplateRetriever, PostgreSQL 5-table retrievers with freshness warnings, 26 integration tests (25 pass, 1 skipped for empty FRED table)
 Resume file: None
