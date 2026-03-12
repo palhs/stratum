@@ -2,9 +2,8 @@
 reasoning/app/retrieval — Public API for the retrieval layer.
 Phase 5 | Plans 01-03
 
-Exports shared types, freshness check logic, and threshold constants.
-Retriever functions (get_regime_analogues, get_macro_docs, get_earnings_docs, etc.)
-are added in Plans 02-03.
+Exports shared types, freshness check logic, threshold constants,
+and all retriever functions (added in Plans 02-03).
 """
 
 from reasoning.app.retrieval.freshness import check_freshness, FRESHNESS_THRESHOLDS
@@ -17,6 +16,17 @@ from reasoning.app.retrieval.types import (
     GoldPriceRow,
     GoldEtfRow,
     NoDataError,
+)
+from reasoning.app.retrieval.neo4j_retriever import (
+    get_regime_analogues,
+    get_all_analogues,
+)
+from reasoning.app.retrieval.postgres_retriever import (
+    get_fundamentals,
+    get_structure_markers,
+    get_fred_indicators,
+    get_gold_price,
+    get_gold_etf,
 )
 
 __all__ = [
@@ -32,4 +42,13 @@ __all__ = [
     "GoldPriceRow",
     "GoldEtfRow",
     "NoDataError",
+    # Neo4j retrievers
+    "get_regime_analogues",
+    "get_all_analogues",
+    # PostgreSQL retrievers
+    "get_fundamentals",
+    "get_structure_markers",
+    "get_fred_indicators",
+    "get_gold_price",
+    "get_gold_etf",
 ]
