@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-13T01:15:00Z"
+last_updated: "2026-03-12T18:26:41Z"
 progress:
   total_phases: 2
   completed_phases: 2
@@ -23,12 +23,12 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 5 of 9 in progress (Retrieval Layer Validation)
-Plan: 02 of 3 complete — Phase 5 Plan 02 DONE (Neo4j + PostgreSQL retrievers, 26 integration tests)
-Status: Phase 5 in progress (Plans 01-02 complete; Plan 03 next)
-Last activity: 2026-03-13 — 05-02 complete: Neo4j CypherTemplateRetriever, PostgreSQL 5-table retrievers, freshness warnings, NoDataError pattern, 10+16 integration tests pass
+Phase: 5 of 9 complete (Retrieval Layer Validation)
+Plan: 03 of 3 complete — Phase 5 DONE (Qdrant hybrid retriever, 6 integration tests; full retrieval layer validated)
+Status: Phase 5 complete — Phase 6 (Reasoning Engine) is next
+Last activity: 2026-03-12 — 05-03 complete: Qdrant hybrid dense+sparse retriever, language + ticker filtering, freshness warnings, 6 integration tests pass; full retrieval layer (Neo4j + PostgreSQL + Qdrant) validated
 
-Progress: [████░░░░░░] 33% (9/27 plans)
+Progress: [████░░░░░░] 37% (10/27 plans)
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [████░░░░░░] 33% (9/27 plans)
 | 04-02 | ~2 min | 1 | 1 |
 | 05-01 | ~7 min | 2 | 11 |
 | 05-02 | ~15 min | 2 | 6 |
+| 05-03 | ~15 min | 2 | 3 |
 
 *Updated after each plan completion*
 
@@ -99,6 +100,9 @@ Key decisions active for v2.0:
 - [Phase 05-02]: get_regime_analogues() falls back to empty list on LLM failure — graceful degradation for Phase 6 nodes
 - [Phase 05-02]: PostgreSQL tests run in Docker reasoning network — postgres has no host port mapping (locked INFRA decision)
 - [Phase 05-02]: RegimeParams Field descriptions include actual node ID format hints — mitigates LLM hallucination on keyword extraction
+- [Phase 05-03]: Explicit BM25 sparse encoder injection bypasses SPLADE auto-detection — LlamaIndex 0.9.x treats "text-sparse" as old-format, falls back to torch-dependent SPLADE; explicit sparse_doc_fn/sparse_query_fn with fastembed_sparse_encoder fixes this
+- [Phase 05-03]: Language filter via MetadataFilters at retriever level (not constructor-level qdrant_filters) — stable across LlamaIndex versions, correctly builds Qdrant FieldCondition
+- [Phase 05-03]: Collection-specific alpha weights: macro=0.7 (dense-favored for FOMC policy language), earnings=0.5 (balanced for keyword-heavy financial data + narrative)
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ Key decisions active for v2.0:
 
 ## Session Continuity
 
-Last session: 2026-03-13
-Stopped at: Completed 05-02-PLAN.md — Neo4j CypherTemplateRetriever, PostgreSQL 5-table retrievers with freshness warnings, 26 integration tests (25 pass, 1 skipped for empty FRED table)
+Last session: 2026-03-12
+Stopped at: Completed 05-03-PLAN.md — Qdrant hybrid retriever (search_macro_docs, search_earnings_docs), 6 integration tests pass; full retrieval layer validated; Phase 5 complete
 Resume file: None

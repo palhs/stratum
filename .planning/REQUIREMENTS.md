@@ -26,7 +26,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 ### Retrieval
 
 - [x] **RETR-01**: LlamaIndex Neo4j retriever (CypherTemplateRetriever) validated against loaded regime graph data
-- [ ] **RETR-02**: LlamaIndex Qdrant retriever (hybrid dense+sparse) validated against document corpus
+- [x] **RETR-02**: LlamaIndex Qdrant retriever (hybrid dense+sparse) validated against document corpus
 - [x] **RETR-03**: PostgreSQL direct query patterns validated against fundamentals, structure_markers, and FRED indicator tables
 - [x] **RETR-04**: Every retrieval function includes `data_as_of` freshness check and emits warnings when thresholds are exceeded
 
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-03 | Phase 4 | Complete |
 | DATA-04 | Phase 4 | Complete |
 | RETR-01 | Phase 5 | Complete |
-| RETR-02 | Phase 5 | Pending |
+| RETR-02 | Phase 5 | Complete |
 | RETR-03 | Phase 5 | Complete |
 | RETR-04 | Phase 5 | Complete |
 | REAS-01 | Phase 6 | Pending |
