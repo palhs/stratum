@@ -25,10 +25,10 @@ from typing import Optional
 import httpx
 import pdfplumber
 from dotenv import load_dotenv
-from fastembed import TextEmbedding
+from fastembed import TextEmbedding, SparseTextEmbedding
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct
+from qdrant_client.models import PointStruct, SparseVector
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -45,6 +45,8 @@ logger = logging.getLogger(__name__)
 QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+# Internal Docker network uses plain HTTP; disable TLS for local Qdrant.
+QDRANT_HTTPS = os.getenv("QDRANT_HTTPS", "false").lower() in ("true", "1", "yes")
 
 if not QDRANT_API_KEY:
     raise EnvironmentError("QDRANT_API_KEY environment variable is required")
@@ -52,8 +54,9 @@ if not QDRANT_API_KEY:
 COLLECTION_NAME = "macro_docs_v1"
 COLLECTION_ALIAS = "macro_docs"
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
-EMBED_BATCH_SIZE = 64
-UPLOAD_BATCH_SIZE = 64
+SPARSE_MODEL = "Qdrant/bm25"
+EMBED_BATCH_SIZE = 16
+UPLOAD_BATCH_SIZE = 16
 
 CHUNK_SIZE = 2048        # ~512 tokens for bge-small-en-v1.5
 CHUNK_OVERLAP = 256      # ~12% overlap per RESEARCH.md Pattern 4
@@ -349,7 +352,7 @@ def _generate_sbv_summary(client, entry: dict) -> Optional[str]:
                 model="gemini-2.5-flash",
                 contents=prompt,
             )
-            text = response.text.strip()
+            text = (response.text or "").strip()
             if text and len(text) > 100:
                 logger.info("  [%s] Gemini summary: %d chars", doc_id, len(text))
                 return text
@@ -369,13 +372,10 @@ def _generate_sbv_summary(client, entry: dict) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def build_points(documents: list[dict]) -> list[PointStruct]:
-    """
-    Chunk all documents, embed with FastEmbed, and return Qdrant PointStruct list.
-    Uses deterministic UUIDs for idempotent re-runs.
-    """
+def chunk_documents(documents: list[dict]) -> list[dict]:
+    """Chunk all documents into metadata dicts (without embeddings). Low memory."""
     if not documents:
-        logger.warning("No documents to embed — skipping embedding step")
+        logger.warning("No documents to chunk — skipping")
         return []
 
     logger.info("=== Chunking %d documents ===", len(documents))
@@ -407,61 +407,77 @@ def build_points(documents: list[dict]) -> list[PointStruct]:
             )
 
     logger.info("Total chunks to embed: %d", len(all_chunks))
+    return all_chunks
 
-    logger.info("=== Embedding with FastEmbed %s ===", EMBED_MODEL)
+
+def embed_and_upsert(client: QdrantClient, all_chunks: list[dict]) -> int:
+    """
+    Embed and upsert chunks in streaming batches to minimize peak memory.
+    Processes EMBED_BATCH_SIZE chunks at a time: embed → upsert → discard.
+    """
+    import gc
+
+    if not all_chunks:
+        logger.warning("No chunks to embed")
+        return 0
+
+    logger.info("=== Embedding with FastEmbed %s (dense) + %s (sparse BM25) ===", EMBED_MODEL, SPARSE_MODEL)
     embedding_model = TextEmbedding(model_name=EMBED_MODEL)
+    sparse_model = SparseTextEmbedding(model_name=SPARSE_MODEL)
 
-    texts = [c["text"] for c in all_chunks]
+    total_upserted = 0
+    total_chunks = len(all_chunks)
     t0 = time.time()
 
-    embeddings = list(embedding_model.embed(texts, batch_size=EMBED_BATCH_SIZE))
+    for batch_start in range(0, total_chunks, EMBED_BATCH_SIZE):
+        batch_chunks = all_chunks[batch_start : batch_start + EMBED_BATCH_SIZE]
+        batch_texts = [c["text"] for c in batch_chunks]
+
+        # Embed this batch — dense (384-dim) + sparse BM25
+        dense_embeddings = list(embedding_model.embed(batch_texts, batch_size=EMBED_BATCH_SIZE))
+        sparse_embeddings = list(sparse_model.embed(batch_texts, batch_size=EMBED_BATCH_SIZE))
+
+        # Build points with named vectors for LlamaIndex hybrid search
+        points = [
+            PointStruct(
+                id=chunk["point_id"],
+                vector={
+                    "text-dense": dense_embeddings[j].tolist(),
+                    "text-sparse": SparseVector(
+                        indices=sparse_embeddings[j].indices.tolist(),
+                        values=sparse_embeddings[j].values.tolist(),
+                    ),
+                },
+                payload=chunk["payload"],
+            )
+            for j, chunk in enumerate(batch_chunks)
+        ]
+
+        # Upsert immediately
+        client.upload_points(
+            collection_name=COLLECTION_NAME,
+            points=points,
+            wait=True,
+        )
+        total_upserted += len(points)
+        logger.info(
+            "  Embedded+upserted batch %d-%d / %d",
+            batch_start + 1,
+            batch_start + len(points),
+            total_chunks,
+        )
+
+        # Free batch memory
+        del dense_embeddings, sparse_embeddings, points, batch_texts, batch_chunks
+        gc.collect()
 
     elapsed = time.time() - t0
     logger.info(
-        "Embedded %d chunks in %.1fs (%.0f chunks/sec)",
-        len(embeddings),
+        "Embedded and upserted %d chunks in %.1fs (%.0f chunks/sec)",
+        total_upserted,
         elapsed,
-        len(embeddings) / elapsed if elapsed > 0 else 0,
+        total_upserted / elapsed if elapsed > 0 else 0,
     )
-
-    points = [
-        PointStruct(
-            id=chunk["point_id"],
-            vector=embeddings[i].tolist(),
-            payload=chunk["payload"],
-        )
-        for i, chunk in enumerate(all_chunks)
-    ]
-
-    return points
-
-
-def upsert_to_qdrant(client: QdrantClient, points: list[PointStruct]) -> int:
-    """
-    Upsert points to Qdrant macro_docs_v1 collection in batches.
-    Returns total count of points upserted.
-    """
-    if not points:
-        logger.warning("No points to upsert")
-        return 0
-
-    logger.info("=== Upserting %d points to Qdrant collection '%s' ===", len(points), COLLECTION_NAME)
-
-    total_upserted = 0
-    for batch_start in range(0, len(points), UPLOAD_BATCH_SIZE):
-        batch = points[batch_start : batch_start + UPLOAD_BATCH_SIZE]
-        client.upload_points(
-            collection_name=COLLECTION_NAME,
-            points=batch,
-            wait=True,
-        )
-        total_upserted += len(batch)
-        logger.info(
-            "  Upserted batch %d-%d / %d",
-            batch_start + 1,
-            batch_start + len(batch),
-            len(points),
-        )
 
     return total_upserted
 
@@ -475,8 +491,10 @@ def validate_population(client: QdrantClient, expected_min: int) -> None:
     """
     Validate collection after population:
     1. Check total point count
-    2. Run similarity search for 'Federal Reserve rate decision'
+    2. Check per-source counts (FOMC vs SBV)
     """
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
+
     logger.info("=== Validating Qdrant collection '%s' ===", COLLECTION_NAME)
 
     info = client.get_collection(COLLECTION_NAME)
@@ -488,42 +506,16 @@ def validate_population(client: QdrantClient, expected_min: int) -> None:
             "Point count %d is below expected minimum %d", point_count, expected_min
         )
 
-    # Test similarity search
-    query_text = "Federal Reserve rate decision"
-    logger.info("Running test search: '%s'", query_text)
-
-    embedding_model = TextEmbedding(model_name=EMBED_MODEL)
-    query_embedding = list(embedding_model.embed([query_text]))[0].tolist()
-
-    results = client.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=query_embedding,
-        limit=3,
-    )
-
-    if not results:
-        logger.warning("No results returned from test search — collection may be empty")
-        return
-
-    logger.info("Top-3 similarity search results for '%s':", query_text)
-    for rank, result in enumerate(results, start=1):
-        score = result.score
-        doc_id = result.payload.get("doc_id", "unknown")
-        doc_date = result.payload.get("document_date", "unknown")
-        title = result.payload.get("title", "unknown")[:60]
-        logger.info(
-            "  #%d  score=%.4f  doc_id=%s  date=%s  title=%s...",
-            rank,
-            score,
-            doc_id,
-            doc_date,
-            title,
+    # Check per-source counts
+    for source in ("FOMC", "SBV"):
+        count = client.count(
+            collection_name=COLLECTION_NAME,
+            count_filter=Filter(
+                must=[FieldCondition(key="source", match=MatchValue(value=source))]
+            ),
+            exact=True,
         )
-
-        if score < 0.7:
-            logger.warning(
-                "Search result #%d has score %.4f below 0.7 threshold", rank, score
-            )
+        logger.info("  %s points: %d", source, count.count)
 
 
 # ---------------------------------------------------------------------------
@@ -536,7 +528,9 @@ def main() -> None:
     logger.info("Qdrant target: %s:%d  collection: %s", QDRANT_HOST, QDRANT_PORT, COLLECTION_NAME)
 
     # Connect to Qdrant
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY)
+    client = QdrantClient(
+        host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY, https=QDRANT_HTTPS,
+    )
 
     # Verify collection exists
     collections = [c.name for c in client.get_collections().collections]
@@ -560,17 +554,23 @@ def main() -> None:
         )
         return
 
-    # Build points (chunk + embed)
-    points = build_points(all_docs)
+    # Capture counts before freeing memory
+    fomc_count = len(fomc_docs)
+    sbv_count = len(sbv_docs)
+    doc_count = len(all_docs)
 
-    # Upsert to Qdrant
-    total_upserted = upsert_to_qdrant(client, points)
+    # Free document text memory before embedding
+    all_chunks = chunk_documents(all_docs)
+    del all_docs, fomc_docs, sbv_docs
+
+    # Embed and upsert in streaming batches (memory-safe)
+    total_upserted = embed_and_upsert(client, all_chunks)
+    del all_chunks
 
     # Validate
     validate_population(client, expected_min=1)
 
     # Summary
-    doc_count = len(all_docs)
     logger.info(
         "=== COMPLETE: Uploaded %d chunks from %d documents to %s ===",
         total_upserted,
@@ -579,8 +579,8 @@ def main() -> None:
     )
     logger.info(
         "  FOMC documents: %d | SBV documents: %d",
-        len(fomc_docs),
-        len(sbv_docs),
+        fomc_count,
+        sbv_count,
     )
 
 

@@ -6,22 +6,21 @@ Phase 4 | Plan 04 | Requirement: DATA-04
 Usage:
     python scripts/seed-qdrant-earnings-docs.py
 
-Fetches structured financial statements (income statement, balance sheet, cash flow,
-ratios) for all VN30 tickers via vnstock API, serializes to English text, chunks,
-embeds with FastEmbed, and upserts to Qdrant earnings_docs collection.
+Architecture: Spawns a subprocess per ticker to avoid OOM from vnstock/onnxruntime
+memory leaks (~300MB/ticker that gc cannot reclaim). Each subprocess imports vnstock,
+fetches data, embeds, upserts, and exits — OS reclaims all memory.
 
 Requires: earnings_docs_v1 collection must exist (created by init-qdrant.sh).
 Idempotent: deterministic UUIDs ensure re-runs overwrite existing points.
 
 Data source: vnstock VCI API — no manual PDF downloads needed.
-All financial data fetched in English (lang='en') for optimal embedding quality
-with BAAI/bge-small-en-v1.5.
 """
 
+import json
 import logging
 import os
+import subprocess
 import sys
-import time
 import uuid
 
 import pandas as pd
@@ -45,6 +44,7 @@ load_dotenv()
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "qdrant")
 QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
+QDRANT_HTTPS = os.environ.get("QDRANT_HTTPS", "false").lower() in ("true", "1", "yes")
 
 if not QDRANT_API_KEY:
     logger.error("QDRANT_API_KEY is not set. Cannot connect to Qdrant.")
@@ -54,45 +54,13 @@ if not QDRANT_API_KEY:
 # Configuration
 # ---------------------------------------------------------------------------
 COLLECTION_NAME = "earnings_docs_v1"
-COLLECTION_ALIAS = "earnings_docs"
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
-BATCH_SIZE = 64
-CHUNK_SIZE = 2048     # ~512 tokens
-CHUNK_OVERLAP = 256   # ~12% overlap
-API_DELAY = 1.0       # seconds between vnstock API calls to respect rate limits
+BATCH_SIZE = 16
+CHUNK_SIZE = 2048
+CHUNK_OVERLAP = 256
+API_DELAY = 1.0
 
-
-# ---------------------------------------------------------------------------
-# Deterministic UUID for idempotent upsert
-# ---------------------------------------------------------------------------
 NAMESPACE_EARNINGS = uuid.UUID("e4a5b6c7-d8e9-4f01-a234-567890abcdef")
-
-
-def make_point_id(doc_id: str, chunk_index: int) -> str:
-    """Generate a deterministic UUID5 from doc_id + chunk_index."""
-    key = f"{doc_id}:{chunk_index}"
-    return str(uuid.uuid5(NAMESPACE_EARNINGS, key))
-
-
-# ---------------------------------------------------------------------------
-# VN30 ticker list via vnstock
-# ---------------------------------------------------------------------------
-
-def get_vn30_tickers() -> list[str]:
-    """Fetch current VN30 constituent tickers from vnstock."""
-    from vnstock import Listing
-    symbols_df = Listing(source="vci").symbols_by_group(group="VN30")
-    if isinstance(symbols_df, pd.DataFrame):
-        for col in ("symbol", "ticker", "code"):
-            if col in symbols_df.columns:
-                return sorted(symbols_df[col].tolist())
-        return sorted(symbols_df.iloc[:, 0].tolist())
-    return sorted(list(symbols_df))
-
-
-# ---------------------------------------------------------------------------
-# Financial data fetching
-# ---------------------------------------------------------------------------
 
 STATEMENT_TYPES = [
     ("income_statement", "Income Statement"),
@@ -102,109 +70,22 @@ STATEMENT_TYPES = [
 ]
 
 
-def fetch_financials(ticker: str) -> list[dict]:
-    """Fetch all financial statement types for a ticker.
-
-    Returns a list of dicts, each with keys:
-        ticker, company_name, statement_type, period, fiscal_year, text
-    """
-    from vnstock import Vnstock
-
-    stock = Vnstock().stock(symbol=ticker, source="VCI")
-    results = []
-
-    for attr_name, display_name in STATEMENT_TYPES:
-        for period in ("year", "quarter"):
-            try:
-                method = getattr(stock.finance, attr_name)
-                df = method(period=period, lang="en", dropna=True)
-                time.sleep(API_DELAY)
-
-                if df is None or df.empty:
-                    logger.info("  [%s] %s (%s): no data", ticker, display_name, period)
-                    continue
-
-                text = dataframe_to_text(ticker, display_name, period, df)
-                if not text or len(text.strip()) < 50:
-                    continue
-
-                doc_id = f"{ticker.lower()}_{attr_name}_{period}"
-                results.append({
-                    "doc_id": doc_id,
-                    "ticker": ticker,
-                    "statement_type": attr_name,
-                    "statement_display": display_name,
-                    "period": period,
-                    "text": text,
-                })
-                logger.info(
-                    "  [%s] %s (%s): %d chars",
-                    ticker, display_name, period, len(text),
-                )
-
-            except Exception as exc:
-                logger.warning(
-                    "  [%s] %s (%s) failed: %s",
-                    ticker, display_name, period, exc,
-                )
-                time.sleep(API_DELAY)
-
-    return results
+# ---------------------------------------------------------------------------
+# Shared helpers (used by both orchestrator and worker)
+# ---------------------------------------------------------------------------
 
 
-def dataframe_to_text(
-    ticker: str,
-    statement_name: str,
-    period: str,
-    df: pd.DataFrame,
-) -> str:
-    """Serialize a financial statement DataFrame to readable English text.
-
-    Produces a structured text representation suitable for embedding:
-    - Header with ticker, statement type, period
-    - Each row as "metric: value1 | value2 | ..." across time periods
-    """
-    period_label = "Annual" if period == "year" else "Quarterly"
-    lines = [
-        f"{ticker} — {statement_name} ({period_label})",
-        "=" * 60,
-        "",
-    ]
-
-    # Try to identify the index/metric column vs numeric columns
-    # vnstock returns DataFrames where the first column is often the metric name
-    cols = df.columns.tolist()
-
-    # If there's a string-type column, use it as the row label
-    label_col = None
-    for col in cols:
-        if df[col].dtype == object:
-            label_col = col
-            break
-
-    if label_col:
-        value_cols = [c for c in cols if c != label_col]
-        # Column headers
-        if value_cols:
-            lines.append(f"Periods: {' | '.join(str(c) for c in value_cols)}")
-            lines.append("-" * 60)
-
-        for _, row in df.iterrows():
-            label = str(row[label_col])
-            values = " | ".join(_fmt_value(row[c]) for c in value_cols)
-            lines.append(f"{label}: {values}")
-    else:
-        # All numeric — use column names as labels, transpose for readability
-        lines.append(df.to_string())
-
-    lines.append("")
-    return "\n".join(lines)
+def make_point_id(doc_id: str, chunk_index: int) -> str:
+    key = f"{doc_id}:{chunk_index}"
+    return str(uuid.uuid5(NAMESPACE_EARNINGS, key))
 
 
 def _fmt_value(val) -> str:
-    """Format a single cell value for text serialization."""
-    if pd.isna(val):
-        return "N/A"
+    try:
+        if pd.isna(val):
+            return "N/A"
+    except (ValueError, TypeError):
+        pass
     if isinstance(val, float):
         if abs(val) >= 1e9:
             return f"{val/1e9:.2f}B"
@@ -216,245 +97,366 @@ def _fmt_value(val) -> str:
     return str(val)
 
 
-# ---------------------------------------------------------------------------
-# Chunking
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# WORKER MODE: process a single ticker (runs in subprocess)
+# ===========================================================================
 
-def chunk_text(text: str) -> list[str]:
-    """Split text using RecursiveCharacterTextSplitter."""
+
+def worker_main(ticker: str) -> None:
+    """Process one ticker: fetch, chunk, embed, upsert. Called in subprocess."""
+    import gc
+    import time
+    from fastembed import TextEmbedding, SparseTextEmbedding
     from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import PointStruct, SparseVector
+
+    logger.info("  Worker started for %s (PID %d)", ticker, os.getpid())
+
+    # Connect to Qdrant
+    client = QdrantClient(
+        host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY,
+        https=QDRANT_HTTPS, timeout=60,
+    )
+
+    # Load embedding models — dense (BAAI/bge-small-en-v1.5) + sparse BM25
+    embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
+    sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
+
+    # Fetch financial data
+    from vnstock import Vnstock
+    stock = Vnstock().stock(symbol=ticker, source="VCI")
+
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
+        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
-    chunks = splitter.split_text(text)
-    return [c for c in chunks if len(c.strip()) > 50]
+
+    total_uploaded = 0
+    total_statements = 0
+
+    for attr_name, display_name in STATEMENT_TYPES:
+        for period in ("year", "quarter"):
+            try:
+                method = getattr(stock.finance, attr_name)
+                df = method(period=period, lang="en", dropna=True)
+                time.sleep(API_DELAY)
+
+                if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+                    continue
+
+                # Serialize DataFrame to text
+                text = dataframe_to_text(ticker, display_name, period, df)
+                del df
+                if not text or len(text.strip()) < 50:
+                    continue
+
+                logger.info("  [%s] %s (%s): %d chars", ticker, display_name, period, len(text))
+
+                # Chunk
+                chunks = [c for c in splitter.split_text(text) if len(c.strip()) > 50]
+                del text
+                if not chunks:
+                    continue
+
+                doc_id = f"{ticker.lower()}_{attr_name}_{period}"
+                total_chunks = len(chunks)
+
+                # Embed and upsert in small batches — named vectors for hybrid search
+                for batch_start in range(0, len(chunks), BATCH_SIZE):
+                    batch_texts = chunks[batch_start:batch_start + BATCH_SIZE]
+                    dense_embeddings = list(embedding_model.embed(batch_texts, batch_size=BATCH_SIZE))
+                    sparse_embeddings = list(sparse_model.embed(batch_texts, batch_size=BATCH_SIZE))
+
+                    points = [
+                        PointStruct(
+                            id=make_point_id(doc_id, batch_start + j),
+                            vector={
+                                "text-dense": dense_embeddings[j].tolist(),
+                                "text-sparse": SparseVector(
+                                    indices=sparse_embeddings[j].indices.tolist(),
+                                    values=sparse_embeddings[j].values.tolist(),
+                                ),
+                            },
+                            payload={
+                                "text": batch_texts[j],
+                                "ticker": ticker,
+                                "statement_type": attr_name,
+                                "statement_display": display_name,
+                                "period": period,
+                                "doc_id": doc_id,
+                                "lang": "en",
+                                "chunk_index": batch_start + j,
+                                "total_chunks": total_chunks,
+                            },
+                        )
+                        for j in range(len(batch_texts))
+                    ]
+
+                    client.upload_points(
+                        collection_name=COLLECTION_NAME,
+                        points=points,
+                        batch_size=BATCH_SIZE,
+                        wait=True,
+                    )
+                    total_uploaded += len(points)
+                    del dense_embeddings, sparse_embeddings, points
+
+                del chunks
+                gc.collect()
+                total_statements += 1
+
+            except SystemExit as exc:
+                logger.warning("  [%s] %s (%s): vnstock rate limit — pausing 60s", ticker, display_name, period)
+                time.sleep(60)
+            except Exception as exc:
+                logger.warning("  [%s] %s (%s) failed: %s", ticker, display_name, period, exc)
+                time.sleep(API_DELAY)
+
+    # Output result as JSON for the orchestrator to parse
+    result = {"ticker": ticker, "chunks": total_uploaded, "statements": total_statements}
+    print(f"__RESULT__:{json.dumps(result)}")
 
 
-# ---------------------------------------------------------------------------
-# Qdrant helpers
-# ---------------------------------------------------------------------------
+def dataframe_to_text(ticker: str, statement_name: str, period: str, df: pd.DataFrame) -> str:
+    period_label = "Annual" if period == "year" else "Quarterly"
+    lines = [f"{ticker} — {statement_name} ({period_label})", "=" * 60, ""]
 
-def get_qdrant_client():
-    """Create and return a configured QdrantClient."""
+    cols = df.columns.tolist()
+    label_col = None
+    for col in cols:
+        if df[col].dtype == object:
+            label_col = col
+            break
+
+    if label_col:
+        value_cols = [c for c in cols if c != label_col]
+        if value_cols:
+            lines.append(f"Periods: {' | '.join(str(c) for c in value_cols)}")
+            lines.append("-" * 60)
+        for _, row in df.iterrows():
+            label = str(row[label_col])
+            values = " | ".join(_fmt_value(row[c]) for c in value_cols)
+            lines.append(f"{label}: {values}")
+    else:
+        lines.append(df.to_string())
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ===========================================================================
+# ORCHESTRATOR MODE: coordinate per-ticker subprocesses
+# ===========================================================================
+
+
+def get_vn30_tickers() -> list[str]:
+    from vnstock import Listing
+    try:
+        symbols_df = Listing(source="vci").symbols_by_group(group="VN30")
+    except SystemExit as exc:
+        raise RuntimeError("Cannot fetch VN30 tickers — vnstock rate limited") from exc
+
+    if isinstance(symbols_df, pd.DataFrame):
+        if symbols_df.empty:
+            raise RuntimeError("VN30 ticker list is empty")
+        for col in ("symbol", "ticker", "code"):
+            if col in symbols_df.columns:
+                return sorted(symbols_df[col].tolist())
+        return sorted(symbols_df.iloc[:, 0].tolist())
+    if isinstance(symbols_df, pd.Series):
+        if symbols_df.empty:
+            raise RuntimeError("VN30 ticker list is empty")
+        return sorted(symbols_df.tolist())
+    result = list(symbols_df) if symbols_df is not None else []
+    if not result:
+        raise RuntimeError("VN30 ticker list is empty")
+    return sorted(result)
+
+
+def ensure_collection_exists() -> None:
     from qdrant_client import QdrantClient
-    return QdrantClient(
-        host=QDRANT_HOST,
-        port=QDRANT_PORT,
-        api_key=QDRANT_API_KEY,
-        timeout=60,
+    client = QdrantClient(
+        host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY,
+        https=QDRANT_HTTPS, timeout=60,
     )
-
-
-def ensure_collection_exists(client) -> None:
-    """Create earnings_docs_v1 collection + alias if not already present."""
-    from qdrant_client.models import Distance, VectorParams
-
     existing = {c.name for c in client.get_collections().collections}
     if COLLECTION_NAME not in existing:
-        logger.info("Collection '%s' not found — creating now...", COLLECTION_NAME)
-        client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+        raise RuntimeError(
+            f"Collection '{COLLECTION_NAME}' does not exist. "
+            "Run: docker compose --profile storage run --rm qdrant-init"
         )
-        client.update_collection_aliases(
-            change_aliases_operations=[
-                {
-                    "create_alias": {
-                        "collection_name": COLLECTION_NAME,
-                        "alias_name": COLLECTION_ALIAS,
-                    }
-                }
-            ]
-        )
-        logger.info("Created collection '%s' with alias '%s'.", COLLECTION_NAME, COLLECTION_ALIAS)
-    else:
-        logger.info("Collection '%s' already exists.", COLLECTION_NAME)
+    logger.info("Collection '%s' confirmed present.", COLLECTION_NAME)
 
 
-def upsert_chunks(client, chunks: list[str], payloads: list[dict], embedding_model) -> int:
-    """Embed and upsert a batch of text chunks to Qdrant."""
-    from qdrant_client.models import PointStruct
+def run_ticker_subprocess(ticker: str, index: int, total: int) -> dict:
+    """Spawn a subprocess to process one ticker. Returns result dict."""
+    logger.info("--- [%d/%d] Ticker: %s ---", index, total, ticker)
 
-    if not chunks:
-        return 0
-
-    embeddings = list(embedding_model.embed(chunks, batch_size=BATCH_SIZE))
-
-    points = [
-        PointStruct(
-            id=payloads[i]["_point_id"],
-            vector=embeddings[i].tolist(),
-            payload={k: v for k, v in payloads[i].items() if k != "_point_id"},
-        )
-        for i in range(len(chunks))
-    ]
-
-    client.upload_points(
-        collection_name=COLLECTION_NAME,
-        points=points,
-        batch_size=BATCH_SIZE,
-        wait=True,
+    result = subprocess.run(
+        [sys.executable, __file__, "--worker", ticker],
+        capture_output=True,
+        text=True,
+        timeout=600,  # 10 min max per ticker
     )
-    return len(points)
+
+    # Stream worker logs to our logger
+    for line in result.stdout.splitlines():
+        if line.startswith("__RESULT__:"):
+            return json.loads(line[len("__RESULT__:"):])
+        else:
+            print(line)
+
+    for line in result.stderr.splitlines():
+        print(line, file=sys.stderr)
+
+    if result.returncode != 0:
+        # Exit code -9 = OOM kill; worker uploaded data before being killed
+        if result.returncode == -9:
+            logger.warning("  [%s] Worker OOM-killed (code -9) — partial data uploaded", ticker)
+            return {"ticker": ticker, "chunks": 0, "statements": 0, "partial": True}
+        logger.error("  [%s] Worker exited with code %d", ticker, result.returncode)
+        return {"ticker": ticker, "chunks": 0, "statements": 0, "error": True}
+
+    # No result line found
+    return {"ticker": ticker, "chunks": 0, "statements": 0}
 
 
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
+def validate_uploads(processed_tickers: list[str]) -> None:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
 
-def validate_uploads(client, processed_tickers: list[str]) -> None:
-    """Run post-upsert validation with similarity search per ticker."""
-    collection_info = client.get_collection(COLLECTION_NAME)
-    total_points = collection_info.points_count
-    logger.info("Collection '%s' total points: %d", COLLECTION_NAME, total_points)
+    client = QdrantClient(
+        host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY,
+        https=QDRANT_HTTPS, timeout=60,
+    )
+
+    info = client.get_collection(COLLECTION_NAME)
+    logger.info("Collection '%s' total points: %d", COLLECTION_NAME, info.points_count)
 
     if not processed_tickers:
-        logger.info("No tickers processed — skipping similarity validation.")
         return
 
-    from fastembed import TextEmbedding
-    model = TextEmbedding(model_name=EMBEDDING_MODEL)
-
+    # Validate by counting points per ticker (no embedding model needed)
     for ticker in processed_tickers[:5]:
-        query_text = f"{ticker} revenue net income"
-        query_vec = list(model.embed([query_text], batch_size=1))[0].tolist()
-        results = client.search(
+        count = client.count(
             collection_name=COLLECTION_NAME,
-            query_vector=query_vec,
-            limit=1,
-            with_payload=["ticker", "statement_type", "period"],
+            count_filter=Filter(
+                must=[FieldCondition(key="ticker", match=MatchValue(value=ticker))]
+            ),
+            exact=True,
         )
-        if results:
-            top = results[0]
-            logger.info(
-                "  Validation [%s]: ticker=%s type=%s period=%s score=%.4f",
-                ticker,
-                top.payload.get("ticker"),
-                top.payload.get("statement_type"),
-                top.payload.get("period"),
-                top.score,
-            )
-        else:
-            logger.warning("  Validation [%s]: no results.", ticker)
+        logger.info("  Validation [%s]: %d points found", ticker, count.count)
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     logger.info("=================================================")
     logger.info("Stratum — Qdrant earnings_docs Seed Script")
     logger.info("Phase 4 | Plan 04 | Requirement: DATA-04")
-    logger.info("Data source: vnstock VCI API (structured financials)")
+    logger.info("Subprocess-per-ticker architecture for memory safety")
     logger.info("=================================================")
 
-    # ------------------------------------------------------------------
-    # 1. Fetch VN30 tickers
-    # ------------------------------------------------------------------
-    logger.info("Fetching VN30 constituent tickers...")
-    tickers = get_vn30_tickers()
-    logger.info("VN30 tickers (%d): %s", len(tickers), ", ".join(tickers))
+    # 1. Determine tickers
+    # --tickers DGC,FPT,GAS  → process only these, preserve existing data
+    ticker_arg = None
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == "--tickers" and i < len(sys.argv) - 1:
+            ticker_arg = sys.argv[i + 1]
+            break
+        if arg.startswith("--tickers="):
+            ticker_arg = arg.split("=", 1)[1]
+            break
 
-    # ------------------------------------------------------------------
-    # 2. Initialize Qdrant client and ensure collection exists
-    # ------------------------------------------------------------------
-    logger.info("Connecting to Qdrant at %s:%d ...", QDRANT_HOST, QDRANT_PORT)
-    client = get_qdrant_client()
-    ensure_collection_exists(client)
+    if ticker_arg:
+        tickers = sorted([t.strip().upper() for t in ticker_arg.split(",") if t.strip()])
+        logger.info("Selective mode: processing %d tickers: %s", len(tickers), ", ".join(tickers))
+    else:
+        logger.info("Fetching VN30 constituent tickers...")
+        tickers = get_vn30_tickers()
+        logger.info("VN30 tickers (%d): %s", len(tickers), ", ".join(tickers))
 
-    # ------------------------------------------------------------------
-    # 3. Initialize FastEmbed model
-    # ------------------------------------------------------------------
-    logger.info("Loading FastEmbed model: %s ...", EMBEDDING_MODEL)
-    from fastembed import TextEmbedding
-    embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
-    logger.info("Model loaded.")
+    # 2. Verify collection; only clear if processing all tickers
+    ensure_collection_exists()
+    if not ticker_arg:
+        from qdrant_client import QdrantClient
+        client = QdrantClient(
+            host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY,
+            https=QDRANT_HTTPS, timeout=60,
+        )
+        info = client.get_collection(COLLECTION_NAME)
+        if info.points_count > 0:
+            logger.info("Clearing %d existing points from '%s'...", info.points_count, COLLECTION_NAME)
+            from qdrant_client.models import FilterSelector, Filter
+            client.delete(
+                collection_name=COLLECTION_NAME,
+                points_selector=FilterSelector(filter=Filter()),
+            )
+            logger.info("Collection cleared.")
+        del client
+    else:
+        logger.info("Selective mode — skipping collection clear (preserving existing data).")
 
-    # ------------------------------------------------------------------
-    # 4. Fetch and process each ticker
-    # ------------------------------------------------------------------
-    total_chunks_uploaded = 0
-    total_docs_processed = 0
-    total_docs_failed = 0
-    processed_tickers: list[str] = []
+    # 3. Process each ticker in its own subprocess
+    total_chunks = 0
+    total_statements = 0
+    processed_tickers = []
+    partial_tickers = []
+    failed_tickers = []
 
     for i, ticker in enumerate(tickers, 1):
-        logger.info("--- [%d/%d] Ticker: %s ---", i, len(tickers), ticker)
-
         try:
-            docs = fetch_financials(ticker)
+            result = run_ticker_subprocess(ticker, i, len(tickers))
+        except subprocess.TimeoutExpired:
+            logger.error("  [%s] Subprocess timed out after 600s", ticker)
+            failed_tickers.append(ticker)
+            continue
         except Exception as exc:
-            logger.error("  [%s] Failed to fetch financials: %s", ticker, exc)
-            total_docs_failed += 1
+            logger.error("  [%s] Subprocess error: %s", ticker, exc)
+            failed_tickers.append(ticker)
             continue
 
-        if not docs:
-            logger.warning("  [%s] No financial data retrieved — skipping.", ticker)
-            total_docs_failed += 1
-            continue
-
-        ticker_chunks: list[str] = []
-        ticker_payloads: list[dict] = []
-
-        for doc in docs:
-            chunks = chunk_text(doc["text"])
-            if not chunks:
-                continue
-
-            total_chunks = len(chunks)
-            for chunk_index, chunk_text_content in enumerate(chunks):
-                ticker_chunks.append(chunk_text_content)
-                ticker_payloads.append({
-                    "_point_id": make_point_id(doc["doc_id"], chunk_index),
-                    "text": chunk_text_content,
-                    "ticker": doc["ticker"],
-                    "statement_type": doc["statement_type"],
-                    "statement_display": doc["statement_display"],
-                    "period": doc["period"],
-                    "doc_id": doc["doc_id"],
-                    "lang": "en",
-                    "chunk_index": chunk_index,
-                    "total_chunks": total_chunks,
-                })
-
-            total_docs_processed += 1
-
-        if ticker_chunks:
-            uploaded = upsert_chunks(client, ticker_chunks, ticker_payloads, embedding_model)
-            total_chunks_uploaded += uploaded
+        if result.get("error"):
+            failed_tickers.append(ticker)
+        elif result.get("partial"):
+            # OOM-killed but uploaded data before dying
+            partial_tickers.append(ticker)
+            logger.info("  [%s] Partial upload (OOM-killed mid-process).", ticker)
+        elif result["chunks"] > 0:
+            total_chunks += result["chunks"]
+            total_statements += result["statements"]
             processed_tickers.append(ticker)
-            logger.info("  Uploaded %d chunks for %s.", uploaded, ticker)
+            logger.info("  Uploaded %d chunks for %s.", result["chunks"], ticker)
+        else:
+            logger.warning("  [%s] No data retrieved.", ticker)
+            failed_tickers.append(ticker)
 
-    # ------------------------------------------------------------------
-    # 5. Validate
-    # ------------------------------------------------------------------
+    # 4. Validate — include partial tickers since they uploaded data too
+    all_with_data = processed_tickers + partial_tickers
     logger.info("=================================================")
     logger.info("Running post-upsert validation...")
-    validate_uploads(client, processed_tickers)
+    validate_uploads(all_with_data)
 
-    # ------------------------------------------------------------------
-    # 6. Summary
-    # ------------------------------------------------------------------
+    # 5. Summary
     logger.info("=================================================")
     logger.info(
-        "Summary: Uploaded %d chunks from %d statement fetches (%d tickers) to %s",
-        total_chunks_uploaded,
-        total_docs_processed,
-        len(processed_tickers),
-        COLLECTION_ALIAS,
+        "Summary: %d tickers fully completed, %d partial (OOM), %d failed",
+        len(processed_tickers), len(partial_tickers), len(failed_tickers),
     )
-    if total_docs_failed > 0:
-        logger.warning(
-            "%d ticker(s) failed or returned no data.",
-            total_docs_failed,
-        )
+    if partial_tickers:
+        logger.info("Partial tickers (data uploaded before OOM): %s", ", ".join(partial_tickers))
+    if failed_tickers:
+        logger.warning("Failed tickers: %s", ", ".join(failed_tickers))
     logger.info("=================================================")
     logger.info("DONE. earnings_docs collection is ready for retrieval.")
     logger.info("=================================================")
 
 
+# ===========================================================================
+# Entry point: --worker <TICKER> for subprocess mode, otherwise orchestrator
+# ===========================================================================
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) >= 3 and sys.argv[1] == "--worker":
+        worker_main(sys.argv[2])
+    else:
+        main()
