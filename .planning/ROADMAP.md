@@ -85,12 +85,12 @@ Plans:
   2. A test call to the Qdrant hybrid retriever (dense + sparse) with a representative financial query returns more relevant results than dense-only search — validated by manual inspection of the top-5 results for at least three representative queries
   3. Direct PostgreSQL query functions for fundamentals, structure_markers, and fred_indicators tables return structured data matching the schema — each function is called with a real asset identifier and returns non-empty results
   4. Every retrieval function emits an explicit warning (logged and returned in the result payload) when `data_as_of` exceeds the freshness threshold — validated by running each retriever against a row with a deliberately stale `data_as_of` date and confirming the warning appears
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: LlamaIndex Neo4j CypherTemplateRetriever implementation and validation
-- [ ] 05-02: LlamaIndex Qdrant hybrid retriever implementation and validation
-- [ ] 05-03: PostgreSQL direct query patterns and data_as_of freshness check implementation
+- [ ] 05-01: Scaffold reasoning/ module, shared types/freshness, Qdrant collection migration to named-vector hybrid config
+- [ ] 05-02: Neo4j CypherTemplateRetriever and PostgreSQL direct query retrievers with integration tests
+- [ ] 05-03: Qdrant hybrid dense+sparse retriever with language filtering and full retrieval layer validation
 
 ### Phase 6: LangGraph Reasoning Nodes
 **Goal**: Five LangGraph nodes (structure, valuation, macro_regime, entry_quality, grounding_check) and one special-case handler (conflicting_signals) are built and validated individually with mock state — each produces Pydantic-validated structured output, consumes only what the next node needs, and handles edge cases (mixed signals, missing data, conflicting sub-assessments) explicitly
