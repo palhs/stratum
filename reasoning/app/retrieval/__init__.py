@@ -28,6 +28,10 @@ from reasoning.app.retrieval.postgres_retriever import (
     get_gold_price,
     get_gold_etf,
 )
+from reasoning.app.retrieval.qdrant_retriever import (
+    search_macro_docs,
+    search_earnings_docs,
+)
 
 __all__ = [
     # Freshness
@@ -51,4 +55,7 @@ __all__ = [
     "get_fred_indicators",
     "get_gold_price",
     "get_gold_etf",
+    # Qdrant retrievers
+    "search_macro_docs",
+    "search_earnings_docs",
 ]
