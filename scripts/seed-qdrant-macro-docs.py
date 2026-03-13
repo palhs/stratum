@@ -507,7 +507,7 @@ def validate_population(client: QdrantClient, expected_min: int) -> None:
         )
 
     # Check per-source counts
-    for source in ("FOMC", "SBV"):
+    for source in ("fomc", "sbv"):
         count = client.count(
             collection_name=COLLECTION_NAME,
             count_filter=Filter(

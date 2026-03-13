@@ -44,7 +44,7 @@ def _get_client() -> QdrantClient:
     global _client
     if _client is None:
         _client = QdrantClient(
-            host=os.getenv("QDRANT_HOST", "localhost"),
+            host=os.getenv("QDRANT_HOST", "qdrant"),
             port=int(os.getenv("QDRANT_PORT", "6333")),
             api_key=os.getenv("QDRANT_API_KEY") or None,
             https=False,

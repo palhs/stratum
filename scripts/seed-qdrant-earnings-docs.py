@@ -19,6 +19,7 @@ Data source: vnstock VCI API — no manual PDF downloads needed.
 import json
 import logging
 import os
+from datetime import datetime
 import subprocess
 import sys
 import uuid
@@ -188,6 +189,7 @@ def worker_main(ticker: str) -> None:
                                 "lang": "en",
                                 "chunk_index": batch_start + j,
                                 "total_chunks": total_chunks,
+                                "document_date": datetime.today().strftime("%Y-%m-%d"),
                             },
                         )
                         for j in range(len(batch_texts))
