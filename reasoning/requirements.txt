@@ -12,3 +12,7 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 pytest>=8.0.0
 pytest-asyncio>=0.24.0
+# Phase 6 reasoning engine — LangGraph + Gemini
+langgraph>=0.2.0
+langchain-google-genai>=2.0.0
+langchain-core>=0.3.0
