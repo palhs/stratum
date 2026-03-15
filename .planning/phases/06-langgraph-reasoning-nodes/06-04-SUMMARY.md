@@ -137,3 +137,15 @@ None. Test infrastructure (Homebrew Python 3.11 venv at `/tmp/stratum_venv`) con
 ---
 *Phase: 06-langgraph-reasoning-nodes*
 *Completed: 2026-03-16*
+
+## Self-Check: PASSED
+
+- reasoning/app/nodes/conflicting_signals.py: FOUND
+- reasoning/app/nodes/entry_quality.py: FOUND
+- reasoning/tests/nodes/test_conflicting_signals.py: FOUND
+- reasoning/tests/nodes/test_entry_quality.py: FOUND
+- Commit 710aa46 (test RED conflicting_signals): FOUND
+- Commit f66ac5b (feat GREEN conflicting_signals): FOUND
+- Commit b85eaab (test RED entry_quality): FOUND
+- Commit 63db7d7 (feat GREEN entry_quality): FOUND
+- All 16 tests pass: VERIFIED
