@@ -33,7 +33,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 ### Reasoning
 
 - [ ] **REAS-01**: Macro regime classification node outputs probability distribution over regime types with mixed-signal handling (top confidence < 70% surfaces "Mixed Signal Environment")
-- [ ] **REAS-02**: Valuation assessment node produces regime-relative valuation for VN equities (P/E, P/B vs historical analogues) and gold (real yield, ETF flow context)
+- [x] **REAS-02**: Valuation assessment node produces regime-relative valuation for VN equities (P/E, P/B vs historical analogues) and gold (real yield, ETF flow context)
 - [x] **REAS-03**: Price structure node interprets pre-computed v1.0 markers (MAs, drawdown, percentile) into narrative without recomputation
 - [ ] **REAS-04**: Entry quality assessment node outputs qualitative tier (Favorable / Neutral / Cautious / Avoid) with three visible sub-assessments (macro, valuation, structure)
 - [ ] **REAS-05**: Grounding check node verifies every numeric claim in report output traces to a specific retrieved database record
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RETR-03 | Phase 5 | Complete |
 | RETR-04 | Phase 5 | Complete |
 | REAS-01 | Phase 6 | Pending |
-| REAS-02 | Phase 6 | Pending |
+| REAS-02 | Phase 6 | Complete |
 | REAS-03 | Phase 6 | Complete |
 | REAS-04 | Phase 6 | Pending |
 | REAS-05 | Phase 6 | Pending |

@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 6 of 9 in progress (LangGraph Reasoning Nodes)
-Plan: 01 of ~5 complete — ReportState TypedDict, 6 Pydantic output models, structure_node with Gemini narrative, 7 passing unit tests
-Status: Phase 6 started — 06-01 complete, 06-02+ (macro_regime, valuation, entry_quality nodes) next
-Last activity: 2026-03-16 — 06-01 complete: ReportState TypedDict, 6 output models, structure_node (deterministic label + Gemini narrative), 7 TDD unit tests pass
+Plan: 02 of ~5 complete — valuation_node with equity/gold dispatch, partial assessment pattern, WGC warning, 10 passing unit tests
+Status: Phase 6 in progress — 06-01 and 06-02 complete, 06-03+ (macro_regime, entry_quality nodes) next
+Last activity: 2026-03-15 — 06-02 complete: valuation_node (dual-path equity/gold dispatch, regime-relative comparison, real yield from FRED, WGC warning, partial assessment), 10 TDD unit tests pass
 
 Progress: [████░░░░░░] 40% (11/27 plans)
 
@@ -51,6 +51,7 @@ Progress: [████░░░░░░] 40% (11/27 plans)
 | 05-02 | ~15 min | 2 | 6 |
 | 05-03 | ~15 min | 2 | 3 |
 | 06-01 | ~25 min | 2 | 8 |
+| 06-02 | ~4 min | 1 (TDD) | 2 |
 
 *Updated after each plan completion*
 
@@ -109,6 +110,10 @@ Key decisions active for v2.0:
 - [Phase 06-01]: gemini-2.0-flash deprecated for new users (404 NOT_FOUND); update to gemini-2.0-flash-001 before first live integration test in later plans
 - [Phase 06-01]: MIXED_SIGNAL_THRESHOLD=0.70 uses strict less-than semantics (top_confidence < 0.70 → is_mixed_signal=True)
 - [Phase 06-01]: Node function signature: (state: ReportState) -> dict[str, Any] — single dict return with state update key; established as canonical pattern for all nodes
+- [Phase 06-02]: Real yield proxy = GS10 - 2.5% (constant breakeven) — CPIAUCSL index level cannot be directly converted to YoY without prior period; approximation acceptable for regime-level gold assessment
+- [Phase 06-02]: pe_vs_analogue_avg = None (not parsed from narrative text) — analogue P/E is prose context for Gemini, not a structured field in RegimeAnalogue; Gemini contextualizes the comparison in narrative
+- [Phase 06-02]: VN equity valuation thresholds: P/E <10x = Attractive, >20x = Stretched (VN30 historical range 10-18x); P/B <1.0 = Attractive, >3.5 = Stretched
+- [Phase 06-02]: Gemini model updated to gemini-2.0-flash-001 in valuation.py (gemini-2.0-flash returns 404 for new users — confirmed in 06-01 issues)
 
 ### Pending Todos
 
@@ -123,6 +128,6 @@ Key decisions active for v2.0:
 
 ## Session Continuity
 
-Last session: 2026-03-16
-Stopped at: Completed 06-01-PLAN.md — ReportState TypedDict, 6 Pydantic output models, structure_node (deterministic label + Gemini narrative), 7 TDD unit tests pass; Phase 6 Plan 01 complete
+Last session: 2026-03-15
+Stopped at: Completed 06-02-PLAN.md — valuation_node (equity path: regime-relative P/E/P/B with analogue weighting; gold path: real yield + ETF context + WGC warning + macro overlay), 10 TDD unit tests pass; Phase 6 Plan 02 complete
 Resume file: None
