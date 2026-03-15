@@ -177,7 +177,7 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 | 3. Infrastructure Hardening and Database Migrations | v2.0 | 4/4 | Complete | 2026-03-09 |
 | 4. Knowledge Graph and Document Corpus Population | 4/4 | Complete   | 2026-03-09 | - |
 | 5. Retrieval Layer Validation | 3/3 | Complete   | 2026-03-12 | - |
-| 6. LangGraph Reasoning Nodes | 2/5 | In Progress|  | - |
+| 6. LangGraph Reasoning Nodes | 3/5 | In Progress|  | - |
 | 7. Graph Assembly and End-to-End Report Generation | v2.0 | 0/5 | Not started | - |
 | 8. FastAPI Gateway and Docker Service | v2.0 | 0/4 | Not started | - |
 | 9. Production Hardening and Batch Validation | v2.0 | 0/3 | Not started | - |
