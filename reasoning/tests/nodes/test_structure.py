@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import importlib
 import inspect
-import sys
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+import reasoning.app.nodes.structure as structure_module
 from reasoning.app.nodes.state import ReportState, StructureOutput
 
 
@@ -80,13 +79,8 @@ def test_structure_node_echoes_marker_values(
 
     mock_llm = _make_mock_llm(expected_output)
 
-    with patch(
-        "reasoning.app.nodes.structure.ChatGoogleGenerativeAI",
-        return_value=mock_llm,
-    ):
-        from reasoning.app.nodes.structure import structure_node
-
-        result_state = structure_node(base_equity_state)
+    with patch.object(structure_module, "ChatGoogleGenerativeAI", return_value=mock_llm):
+        result_state = structure_module.structure_node(base_equity_state)
 
     output = result_state["structure_output"]
     assert output is not None
@@ -129,13 +123,7 @@ def test_structure_node_narrative_mentions_ma_and_drawdown(
 
     mock_llm = _make_mock_llm(expected_output)
 
-    with patch(
-        "reasoning.app.nodes.structure.ChatGoogleGenerativeAI",
-        return_value=mock_llm,
-    ):
-        from reasoning.app.nodes import structure as structure_module
-
-        importlib.reload(structure_module)
+    with patch.object(structure_module, "ChatGoogleGenerativeAI", return_value=mock_llm):
         result_state = structure_module.structure_node(base_equity_state)
 
     output = result_state["structure_output"]
@@ -181,13 +169,7 @@ def test_structure_node_constructive_label(
 
     mock_llm = _make_mock_llm(expected_output)
 
-    with patch(
-        "reasoning.app.nodes.structure.ChatGoogleGenerativeAI",
-        return_value=mock_llm,
-    ):
-        from reasoning.app.nodes import structure as structure_module
-
-        importlib.reload(structure_module)
+    with patch.object(structure_module, "ChatGoogleGenerativeAI", return_value=mock_llm):
         result_state = structure_module.structure_node(base_equity_state)
 
     output = result_state["structure_output"]
@@ -245,13 +227,7 @@ def test_structure_node_deteriorating_label(
 
     mock_llm = _make_mock_llm(expected_output)
 
-    with patch(
-        "reasoning.app.nodes.structure.ChatGoogleGenerativeAI",
-        return_value=mock_llm,
-    ):
-        from reasoning.app.nodes import structure as structure_module
-
-        importlib.reload(structure_module)
+    with patch.object(structure_module, "ChatGoogleGenerativeAI", return_value=mock_llm):
         result_state = structure_module.structure_node(deteriorating_state)
 
     output = result_state["structure_output"]
@@ -291,7 +267,8 @@ def test_structure_node_partial_markers_produces_warning(
         retrieval_warnings=[],
     )
 
-    expected_output = StructureOutput(
+    # Gemini returns a partial output (its narrative will reflect missing data)
+    gemini_output = StructureOutput(
         structure_label="Neutral",
         close=42_500.0,
         ma_10w=None,
@@ -300,23 +277,17 @@ def test_structure_node_partial_markers_produces_warning(
         drawdown_from_ath=-0.125,
         narrative="Partial data: ma_10w and ma_50w unavailable. Assessment based on available MA.",
         sources={},
-        warnings=["ma_10w is missing from structure_markers", "ma_50w is missing from structure_markers"],
+        warnings=[],
     )
 
-    mock_llm = _make_mock_llm(expected_output)
+    mock_llm = _make_mock_llm(gemini_output)
 
-    with patch(
-        "reasoning.app.nodes.structure.ChatGoogleGenerativeAI",
-        return_value=mock_llm,
-    ):
-        from reasoning.app.nodes import structure as structure_module
-
-        importlib.reload(structure_module)
+    with patch.object(structure_module, "ChatGoogleGenerativeAI", return_value=mock_llm):
         result_state = structure_module.structure_node(partial_state)
 
     output = result_state["structure_output"]
     assert output is not None
-    # Should have warnings for missing MA values
+    # Should have warnings for missing MA values (added by _determine_label)
     assert len(output.warnings) > 0
     warning_text = " ".join(output.warnings).lower()
     assert "ma_10w" in warning_text or "ma_50w" in warning_text
@@ -329,11 +300,6 @@ def test_structure_node_partial_markers_produces_warning(
 
 def test_structure_node_no_retrieval_function_imports():
     """structure_node module must NOT import retrieval functions — only type imports."""
-    # Ensure module is loaded
-    import reasoning.app.nodes.structure as structure_module
-
-    importlib.reload(structure_module)
-
     # Banned retrieval function names (not types)
     banned_names = [
         "get_structure_markers",
@@ -353,9 +319,8 @@ def test_structure_node_no_retrieval_function_imports():
             "Only type imports from retrieval.types are permitted."
         )
 
-    # Also check source code doesn't import from retrieval functions module
+    # Also check source code doesn't import from retrieval function modules
     source = inspect.getsource(structure_module)
-    # Should not import from retrieval.neo4j_retriever, retrieval.postgres_retriever, etc.
     assert "from reasoning.app.retrieval.neo4j_retriever" not in source
     assert "from reasoning.app.retrieval.postgres_retriever" not in source
     assert "from reasoning.app.retrieval.qdrant_retriever" not in source
@@ -399,13 +364,7 @@ def test_structure_node_populates_sources(
 
     mock_llm = _make_mock_llm(expected_output)
 
-    with patch(
-        "reasoning.app.nodes.structure.ChatGoogleGenerativeAI",
-        return_value=mock_llm,
-    ):
-        from reasoning.app.nodes import structure as structure_module
-
-        importlib.reload(structure_module)
+    with patch.object(structure_module, "ChatGoogleGenerativeAI", return_value=mock_llm):
         result_state = structure_module.structure_node(base_equity_state)
 
     output = result_state["structure_output"]
