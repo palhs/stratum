@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-12T18:36:04.583Z"
+last_updated: "2026-03-15T19:33:06.796Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 16
+  completed_plans: 16
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 6 of 9 in progress (LangGraph Reasoning Nodes)
-Plan: 04 of ~5 complete — conflicting_signals_handler (named patterns, structure-biased severity), entry_quality_node (structure veto, conflict impact, stale caveat), 16 TDD unit tests pass
-Status: Phase 6 in progress — 06-01, 06-02, 06-03, and 06-04 complete; 06-05+ (grounding node / graph wiring) next
-Last activity: 2026-03-16 — 06-04 complete: conflicting_signals_handler (11 named conflict patterns, deterministic severity) and entry_quality_node (composite tier with structure veto, major/minor conflict impact, stale data caveat), 16 TDD tests pass
+Plan: 05 of ~5 complete — grounding_check_node (recursive float attribution, GroundingError with all claims), finalized __init__.py public API, 50 Phase 6 TDD unit tests pass
+Status: Phase 6 complete — 06-01 through 06-05 all done; Phase 7 (graph wiring) next
+Last activity: 2026-03-16 — 06-05 complete: grounding_check_node (recursive float-field attribution, GroundingError lists all unattributed claims, nested RegimeProbability via source_analogue_id), __init__.py finalized with all 6 node exports, 50 Phase 6 TDD tests pass
 
-Progress: [████░░░░░░] 45% (13/29 plans)
+Progress: [████░░░░░░] 48% (14/29 plans)
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [████░░░░░░] 45% (13/29 plans)
 | 06-02 | ~4 min | 1 (TDD) | 2 |
 | 06-03 | ~6 min | 1 (TDD) | 2 |
 | 06-04 | ~5 min | 2 (TDD) | 4 |
+| 06-05 | ~5 min | 2 (TDD) | 3 |
 
 *Updated after each plan completion*
 
@@ -125,6 +126,8 @@ Key decisions active for v2.0:
 - [Phase 06-04]: structure_veto_applied=True recorded even when tier is already at or below the veto cap — preserves signal for downstream consumers
 - [Phase 06-04]: Minor conflict: no automatic downgrade; major conflict: +1 TIER_ORDER index (exactly one level worse)
 - [Phase 06-04]: No-conflict fast path in conflicting_signals_handler: returns None without calling Gemini when pattern not in NAMED_CONFLICT_PATTERNS
+- [Phase 06]: type(model).model_fields used instead of model.model_fields — Pydantic v2.11 deprecated instance access, removed in v3; accessing via class is correct pattern
+- [Phase 06]: grounding_check_node checks only macro_regime_output, valuation_output, structure_output — entry_quality_output and conflict_output excluded (no raw numeric claims requiring record-level attribution)
 
 ### Pending Todos
 
@@ -140,5 +143,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 06-04-PLAN.md — conflicting_signals_handler (11 named patterns, deterministic severity, structure-biased narrative) and entry_quality_node (composite tier with structure veto, major/minor conflict impact, stale caveat, no numeric score), 16 TDD unit tests pass; Phase 6 Plan 04 complete
+Stopped at: Completed 06-05-PLAN.md — grounding_check_node (recursive float attribution, GroundingError with all claims, nested RegimeProbability via source_analogue_id), finalized __init__.py with all 6 node exports, 50 Phase 6 TDD tests pass; Phase 6 complete
 Resume file: None

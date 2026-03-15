@@ -36,7 +36,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 - [x] **REAS-02**: Valuation assessment node produces regime-relative valuation for VN equities (P/E, P/B vs historical analogues) and gold (real yield, ETF flow context)
 - [x] **REAS-03**: Price structure node interprets pre-computed v1.0 markers (MAs, drawdown, percentile) into narrative without recomputation
 - [x] **REAS-04**: Entry quality assessment node outputs qualitative tier (Favorable / Neutral / Cautious / Avoid) with three visible sub-assessments (macro, valuation, structure)
-- [ ] **REAS-05**: Grounding check node verifies every numeric claim in report output traces to a specific retrieved database record
+- [x] **REAS-05**: Grounding check node verifies every numeric claim in report output traces to a specific retrieved database record
 - [ ] **REAS-06**: LangGraph StateGraph assembles all nodes with explicit TypedDict state, documented reducers, and PostgreSQL checkpointing
 - [x] **REAS-07**: Conflicting signal handling produces explicit "strong thesis, weak structure" report type when sub-assessments disagree
 
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REAS-02 | Phase 6 | Complete |
 | REAS-03 | Phase 6 | Complete |
 | REAS-04 | Phase 6 | Complete |
-| REAS-05 | Phase 6 | Pending |
+| REAS-05 | Phase 6 | Complete |
 | REAS-07 | Phase 6 | Complete |
 | REAS-06 | Phase 7 | Pending |
 | REPT-01 | Phase 7 | Pending |

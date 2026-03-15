@@ -34,7 +34,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 - [x] **Phase 3: Infrastructure Hardening and Database Migrations** - Flyway migrations, memory limits, VPS swap, and checkpoint schema in place before any reasoning code is written (completed 2026-03-09)
 - [x] **Phase 4: Knowledge Graph and Document Corpus Population** - Neo4j regime nodes with analogue relationships and Qdrant document collections populated with curated content (completed 2026-03-09)
 - [x] **Phase 5: Retrieval Layer Validation** - LlamaIndex retrievers confirmed working against real loaded data across all three stores before embedding in reasoning nodes (completed 2026-03-12)
-- [ ] **Phase 6: LangGraph Reasoning Nodes** - Five individual reasoning nodes built and validated in isolation with correct state schemas and Gemini structured output
+- [x] **Phase 6: LangGraph Reasoning Nodes** - Five individual reasoning nodes built and validated in isolation with correct state schemas and Gemini structured output (completed 2026-03-15)
 - [ ] **Phase 7: Graph Assembly and End-to-End Report Generation** - StateGraph assembled and first complete bilingual report produced, grounded, and stored in PostgreSQL
 - [ ] **Phase 8: FastAPI Gateway and Docker Service** - HTTP gateway exposing the validated reasoning pipeline with background execution and SSE streaming
 - [ ] **Phase 9: Production Hardening and Batch Validation** - Batch behavior validated at 20-stock scale with memory baseline, spend alerts, and checkpoint cleanup
@@ -177,7 +177,7 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 | 3. Infrastructure Hardening and Database Migrations | v2.0 | 4/4 | Complete | 2026-03-09 |
 | 4. Knowledge Graph and Document Corpus Population | 4/4 | Complete   | 2026-03-09 | - |
 | 5. Retrieval Layer Validation | 3/3 | Complete   | 2026-03-12 | - |
-| 6. LangGraph Reasoning Nodes | 4/5 | In Progress|  | - |
+| 6. LangGraph Reasoning Nodes | 5/5 | Complete   | 2026-03-15 | - |
 | 7. Graph Assembly and End-to-End Report Generation | v2.0 | 0/5 | Not started | - |
 | 8. FastAPI Gateway and Docker Service | v2.0 | 0/4 | Not started | - |
 | 9. Production Hardening and Batch Validation | v2.0 | 0/3 | Not started | - |
