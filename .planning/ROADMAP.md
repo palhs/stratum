@@ -88,9 +88,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Scaffold reasoning/ module, shared types/freshness, Qdrant collection migration to named-vector hybrid config
-- [ ] 05-02: Neo4j CypherTemplateRetriever and PostgreSQL direct query retrievers with integration tests
-- [ ] 05-03: Qdrant hybrid dense+sparse retriever with language filtering and full retrieval layer validation
+- [x] 05-01: Scaffold reasoning/ module, shared types/freshness, Qdrant collection migration to named-vector hybrid config
+- [x] 05-02: Neo4j CypherTemplateRetriever and PostgreSQL direct query retrievers with integration tests
+- [x] 05-03: Qdrant hybrid dense+sparse retriever with language filtering and full retrieval layer validation
 
 ### Phase 6: LangGraph Reasoning Nodes
 **Goal**: Five LangGraph nodes (structure, valuation, macro_regime, entry_quality, grounding_check) and one special-case handler (conflicting_signals) are built and validated individually with mock state — each produces Pydantic-validated structured output, consumes only what the next node needs, and handles edge cases (mixed signals, missing data, conflicting sub-assessments) explicitly
@@ -103,14 +103,14 @@ Plans:
   4. The entry_quality node outputs a qualitative tier (Favorable / Neutral / Cautious / Avoid) with all three sub-assessments (macro, valuation, structure) explicitly present in the output before the composite tier — no numeric score is produced
   5. The grounding_check node verifies that every numeric claim in intermediate node outputs traces to a specific retrieved database record ID — it raises an explicit error (not a warning) if any number cannot be attributed to a source
   6. When sub-assessments disagree (e.g., strong macro thesis but weak price structure), the conflicting signal handler produces an explicit "strong thesis, weak structure" output type — the disagreement is surfaced in the node output, not silently averaged
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 06-01: ReportState TypedDict with documented reducers and structure node implementation
-- [ ] 06-02: Valuation node with regime-relative context and PostgreSQL + Qdrant retrieval integration
+- [ ] 06-01: ReportState TypedDict, Pydantic output models, shared prompts, and structure node
+- [ ] 06-02: Valuation node with regime-relative equity and gold assessment paths
 - [ ] 06-03: Macro regime classification node with probability distribution and mixed-signal handling
 - [ ] 06-04: Entry quality assessment node with qualitative tier and conflicting signal handler
-- [ ] 06-05: Grounding check node with numeric claim attribution validation
+- [ ] 06-05: Grounding check node with numeric claim attribution and nodes module finalization
 
 ### Phase 7: Graph Assembly and End-to-End Report Generation
 **Goal**: The LangGraph StateGraph assembles all validated nodes into a complete pipeline with PostgreSQL checkpointing, produces a first end-to-end bilingual report for a single test asset, stores it in the PostgreSQL reports table, and the report passes grounding check, data freshness validation, and Vietnamese term consistency review
