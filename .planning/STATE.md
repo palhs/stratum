@@ -18,17 +18,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v2.0 Analytical Reasoning Engine — Phase 4 complete. Phase 5 in progress.
+**Current focus:** v2.0 Analytical Reasoning Engine — Phase 6 in progress (Reasoning Engine nodes).
 
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 5 of 9 complete (Retrieval Layer Validation)
-Plan: 03 of 3 complete — Phase 5 DONE (Qdrant hybrid retriever, 6 integration tests; full retrieval layer validated)
-Status: Phase 5 complete — Phase 6 (Reasoning Engine) is next
-Last activity: 2026-03-12 — 05-03 complete: Qdrant hybrid dense+sparse retriever, language + ticker filtering, freshness warnings, 6 integration tests pass; full retrieval layer (Neo4j + PostgreSQL + Qdrant) validated
+Phase: 6 of 9 in progress (LangGraph Reasoning Nodes)
+Plan: 01 of ~5 complete — ReportState TypedDict, 6 Pydantic output models, structure_node with Gemini narrative, 7 passing unit tests
+Status: Phase 6 started — 06-01 complete, 06-02+ (macro_regime, valuation, entry_quality nodes) next
+Last activity: 2026-03-16 — 06-01 complete: ReportState TypedDict, 6 output models, structure_node (deterministic label + Gemini narrative), 7 TDD unit tests pass
 
-Progress: [████░░░░░░] 37% (10/27 plans)
+Progress: [████░░░░░░] 40% (11/27 plans)
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [████░░░░░░] 37% (10/27 plans)
 | 05-01 | ~7 min | 2 | 11 |
 | 05-02 | ~15 min | 2 | 6 |
 | 05-03 | ~15 min | 2 | 3 |
+| 06-01 | ~25 min | 2 | 8 |
 
 *Updated after each plan completion*
 
@@ -103,6 +104,11 @@ Key decisions active for v2.0:
 - [Phase 05-03]: Explicit BM25 sparse encoder injection bypasses SPLADE auto-detection — LlamaIndex 0.9.x treats "text-sparse" as old-format, falls back to torch-dependent SPLADE; explicit sparse_doc_fn/sparse_query_fn with fastembed_sparse_encoder fixes this
 - [Phase 05-03]: Language filter via MetadataFilters at retriever level (not constructor-level qdrant_filters) — stable across LlamaIndex versions, correctly builds Qdrant FieldCondition
 - [Phase 05-03]: Collection-specific alpha weights: macro=0.7 (dense-favored for FOMC policy language), earnings=0.5 (balanced for keyword-heavy financial data + narrative)
+- [Phase 06-01]: Deterministic label overrides Gemini label in structure_node — rules assign tier, Gemini writes narrative only; prevents hallucination of tier labels
+- [Phase 06-01]: patch.object(structure_module, 'ChatGoogleGenerativeAI') in tests vs string-path patch — avoids module reload ordering issues with pytest import caching
+- [Phase 06-01]: gemini-2.0-flash deprecated for new users (404 NOT_FOUND); update to gemini-2.0-flash-001 before first live integration test in later plans
+- [Phase 06-01]: MIXED_SIGNAL_THRESHOLD=0.70 uses strict less-than semantics (top_confidence < 0.70 → is_mixed_signal=True)
+- [Phase 06-01]: Node function signature: (state: ReportState) -> dict[str, Any] — single dict return with state update key; established as canonical pattern for all nodes
 
 ### Pending Todos
 
@@ -117,6 +123,6 @@ Key decisions active for v2.0:
 
 ## Session Continuity
 
-Last session: 2026-03-12
-Stopped at: Completed 05-03-PLAN.md — Qdrant hybrid retriever (search_macro_docs, search_earnings_docs), 6 integration tests pass; full retrieval layer validated; Phase 5 complete
+Last session: 2026-03-16
+Stopped at: Completed 06-01-PLAN.md — ReportState TypedDict, 6 Pydantic output models, structure_node (deterministic label + Gemini narrative), 7 TDD unit tests pass; Phase 6 Plan 01 complete
 Resume file: None
