@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 6 of 9 in progress (LangGraph Reasoning Nodes)
-Plan: 03 of ~5 complete — macro_regime_node with probability distribution, deterministic mixed-signal threshold (<0.70), macro_label validation, 8 passing unit tests
-Status: Phase 6 in progress — 06-01, 06-02, and 06-03 complete; 06-04+ (entry_quality node) next
-Last activity: 2026-03-16 — 06-03 complete: macro_regime_node (probability distribution over regime types, strict <0.70 mixed-signal threshold, top_two_analogues, macro_label Supportive/Mixed/Headwind), 8 TDD unit tests pass
+Plan: 04 of ~5 complete — conflicting_signals_handler (named patterns, structure-biased severity), entry_quality_node (structure veto, conflict impact, stale caveat), 16 TDD unit tests pass
+Status: Phase 6 in progress — 06-01, 06-02, 06-03, and 06-04 complete; 06-05+ (grounding node / graph wiring) next
+Last activity: 2026-03-16 — 06-04 complete: conflicting_signals_handler (11 named conflict patterns, deterministic severity) and entry_quality_node (composite tier with structure veto, major/minor conflict impact, stale data caveat), 16 TDD tests pass
 
-Progress: [████░░░░░░] 41% (12/29 plans)
+Progress: [████░░░░░░] 45% (13/29 plans)
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [████░░░░░░] 41% (12/29 plans)
 | 06-01 | ~25 min | 2 | 8 |
 | 06-02 | ~4 min | 1 (TDD) | 2 |
 | 06-03 | ~6 min | 1 (TDD) | 2 |
+| 06-04 | ~5 min | 2 (TDD) | 4 |
 
 *Updated after each plan completion*
 
@@ -119,6 +120,11 @@ Key decisions active for v2.0:
 - [Phase 06-03]: top_two_analogues derived from sorted regime_probabilities[0:2].source_analogue_id; cleared to [] when not mixed signal
 - [Phase 06-03]: macro_label sanitized via _sanitize_macro_label() with case-insensitive fallback — handles LLM casing variations
 - [Phase 06-03]: MIXED_SIGNAL_THRESHOLD imported from state.py (canonical source) not redefined locally; temperature=0.1 for probability distribution consistency
+- [Phase 06-04]: NAMED_CONFLICT_PATTERNS is a static dict — conflict detection is O(1) lookup; Gemini writes narrative only; pattern_name and severity are rule-derived (not LLM)
+- [Phase 06-04]: composite_tier and structure_veto_applied always overridden deterministically in entry_quality_node — LLM generates narrative only; tier is rules-based
+- [Phase 06-04]: structure_veto_applied=True recorded even when tier is already at or below the veto cap — preserves signal for downstream consumers
+- [Phase 06-04]: Minor conflict: no automatic downgrade; major conflict: +1 TIER_ORDER index (exactly one level worse)
+- [Phase 06-04]: No-conflict fast path in conflicting_signals_handler: returns None without calling Gemini when pattern not in NAMED_CONFLICT_PATTERNS
 
 ### Pending Todos
 
@@ -134,5 +140,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 06-03-PLAN.md — macro_regime_node (probability distribution over regime types, strict <0.70 mixed-signal threshold, top_two_analogues, macro_label Supportive/Mixed/Headwind, sources and warnings), 8 TDD unit tests pass; Phase 6 Plan 03 complete
+Stopped at: Completed 06-04-PLAN.md — conflicting_signals_handler (11 named patterns, deterministic severity, structure-biased narrative) and entry_quality_node (composite tier with structure veto, major/minor conflict impact, stale caveat, no numeric score), 16 TDD unit tests pass; Phase 6 Plan 04 complete
 Resume file: None
