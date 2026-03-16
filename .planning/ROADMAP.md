@@ -178,5 +178,5 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 | 5. Retrieval Layer Validation | 3/3 | Complete   | 2026-03-12 | - |
 | 6. LangGraph Reasoning Nodes | 5/5 | Complete   | 2026-03-15 | - |
 | 7. Graph Assembly and End-to-End Report Generation | 5/5 | Complete   | 2026-03-16 | - |
-| 8. FastAPI Gateway and Docker Service | 1/3 | In Progress|  | - |
+| 8. FastAPI Gateway and Docker Service | 2/3 | In Progress|  | - |
 | 9. Production Hardening and Batch Validation | v2.0 | 0/3 | Not started | - |

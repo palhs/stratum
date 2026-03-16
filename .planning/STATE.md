@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-16T09:16:52.610Z"
+last_updated: "2026-03-16T09:22:36Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 8 of 9 in progress (FastAPI Gateway and Docker Service)
-Plan: 01 of 3 complete — FastAPI app skeleton (app/main.py, app/dependencies.py, app/routers/health.py), GET /health endpoint with 2 passing tests, reasoning/Dockerfile (python:3.12-slim, 60s start-period), docker-compose.yml reasoning-engine service (mem_limit 2g, profiles [reasoning], port 8001:8000); SRVC-04 and SRVC-05 satisfied
-Status: Phase 8 in progress — 08-01 complete; Plans 02 (report generation endpoint) and 03 (SSE streaming) remaining
-Last activity: 2026-03-16 — 08-01 complete: app/main.py, app/dependencies.py, app/routers/health.py, tests/api/test_health.py (2 tests pass), reasoning/Dockerfile, requirements.txt updated, docker-compose.yml reasoning-engine service
+Plan: 02 of 3 complete — POST /reports/generate (202+job_id, 409 conflict, retry-after-failed), GET /reports/{job_id} (200 completed, 202 pending/running, 404 not found), _run_pipeline background task (pending→running→completed/failed), SSE queue setup; SRVC-01 and SRVC-02 satisfied
+Status: Phase 8 in progress — 08-01 and 08-02 complete; Plan 03 (SSE streaming) remaining
+Last activity: 2026-03-16 — 08-02 complete: app/routers/reports.py, tests/api/test_reports.py (8 tests pass), app/main.py updated with reports router
 
-Progress: [██████░░░░] 66% (19/29 plans)
+Progress: [██████░░░░] 67% (20/30 plans)
 
 ## Performance Metrics
 
@@ -152,6 +152,10 @@ Key decisions active for v2.0:
 - [Phase 07-05]: venv created at reasoning/.venv — system python3.11 had brownie pytest plugin with broken web3 dependency; isolated venv resolves pytest startup failures cleanly
 - [Phase 08-01]: lifespan asynccontextmanager pattern used (not deprecated @app.on_event) — FastAPI best practice
 - [Phase 08-01]: GEMINI_API_KEY env var in reasoning-engine service — deferred from Phase 3, now delivered with service creation
+- [Phase 08-02]: generate_report is module-level None sentinel lazily populated by _get_generate_report() — app/pipeline/__init__.py uses reasoning.app.pipeline.* absolute imports that fail in pytest; lazy init avoids broken import chain at module load time
+- [Phase 08-02]: report_jobs.report_id FK points to vi_id (Vietnamese report) on job completion — Vietnamese is primary language per locked project decision; both IDs stored in reports table
+- [Phase 08-02]: BackgroundTasks used (not asyncio.create_task) — TestClient executes BackgroundTasks synchronously, enabling clean unit test assertions on status transitions without async plumbing
+- [Phase 08-02]: SSE asyncio.Queue created at POST /generate time and stored in app.state.job_queues[job_id] — Plan 03 can wire stream endpoint directly to the queue without modifying Plan 02 code
 
 ### Pending Todos
 
@@ -167,5 +171,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 08-01-PLAN.md — app/main.py, app/dependencies.py (lifespan), app/routers/health.py, tests/api/test_health.py (2 tests pass), reasoning/Dockerfile, requirements.txt (fastapi/uvicorn/sse-starlette/httpx/langgraph-checkpoint-postgres/psycopg[binary]), docker-compose.yml reasoning-engine service; SRVC-04 + SRVC-05 satisfied
+Stopped at: Completed 08-02-PLAN.md — app/routers/reports.py (POST /reports/generate, GET /reports/{job_id}), tests/api/test_reports.py (8 tests pass, 10 total API), app/main.py updated; SRVC-01 + SRVC-02 satisfied
 Resume file: None
