@@ -145,10 +145,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 08-01: FastAPI application skeleton with health endpoint and Dockerfile
-- [ ] 08-02: Report generation endpoint with BackgroundTask and job status tracking
-- [ ] 08-03: SSE streaming endpoint for reasoning node progress
-- [ ] 08-04: Docker Compose reasoning-engine service definition and end-to-end HTTP trigger test
+- [ ] 08-01: FastAPI app skeleton, health endpoint, Dockerfile, docker-compose.yml reasoning-engine service
+- [ ] 08-02: POST /reports/generate with BackgroundTask and GET /reports/{id} retrieval
+- [ ] 08-03: SSE streaming endpoint (GET /reports/stream/{id}) with asyncio.Queue bridge
 
 ### Phase 9: Production Hardening and Batch Validation
 **Goal**: The v2.0 system is validated under realistic production conditions — a 20-stock batch workload completes within memory limits, Gemini API spend alerts are configured and testable, and a checkpoint cleanup job prevents unbounded PostgreSQL growth
