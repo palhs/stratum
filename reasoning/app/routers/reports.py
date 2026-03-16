@@ -1,16 +1,21 @@
 """
-Reports router — POST /reports/generate and GET /reports/{job_id}.
+Reports router — POST /reports/generate, GET /reports/stream/{job_id}, GET /reports/{job_id}.
 
-Phase 8 | Plan 02 | Requirements: SRVC-01, SRVC-02
+Phase 8 | Plans 02-03 | Requirements: SRVC-01, SRVC-02, SRVC-03
 
 Endpoints:
-  POST /reports/generate — Submit async report generation job (returns 202)
-  GET  /reports/{job_id} — Poll job status or retrieve completed report (200/202/404)
+  POST /reports/generate           — Submit async report generation job (returns 202)
+  GET  /reports/stream/{job_id}    — SSE stream of pipeline progress events
+  GET  /reports/{job_id}           — Poll job status or retrieve completed report (200/202/404)
+
+IMPORTANT: /stream/{job_id} is registered BEFORE /{job_id} to prevent FastAPI treating
+"stream" as an integer job_id value and returning 422.
 
 All DB operations use SQLAlchemy Core Table reflection (autoload_with=db_engine).
 No ORM models — consistent with reasoning/app/pipeline/storage.py pattern.
 """
 import asyncio
+import json
 import logging
 
 from fastapi import BackgroundTasks, HTTPException, Request
@@ -18,6 +23,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import MetaData, Table, text
+from sse_starlette import EventSourceResponse
 
 logger = logging.getLogger(__name__)
 
@@ -179,8 +185,18 @@ def _get_report_by_job(db_engine, job_id: int) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
+async def _emit(app_state, job_id: int, event: dict) -> None:
+    """Put an event dict onto the SSE queue for job_id (no-op if queue missing)."""
+    queue = app_state.job_queues.get(job_id)
+    if queue is not None:
+        await queue.put(event)
+
+
 async def _run_pipeline(job_id: int, ticker: str, asset_type: str, app_state) -> None:
     """Execute the full pipeline and update job status when done.
+
+    Emits job-level progress events to the SSE queue so clients can observe
+    pipeline execution via GET /reports/stream/{job_id}.
 
     Reads generate_report from the module namespace each time so that test
     patches (patch('app.routers.reports.generate_report', ...)) take effect.
@@ -194,6 +210,10 @@ async def _run_pipeline(job_id: int, ticker: str, asset_type: str, app_state) ->
     db_engine = app_state.db_engine
     try:
         _update_job_status(db_engine, job_id, "running")
+        await _emit(app_state, job_id, {"event_type": "job_started", "job_id": job_id, "ticker": ticker})
+
+        await _emit(app_state, job_id, {"event_type": "pipeline_vi_start", "language": "vi"})
+        # generate_report handles both vi + en internally; we emit language events around the full call
         vi_id, en_id = await _fn(
             ticker=ticker,
             asset_type=asset_type,
@@ -202,6 +222,9 @@ async def _run_pipeline(job_id: int, ticker: str, asset_type: str, app_state) ->
             qdrant_client=app_state.qdrant_client,
             db_uri=app_state.db_uri,
         )
+        await _emit(app_state, job_id, {"event_type": "pipeline_vi_complete", "language": "vi"})
+        await _emit(app_state, job_id, {"event_type": "pipeline_en_complete", "language": "en"})
+
         _update_job_status(db_engine, job_id, "completed", report_id=vi_id)
         queue = app_state.job_queues.get(job_id)
         if queue:
@@ -257,6 +280,47 @@ async def generate(
         status_code=202,
         content={"job_id": job_id, "status": "pending"},
     )
+
+
+@router.get("/stream/{job_id}")
+async def stream_report_events(job_id: int, request: Request):
+    """Stream real-time pipeline progress events via Server-Sent Events.
+
+    Emits:
+      node_transition — each job-level event posted by _run_pipeline
+      complete        — when pipeline finishes (None sentinel received)
+      ping            — keepalive every 15s to prevent proxy timeout
+
+    Returns 404 if no SSE queue exists for the given job_id (job not started or
+    queue already cleaned up).
+
+    Queue is cleaned up in the generator's finally block to prevent memory leaks.
+    Pipeline continues running even if the client disconnects (SSE is read-only).
+    """
+    queue = request.app.state.job_queues.get(job_id)
+    if queue is None:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found or stream not available")
+
+    async def event_generator():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
+                except asyncio.TimeoutError:
+                    yield {"event": "ping", "data": "keepalive"}
+                    continue
+                if event is None:
+                    yield {"event": "complete", "data": json.dumps({"job_id": job_id})}
+                    break
+                yield {"event": "node_transition", "data": json.dumps(event)}
+        except asyncio.CancelledError:
+            raise
+        finally:
+            request.app.state.job_queues.pop(job_id, None)
+
+    return EventSourceResponse(event_generator(), ping=15)
 
 
 @router.get("/{job_id}")
