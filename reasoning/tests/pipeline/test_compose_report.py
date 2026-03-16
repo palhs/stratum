@@ -421,15 +421,210 @@ def test_compose_report_node_data_as_of_is_datetime(mock_report_state_no_conflic
     )
 
 
-def test_compose_report_node_report_markdown_empty(mock_report_state_no_conflict):
-    """compose_report_node sets report_markdown to empty string (placeholder for Plan 03)."""
+def test_compose_report_node_report_markdown_non_empty_en(mock_report_state_no_conflict):
+    """compose_report_node with language='en' returns non-empty report_markdown."""
     from reasoning.app.pipeline.compose_report import compose_report_node
 
+    mock_report_state_no_conflict["language"] = "en"
     result = compose_report_node(mock_report_state_no_conflict)
     output = result["report_output"]
 
-    assert output.report_markdown == "", (
-        "report_markdown must be empty string placeholder (real rendering in Plan 03)"
+    assert isinstance(output.report_markdown, str), "report_markdown must be str"
+    assert len(output.report_markdown) > 0, (
+        "report_markdown must be non-empty for English mode (real Markdown rendered)"
+    )
+    assert "Entry Quality" in output.report_markdown, (
+        "English report_markdown must contain 'Entry Quality' section header"
+    )
+
+
+def test_compose_report_node_report_markdown_has_card_sections_en(mock_report_state_no_conflict):
+    """compose_report_node with language='en' produces Markdown with all four card sections."""
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "en"
+    result = compose_report_node(mock_report_state_no_conflict)
+    md = result["report_output"].report_markdown
+
+    assert "## Entry Quality" in md or "Entry Quality:" in md, "Entry Quality section must appear"
+    assert "## Macro Regime" in md or "Macro Regime:" in md, "Macro Regime section must appear"
+    assert "## Valuation" in md or "Valuation:" in md, "Valuation section must appear"
+    assert "## Structure" in md or "Structure:" in md, "Structure section must appear"
+
+
+def test_compose_report_node_en_labels_stay_english(mock_report_state_no_conflict):
+    """compose_report_node with language='en' does NOT apply term dictionary — labels stay English."""
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "en"
+    result = compose_report_node(mock_report_state_no_conflict)
+    report_json = result["report_output"].report_json
+
+    # English labels must remain (not translated to Vietnamese)
+    assert report_json["entry_quality"]["tier"] in ("Favorable", "Neutral", "Cautious", "Avoid"), (
+        "English mode must preserve English tier labels in report_json"
+    )
+    assert report_json["macro_regime"]["label"] in ("Supportive", "Mixed", "Headwind"), (
+        "English mode must preserve English macro labels in report_json"
+    )
+    assert report_json["valuation"]["label"] in ("Attractive", "Fair", "Stretched"), (
+        "English mode must preserve English valuation labels in report_json"
+    )
+    assert report_json["structure"]["label"] in ("Constructive", "Neutral", "Deteriorating"), (
+        "English mode must preserve English structure labels in report_json"
+    )
+
+
+def test_compose_report_node_vi_report_json_has_vietnamese_labels(mock_report_state_no_conflict):
+    """compose_report_node with language='vi' returns report_json with Vietnamese labels."""
+    from unittest.mock import patch, AsyncMock
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "vi"
+
+    # Mock the Gemini Vietnamese narrative re-generation to avoid live API calls
+    vi_narrative = "Môi trường cho thấy điều kiện trung lập với các tín hiệu cân bằng."
+    with patch("reasoning.app.pipeline.compose_report._rewrite_narrative_vi") as mock_rewrite:
+        mock_rewrite.return_value = vi_narrative
+
+        result = compose_report_node(mock_report_state_no_conflict)
+
+    report_json = result["report_output"].report_json
+
+    # Vietnamese labels must appear from term dictionary
+    vi_tiers = {"Thuận lợi", "Trung lập", "Thận trọng", "Tránh"}
+    vi_macro_labels = {"Hỗ trợ", "Hỗn hợp", "Bất lợi"}
+    vi_valuation_labels = {"Hấp dẫn", "Hợp lý", "Căng thẳng"}
+    vi_structure_labels = {"Tích cực", "Trung lập", "Suy giảm"}
+
+    assert report_json["entry_quality"]["tier"] in vi_tiers, (
+        f"Vietnamese mode must have Vietnamese tier in report_json, got: {report_json['entry_quality']['tier']}"
+    )
+    assert report_json["macro_regime"]["label"] in vi_macro_labels, (
+        f"Vietnamese mode must have Vietnamese macro label, got: {report_json['macro_regime']['label']}"
+    )
+    assert report_json["valuation"]["label"] in vi_valuation_labels, (
+        f"Vietnamese mode must have Vietnamese valuation label, got: {report_json['valuation']['label']}"
+    )
+    assert report_json["structure"]["label"] in vi_structure_labels, (
+        f"Vietnamese mode must have Vietnamese structure label, got: {report_json['structure']['label']}"
+    )
+
+
+def test_compose_report_node_vi_report_markdown_has_vietnamese_headers(mock_report_state_no_conflict):
+    """compose_report_node with language='vi' returns report_markdown with Vietnamese card headers."""
+    from unittest.mock import patch
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "vi"
+
+    vi_narrative = "Môi trường cho thấy điều kiện trung lập."
+    with patch("reasoning.app.pipeline.compose_report._rewrite_narrative_vi") as mock_rewrite:
+        mock_rewrite.return_value = vi_narrative
+
+        result = compose_report_node(mock_report_state_no_conflict)
+
+    md = result["report_output"].report_markdown
+
+    # Vietnamese headers from term_dict_vi.json
+    assert "Chất lượng điểm vào" in md, (
+        f"Vietnamese report_markdown must contain 'Chất lượng điểm vào'. Got: {md[:500]}"
+    )
+    assert "Chế độ vĩ mô" in md, (
+        "Vietnamese report_markdown must contain 'Chế độ vĩ mô'"
+    )
+
+
+def test_compose_report_node_vi_calls_rewrite_narrative(mock_report_state_no_conflict):
+    """compose_report_node with language='vi' calls _rewrite_narrative_vi for each card's narrative."""
+    from unittest.mock import patch, call
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "vi"
+
+    vi_narrative = "Môi trường cho thấy điều kiện trung lập."
+    with patch("reasoning.app.pipeline.compose_report._rewrite_narrative_vi") as mock_rewrite:
+        mock_rewrite.return_value = vi_narrative
+
+        compose_report_node(mock_report_state_no_conflict)
+
+    # Should be called at least 4 times (entry_quality, macro_regime, valuation, structure)
+    assert mock_rewrite.call_count >= 4, (
+        f"_rewrite_narrative_vi must be called at least 4 times for vi mode, got {mock_rewrite.call_count}"
+    )
+
+
+def test_compose_report_node_en_does_not_call_rewrite_narrative(mock_report_state_no_conflict):
+    """compose_report_node with language='en' does NOT call _rewrite_narrative_vi."""
+    from unittest.mock import patch
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "en"
+
+    with patch("reasoning.app.pipeline.compose_report._rewrite_narrative_vi") as mock_rewrite:
+        compose_report_node(mock_report_state_no_conflict)
+
+    assert mock_rewrite.call_count == 0, (
+        f"_rewrite_narrative_vi must NOT be called for English mode, got {mock_rewrite.call_count} calls"
+    )
+
+
+def test_compose_report_node_language_field_matches_input(mock_report_state_no_conflict):
+    """report_output.language matches the input language parameter."""
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    for lang in ("en", "vi"):
+        mock_report_state_no_conflict["language"] = lang
+
+        if lang == "vi":
+            from unittest.mock import patch
+            vi_narrative = "Môi trường cho thấy điều kiện trung lập."
+            with patch("reasoning.app.pipeline.compose_report._rewrite_narrative_vi") as mock_rewrite:
+                mock_rewrite.return_value = vi_narrative
+                result = compose_report_node(mock_report_state_no_conflict)
+        else:
+            result = compose_report_node(mock_report_state_no_conflict)
+
+        assert result["report_output"].language == lang, (
+            f"report_output.language must match input '{lang}'"
+        )
+
+
+def test_compose_report_node_vi_narratives_replaced(mock_report_state_no_conflict):
+    """compose_report_node with language='vi' replaces narrative fields with Vietnamese text."""
+    from unittest.mock import patch
+    from reasoning.app.pipeline.compose_report import compose_report_node
+
+    mock_report_state_no_conflict["language"] = "vi"
+
+    vi_narrative = "Môi trường cho thấy điều kiện trung lập với các tín hiệu cân bằng."
+    with patch("reasoning.app.pipeline.compose_report._rewrite_narrative_vi") as mock_rewrite:
+        mock_rewrite.return_value = vi_narrative
+
+        result = compose_report_node(mock_report_state_no_conflict)
+
+    report_json = result["report_output"].report_json
+
+    # The narrative fields in report_json should now be Vietnamese
+    assert report_json["entry_quality"]["narrative"] == vi_narrative, (
+        "Entry quality narrative must be replaced with Vietnamese text"
+    )
+    assert report_json["macro_regime"]["narrative"] == vi_narrative, (
+        "Macro regime narrative must be replaced with Vietnamese text"
+    )
+
+
+def test_compose_report_node_data_warnings_match_collect(mock_report_state_with_retrieval_warnings):
+    """report_output.data_warnings matches _collect_data_warnings output."""
+    from reasoning.app.pipeline.compose_report import compose_report_node, _collect_data_warnings
+
+    mock_report_state_with_retrieval_warnings["language"] = "en"
+    result = compose_report_node(mock_report_state_with_retrieval_warnings)
+    output = result["report_output"]
+
+    expected = _collect_data_warnings(mock_report_state_with_retrieval_warnings)
+    assert output.data_warnings == expected, (
+        f"data_warnings must match _collect_data_warnings output. Got: {output.data_warnings}"
     )
 
 
