@@ -18,15 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v2.0 Analytical Reasoning Engine — Phase 8 COMPLETE (FastAPI Gateway and Docker Service).
+**Current focus:** v2.0 Analytical Reasoning Engine — Phase 8.1 COMPLETE (Docker Runtime Fixes).
 
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 8 of 9 COMPLETE (FastAPI Gateway and Docker Service)
-Plan: 03 of 3 complete — GET /reports/stream/{job_id} SSE endpoint with EventSourceResponse, node_transition/complete events, queue lifecycle, 4 async tests (14 total API tests pass); SRVC-01, SRVC-02, SRVC-03 all satisfied
-Status: Phase 8 COMPLETE — all 3 plans done (08-01 app scaffold, 08-02 generate+retrieve endpoints, 08-03 SSE streaming)
-Last activity: 2026-03-16 — 08-03 complete: GET /reports/stream/{job_id} SSE, test_stream.py (4 async tests), _run_pipeline progress events
+Phase: 8.1 of 9 COMPLETE (Docker Runtime Fixes)
+Plan: 01 of 1 complete — Dockerfile COPY restructure placing code under /app/reasoning/app/ namespace, reasoning/__init__.py package marker, CMD updated to reasoning.app.main:app, langgraph-init depends_on with service_completed_successfully
+Status: Phase 8.1 COMPLETE — 1 plan done (08.1-01 Docker import namespace fix and startup ordering)
+Last activity: 2026-03-16 — 08.1-01 complete: Dockerfile import namespace fix, docker-compose.yml depends_on langgraph-init; container import resolution verified by user
 
 Progress: [████████░░] 80% (24/30 plans)
 
@@ -65,6 +65,7 @@ Progress: [████████░░] 80% (24/30 plans)
 | Phase 08 P01 | 15min | 2 tasks | 9 files |
 | Phase 08 P02 | ~8 min | 1 task (TDD) | 3 files |
 | Phase 08 P03 | ~2 min | 1 task (TDD) | 2 files |
+| Phase 08.1 P01 | ~10 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Key decisions active for v2.0:
 - [Phase 08-03]: _emit() helper is a no-op when queue is absent — safe to call in _run_pipeline before SSE client connects
 - [Phase 08-03]: ping=15 in EventSourceResponse — sends keepalive comment every 15s to prevent proxy timeout on long pipelines
 - [Phase 08-03]: httpx.AsyncClient + ASGITransport for SSE tests — pre-populated queue drains synchronously; no timing race
+- [Phase 08.1-01]: Dockerfile COPY restructure: COPY app/ ./reasoning/app/ + RUN mkdir reasoning && touch reasoning/__init__.py — creates Python package at /app/reasoning; from reasoning.app.* resolves via default sys.path (CWD=/app); no PYTHONPATH hacks needed
+- [Phase 08.1-01]: CMD updated from app.main:app to reasoning.app.main:app — uvicorn entrypoint must match absolute import namespace
+- [Phase 08.1-01]: langgraph-init added to reasoning-engine depends_on with condition: service_completed_successfully — ensures checkpoint schema exists before API accepts requests; full-stack E2E test deferred to Phase 9
 
 ### Pending Todos
 
@@ -178,5 +182,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 08-03-PLAN.md — GET /reports/stream/{job_id} SSE endpoint, tests/api/test_stream.py (4 async tests, 14 total API tests), _run_pipeline progress events; SRVC-03 satisfied; Phase 8 COMPLETE
+Stopped at: Completed 08.1-01-PLAN.md — Dockerfile import namespace fix (COPY app/ → /app/reasoning/app/, reasoning/__init__.py), CMD reasoning.app.main:app, docker-compose.yml depends_on langgraph-init service_completed_successfully; import resolution verified; Phase 8.1 COMPLETE
 Resume file: None

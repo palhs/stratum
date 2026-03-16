@@ -193,5 +193,5 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 8.1 → 9
 | 6. LangGraph Reasoning Nodes | 5/5 | Complete   | 2026-03-15 | - |
 | 7. Graph Assembly and End-to-End Report Generation | 5/5 | Complete   | 2026-03-16 | - |
 | 8. FastAPI Gateway and Docker Service | 3/3 | Complete   | 2026-03-16 | - |
-| 8.1. Docker Runtime Fixes (gap closure) | v2.0 | 0/1 | Not started | - |
+| 8.1. Docker Runtime Fixes (gap closure) | 1/1 | Complete   | 2026-03-16 | - |
 | 9. Production Hardening and Batch Validation | v2.0 | 0/3 | Not started | - |
