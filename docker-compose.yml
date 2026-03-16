@@ -305,6 +305,8 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+      langgraph-init:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       NEO4J_URI: bolt://neo4j:7687
