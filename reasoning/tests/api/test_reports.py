@@ -238,6 +238,7 @@ def test_background_task_calls_pipeline(test_app, client):
     assert call_kwargs["asset_type"] == "equity"
 
     # Verify job transitioned through running → completed
-    status_calls = [call.args[1] for call in mock_update.call_args_list]
+    # _update_job_status(db_engine, job_id, status) — status is the 3rd positional arg (index 2)
+    status_calls = [call.args[2] for call in mock_update.call_args_list]
     assert "running" in status_calls
     assert "completed" in status_calls
