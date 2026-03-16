@@ -18,17 +18,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v2.0 Analytical Reasoning Engine — Phase 8.1 COMPLETE (Docker Runtime Fixes).
+**Current focus:** v2.0 Analytical Reasoning Engine — Phase 9 IN PROGRESS (Production Hardening and Batch Validation).
 
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 8.1 of 9 COMPLETE (Docker Runtime Fixes)
-Plan: 01 of 1 complete — Dockerfile COPY restructure placing code under /app/reasoning/app/ namespace, reasoning/__init__.py package marker, CMD updated to reasoning.app.main:app, langgraph-init depends_on with service_completed_successfully
-Status: Phase 8.1 COMPLETE — 1 plan done (08.1-01 Docker import namespace fix and startup ordering)
-Last activity: 2026-03-16 — 08.1-01 complete: Dockerfile import namespace fix, docker-compose.yml depends_on langgraph-init; container import resolution verified by user
+Phase: 9 of 9 IN PROGRESS (Production Hardening and Batch Validation)
+Plan: 01 of N complete — Batch validation script for 20-stock sequential VN30 workload with memory monitoring and OOM detection
+Status: Phase 9 Plan 01 COMPLETE — scripts/batch-validate.py implementing SRVC-06 sequential batch validation
+Last activity: 2026-03-16 — 09-01 complete: batch-validate.py with docker stats memory monitoring and docker inspect OOM detection
 
-Progress: [████████░░] 80% (24/30 plans)
+Progress: [████████░░] 82% (25/30 plans)
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 80% (24/30 plans)
 | Phase 08 P02 | ~8 min | 1 task (TDD) | 3 files |
 | Phase 08 P03 | ~2 min | 1 task (TDD) | 2 files |
 | Phase 08.1 P01 | ~10 min | 2 tasks | 2 files |
+| Phase 09 P01 | ~2 min | 1 task | 1 file |
 
 ## Accumulated Context
 
@@ -182,5 +183,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 08.1-01-PLAN.md — Dockerfile import namespace fix (COPY app/ → /app/reasoning/app/, reasoning/__init__.py), CMD reasoning.app.main:app, docker-compose.yml depends_on langgraph-init service_completed_successfully; import resolution verified; Phase 8.1 COMPLETE
+Stopped at: Completed 09-01-PLAN.md — batch-validate.py standalone script for 20 VN30 tickers sequential validation, docker stats memory snapshots, docker inspect OOMKilled detection; SRVC-06 validation artifact complete
 Resume file: None
