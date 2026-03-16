@@ -15,8 +15,8 @@ import logging
 
 from fastapi import FastAPI
 
-from app.dependencies import lifespan
-from app.routers import health, reports
+from reasoning.app.dependencies import lifespan
+from reasoning.app.routers import health, reports
 
 logging.basicConfig(
     level=logging.INFO,

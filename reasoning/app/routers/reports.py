@@ -38,7 +38,7 @@ def _get_generate_report():
     """Return generate_report, importing lazily on first call."""
     global generate_report  # noqa: PLW0603
     if generate_report is None:
-        from app.pipeline import generate_report as _gr  # noqa: PLC0415
+        from reasoning.app.pipeline import generate_report as _gr  # noqa: PLC0415
 
         generate_report = _gr
     return generate_report
