@@ -12,6 +12,7 @@ Design decisions (locked):
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 from typing_extensions import TypedDict
 
@@ -152,6 +153,28 @@ class ConflictOutput(BaseModel):
     warnings: list[str] = []
 
 
+class ReportOutput(BaseModel):
+    """Final report output produced by compose_report_node (Phase 7 Plan 02).
+
+    Fields:
+        report_json:     Flat card structure for JSONB storage.
+        report_markdown: Human-readable Markdown for pre-rendering.
+        language:        Report language code — "vi" or "en".
+        data_as_of:      Oldest data_as_of timestamp across all sources.
+        data_warnings:   Collected freshness/data-quality warnings from retrieval + nodes.
+        model_version:   Gemini model version used for reasoning.
+        warnings:        Additional pipeline-level warnings.
+    """
+
+    report_json: dict
+    report_markdown: str
+    language: str
+    data_as_of: datetime
+    data_warnings: list[str]
+    model_version: str = "gemini-2.5-pro"
+    warnings: list[str] = []
+
+
 # ---------------------------------------------------------------------------
 # ReportState — single LangGraph state contract
 # ---------------------------------------------------------------------------
@@ -188,6 +211,10 @@ class ReportState(TypedDict, total=False):
     entry_quality_output: Optional[EntryQualityOutput]
     grounding_result: Optional[GroundingResult]
     conflict_output: Optional[ConflictOutput]
+
+    # ---- Phase 7 fields ----
+    language: str  # "vi" or "en" — set by run_graph() caller
+    report_output: Optional[ReportOutput]  # written by compose_report_node (Plan 02)
 
     # ---- Warnings accumulator ----
     retrieval_warnings: list[str]
