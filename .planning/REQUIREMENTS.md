@@ -57,7 +57,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 - [x] **SRVC-05**: reasoning-engine Docker service added to `docker-compose.yml` on `reasoning` network with `profiles: ["reasoning"]`
 - [x] **SRVC-06**: Batch report generation validated against 20-stock workload with memory baseline
 - [ ] **SRVC-07**: Gemini API spend alerts configured with tiered thresholds
-- [ ] **SRVC-08**: Checkpoint cleanup job implemented (TTL-based purge)
+- [x] **SRVC-08**: Checkpoint cleanup job implemented (TTL-based purge)
 
 ## Future Requirements
 
@@ -129,7 +129,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRVC-05 | Phase 8 | Complete |
 | SRVC-06 | Phase 9 | Complete |
 | SRVC-07 | Phase 9 | Pending |
-| SRVC-08 | Phase 9 | Pending |
+| SRVC-08 | Phase 9 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 34 total (note: prior traceability section incorrectly stated 30; actual count is 34)
