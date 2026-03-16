@@ -46,7 +46,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 - [x] **REPT-02**: Report output rendered as Markdown with human-readable narrative
 - [x] **REPT-03**: Bilingual generation (Vietnamese primary, English secondary) from structured data using Gemini native Vietnamese
 - [x] **REPT-04**: Reports include explicit "DATA WARNING" sections when `data_as_of` exceeds freshness thresholds
-- [ ] **REPT-05**: Reports stored in PostgreSQL `reports` table with full JSON and metadata
+- [x] **REPT-05**: Reports stored in PostgreSQL `reports` table with full JSON and metadata
 
 ### Service
 
@@ -121,7 +121,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REPT-02 | Phase 7 | Complete |
 | REPT-03 | Phase 7 | Complete |
 | REPT-04 | Phase 7 | Complete |
-| REPT-05 | Phase 7 | Pending |
+| REPT-05 | Phase 7 | Complete |
 | SRVC-01 | Phase 8 | Pending |
 | SRVC-02 | Phase 8 | Pending |
 | SRVC-03 | Phase 8 | Pending |
