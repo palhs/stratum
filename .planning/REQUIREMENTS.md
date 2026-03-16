@@ -52,7 +52,7 @@ Requirements for v2.0 Analytical Reasoning Engine. Each maps to roadmap phases.
 
 - [x] **SRVC-01**: FastAPI reasoning-engine service with `POST /reports/generate` endpoint (BackgroundTask)
 - [x] **SRVC-02**: `GET /reports/{id}` endpoint returns completed report
-- [ ] **SRVC-03**: `GET /reports/stream/{id}` SSE endpoint for pipeline progress
+- [x] **SRVC-03**: `GET /reports/stream/{id}` SSE endpoint for pipeline progress
 - [x] **SRVC-04**: `GET /health` endpoint for service monitoring
 - [x] **SRVC-05**: reasoning-engine Docker service added to `docker-compose.yml` on `reasoning` network with `profiles: ["reasoning"]`
 - [ ] **SRVC-06**: Batch report generation validated against 20-stock workload with memory baseline
@@ -124,7 +124,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REPT-05 | Phase 7 | Complete |
 | SRVC-01 | Phase 8 | Complete |
 | SRVC-02 | Phase 8 | Complete |
-| SRVC-03 | Phase 8 | Pending |
+| SRVC-03 | Phase 8 | Complete |
 | SRVC-04 | Phase 8 | Complete |
 | SRVC-05 | Phase 8 | Complete |
 | SRVC-06 | Phase 9 | Pending |

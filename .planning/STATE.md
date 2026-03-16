@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-16T09:22:36Z"
+last_updated: "2026-03-16T09:27:30Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -18,17 +18,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v2.0 Analytical Reasoning Engine — Phase 8 in progress (FastAPI Gateway and Docker Service).
+**Current focus:** v2.0 Analytical Reasoning Engine — Phase 8 COMPLETE (FastAPI Gateway and Docker Service).
 
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 8 of 9 in progress (FastAPI Gateway and Docker Service)
-Plan: 02 of 3 complete — POST /reports/generate (202+job_id, 409 conflict, retry-after-failed), GET /reports/{job_id} (200 completed, 202 pending/running, 404 not found), _run_pipeline background task (pending→running→completed/failed), SSE queue setup; SRVC-01 and SRVC-02 satisfied
-Status: Phase 8 in progress — 08-01 and 08-02 complete; Plan 03 (SSE streaming) remaining
-Last activity: 2026-03-16 — 08-02 complete: app/routers/reports.py, tests/api/test_reports.py (8 tests pass), app/main.py updated with reports router
+Phase: 8 of 9 COMPLETE (FastAPI Gateway and Docker Service)
+Plan: 03 of 3 complete — GET /reports/stream/{job_id} SSE endpoint with EventSourceResponse, node_transition/complete events, queue lifecycle, 4 async tests (14 total API tests pass); SRVC-01, SRVC-02, SRVC-03 all satisfied
+Status: Phase 8 COMPLETE — all 3 plans done (08-01 app scaffold, 08-02 generate+retrieve endpoints, 08-03 SSE streaming)
+Last activity: 2026-03-16 — 08-03 complete: GET /reports/stream/{job_id} SSE, test_stream.py (4 async tests), _run_pipeline progress events
 
-Progress: [██████░░░░] 67% (20/30 plans)
+Progress: [████████░░] 80% (24/30 plans)
 
 ## Performance Metrics
 
@@ -63,6 +63,8 @@ Progress: [██████░░░░] 67% (20/30 plans)
 | Phase 07 P04 | ~12 min | 2 tasks | 4 files |
 | Phase 07 P05 | ~15 min | 2 tasks | 5 files |
 | Phase 08 P01 | 15min | 2 tasks | 9 files |
+| Phase 08 P02 | ~8 min | 1 task (TDD) | 3 files |
+| Phase 08 P03 | ~2 min | 1 task (TDD) | 2 files |
 
 ## Accumulated Context
 
@@ -156,6 +158,11 @@ Key decisions active for v2.0:
 - [Phase 08-02]: report_jobs.report_id FK points to vi_id (Vietnamese report) on job completion — Vietnamese is primary language per locked project decision; both IDs stored in reports table
 - [Phase 08-02]: BackgroundTasks used (not asyncio.create_task) — TestClient executes BackgroundTasks synchronously, enabling clean unit test assertions on status transitions without async plumbing
 - [Phase 08-02]: SSE asyncio.Queue created at POST /generate time and stored in app.state.job_queues[job_id] — Plan 03 can wire stream endpoint directly to the queue without modifying Plan 02 code
+- [Phase 08-03]: stream_report_events() endpoint defined BEFORE get_report() in router — FastAPI matches routes in definition order; placing /{job_id} first would parse 'stream' as integer job_id and return 422
+- [Phase 08-03]: Job-level progress events (not node-level) from _run_pipeline — generate_report() is monolithic; job-level events satisfy SRVC-03 without invasive graph instrumentation
+- [Phase 08-03]: _emit() helper is a no-op when queue is absent — safe to call in _run_pipeline before SSE client connects
+- [Phase 08-03]: ping=15 in EventSourceResponse — sends keepalive comment every 15s to prevent proxy timeout on long pipelines
+- [Phase 08-03]: httpx.AsyncClient + ASGITransport for SSE tests — pre-populated queue drains synchronously; no timing race
 
 ### Pending Todos
 
@@ -171,5 +178,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 08-02-PLAN.md — app/routers/reports.py (POST /reports/generate, GET /reports/{job_id}), tests/api/test_reports.py (8 tests pass, 10 total API), app/main.py updated; SRVC-01 + SRVC-02 satisfied
+Stopped at: Completed 08-03-PLAN.md — GET /reports/stream/{job_id} SSE endpoint, tests/api/test_stream.py (4 async tests, 14 total API tests), _run_pipeline progress events; SRVC-03 satisfied; Phase 8 COMPLETE
 Resume file: None
