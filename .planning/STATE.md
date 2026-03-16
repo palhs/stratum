@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 7 of 9 in progress (Graph Assembly and End-to-End Report Generation)
-Plan: 04 of ~5 complete — Markdown renderer with bilingual support (render_markdown), bilingual compose_report_node (Vietnamese Gemini narrative re-generation + term dict labels, English pass-through); REPT-02 + REPT-03 satisfied
-Status: Phase 7 in progress — 07-01 + 07-02 + 07-03 + 07-04 complete; Plan 05 remains (PostgreSQL storage + e2e integration)
-Last activity: 2026-03-16 — 07-04 complete: markdown_renderer.py (render_markdown with conclusion-first ordering, bilingual headers), compose_report.py updated (Vietnamese Gemini narrative re-generation via gemini-2.5-pro, apply_terms on dict, English pass-through); 102 pipeline tests pass; REPT-02 + REPT-03 satisfied
+Plan: 05 of 5 complete — PostgreSQL report storage (write_report via SQLAlchemy Core), generate_report() async public entry point (prefetch → run_graph(vi) → write → run_graph(en) → write), E2E integration test suite (9 mocked tests + 1 integration placeholder); all 6 Phase 7 requirements satisfied (REAS-06, REPT-01 through REPT-05)
+Status: Phase 7 COMPLETE — all 5 plans complete (07-01 through 07-05); Phase 8 FastAPI next
+Last activity: 2026-03-16 — 07-05 complete: storage.py (write_report SQLAlchemy Core INSERT + RETURNING), __init__.py updated (generate_report() entry point with deepcopy isolation between vi/en), test_storage.py (19 tests), test_e2e.py (9 mocked E2E + 1 integration placeholder); 130 pipeline tests pass; REPT-05 + REAS-06 satisfied
 
-Progress: [█████░░░░░] 59% (17/29 plans)
+Progress: [██████░░░░] 66% (19/29 plans)
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████░░░░░] 59% (17/29 plans)
 | Phase 07 P02 | 6 min | 1 tasks | 5 files |
 | Phase 07 P03 | ~15 min | 2 tasks | 3 files |
 | Phase 07 P04 | ~12 min | 2 tasks | 4 files |
+| Phase 07 P05 | ~15 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,11 @@ Key decisions active for v2.0:
 - [Phase 07-04]: render_markdown called with ReportCard containing Vietnamese narratives (labels still English in model) — Markdown renderer uses card_headers from term_dict for section headers
 - [Phase 07-04]: _rewrite_narrative_vi has graceful degradation — returns English narrative if Gemini call fails; pipeline never blocked by translation failure
 - [Phase 07-04]: data_as_of computed from min timestamp across retrieval row lists; falls back to datetime.now(UTC) when no timestamps present in rows
+- [Phase 07-05]: write_report() uses SQLAlchemy Core Table reflection (autoload_with=db_engine) — consistent with postgres_retriever.py; stateless, no model imports needed
+- [Phase 07-05]: generate_report() deep-copies prefetch state between vi and en invocations — prevents vi LangGraph execution from contaminating en state via shared mutable objects
+- [Phase 07-05]: pipeline_duration_ms measured via time.monotonic() per-language run — immune to clock drift; millisecond resolution
+- [Phase 07-05]: E2E tests fully mocked (no Docker required for non-integration mark) — fast CI execution; 'integration' marker registered in pytest.ini for Docker-dependent tests
+- [Phase 07-05]: venv created at reasoning/.venv — system python3.11 had brownie pytest plugin with broken web3 dependency; isolated venv resolves pytest startup failures cleanly
 
 ### Pending Todos
 
@@ -158,5 +164,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 07-04-PLAN.md — markdown_renderer.py (render_markdown with conclusion-first ordering, bilingual card headers, prohibited-term-free templates); compose_report.py updated (Vietnamese Gemini narrative re-generation via gemini-2.5-pro, apply_terms label translation, English pass-through); 102 pipeline tests pass; REPT-02 + REPT-03 satisfied
+Stopped at: Completed 07-05-PLAN.md — storage.py (write_report SQLAlchemy Core INSERT + RETURNING), generate_report() async entry point with deepcopy isolation, test_storage.py (19 tests), test_e2e.py (9 mocked E2E tests); 130 pipeline tests pass; Phase 7 COMPLETE — all 6 requirements satisfied (REAS-06, REPT-01 through REPT-05)
 Resume file: None
