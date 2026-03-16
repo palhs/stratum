@@ -149,9 +149,23 @@ Plans:
 - [ ] 08-02: POST /reports/generate with BackgroundTask and GET /reports/{id} retrieval
 - [ ] 08-03: SSE streaming endpoint (GET /reports/stream/{id}) with asyncio.Queue bridge
 
+### Phase 8.1: Docker Runtime Fixes (INSERTED — gap closure)
+**Goal**: Fix the two blocking integration issues that prevent E2E report generation inside Docker containers — the import path mismatch (`from reasoning.app.*` fails because WORKDIR is `/app` with no `reasoning` package) and the missing `depends_on: langgraph-init` declaration — so that `docker compose --profile reasoning up` produces a fully functional reasoning-engine service
+**Depends on**: Phase 8
+**Requirements**: (none — fixes integration gaps, not new requirements)
+**Gap Closure**: Closes blocking integration and flow gaps from v2.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `docker compose --profile reasoning build reasoning-engine` succeeds and the container can import `generate_report` without `ModuleNotFoundError` — verified by `docker compose run --rm reasoning-engine python -c "from app.pipeline import generate_report; print('OK')"`
+  2. A POST to `/reports/generate` triggers a background pipeline run that completes (job status transitions from pending → running → completed) inside the Docker container — not just locally
+  3. The `reasoning-engine` service starts only after `langgraph-init` has completed successfully — `depends_on` with `condition: service_completed_successfully` is present in `docker-compose.yml`
+**Plans**: TBD
+
+Plans:
+- [ ] 08.1-01: Fix Docker import path and langgraph-init dependency
+
 ### Phase 9: Production Hardening and Batch Validation
 **Goal**: The v2.0 system is validated under realistic production conditions — a 20-stock batch workload completes within memory limits, Gemini API spend alerts are configured and testable, and a checkpoint cleanup job prevents unbounded PostgreSQL growth
-**Depends on**: Phase 8
+**Depends on**: Phase 8.1
 **Requirements**: SRVC-06, SRVC-07, SRVC-08
 **Success Criteria** (what must be TRUE):
   1. A batch run generating reports for 20 VN30 stocks completes without OOM kills to any Docker service — `docker stats` during the run shows all services staying within their configured `mem_limit` values
@@ -167,7 +181,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
+Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 8.1 → 9
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -179,4 +193,5 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 | 6. LangGraph Reasoning Nodes | 5/5 | Complete   | 2026-03-15 | - |
 | 7. Graph Assembly and End-to-End Report Generation | 5/5 | Complete   | 2026-03-16 | - |
 | 8. FastAPI Gateway and Docker Service | 3/3 | Complete   | 2026-03-16 | - |
+| 8.1. Docker Runtime Fixes (gap closure) | v2.0 | 0/1 | Not started | - |
 | 9. Production Hardening and Batch Validation | v2.0 | 0/3 | Not started | - |
