@@ -50,6 +50,11 @@ CREATE TABLE IF NOT EXISTS langgraph.checkpoint_writes (
 );
 """
 
+ALTER_DDL = """
+ALTER TABLE langgraph.checkpoints
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+"""
+
 VALIDATION_QUERY = """
 SELECT COUNT(*) FROM information_schema.tables
 WHERE table_schema = 'langgraph'
@@ -78,6 +83,10 @@ def main() -> None:
             print("Executing LangGraph schema DDL...")
             conn.execute(DDL)
             print("DDL executed successfully.")
+
+            print("Adding created_at column to langgraph.checkpoints...")
+            conn.execute(ALTER_DDL)
+            print("created_at column ensured.")
 
             print("Validating langgraph schema tables...")
             result = conn.execute(VALIDATION_QUERY).fetchone()

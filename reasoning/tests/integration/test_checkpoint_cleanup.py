@@ -32,8 +32,16 @@ def _load_cleanup_module():
 
 
 def _mock_conn_returning_count(count: int) -> MagicMock:
-    """Return a mock psycopg connection where COUNT query returns `count`."""
+    """Return a mock psycopg connection where COUNT query returns `count`.
+
+    The cleanup script uses psycopg.connect() as a context manager, so we
+    need to wire __enter__ to return the same mock used inside the `with` block.
+    """
     mock_conn = MagicMock()
+    # Make context manager return mock_conn itself so conn.execute is trackable
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
     mock_result = MagicMock()
     mock_result.fetchone.return_value = (count,)
     mock_rowcount = MagicMock()
@@ -64,8 +72,9 @@ def test_cleanup_deletes_in_correct_order():
                 "CHECKPOINT_TTL_DAYS": "7",
             },
         ):
-            mod = _load_cleanup_module()
-            mod.main()
+            with patch("sys.argv", ["cleanup-checkpoints.py"]):
+                mod = _load_cleanup_module()
+                mod.main()
 
     execute_calls = mock_conn.execute.call_args_list
     # Collect SQL strings from positional args
@@ -126,8 +135,9 @@ def test_cleanup_no_expired_exits_early():
                 "CHECKPOINT_TTL_DAYS": "7",
             },
         ):
-            mod = _load_cleanup_module()
-            mod.main()
+            with patch("sys.argv", ["cleanup-checkpoints.py"]):
+                mod = _load_cleanup_module()
+                mod.main()
 
     execute_calls = mock_conn.execute.call_args_list
     sql_calls = [c[0][0].strip() for c in execute_calls if c[0]]
