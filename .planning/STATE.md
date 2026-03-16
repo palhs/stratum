@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-16T05:19:01.079Z"
+last_updated: "2026-03-16T09:16:52.610Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 21
-  completed_plans: 21
+  total_plans: 24
+  completed_plans: 22
 ---
 
 # Project State
@@ -18,15 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v2.0 Analytical Reasoning Engine — Phase 7 in progress (Graph Assembly and End-to-End Report Generation).
+**Current focus:** v2.0 Analytical Reasoning Engine — Phase 8 in progress (FastAPI Gateway and Docker Service).
 
 ## Current Position
 
 Milestone: v2.0 — Analytical Reasoning Engine
-Phase: 7 of 9 in progress (Graph Assembly and End-to-End Report Generation)
-Plan: 05 of 5 complete — PostgreSQL report storage (write_report via SQLAlchemy Core), generate_report() async public entry point (prefetch → run_graph(vi) → write → run_graph(en) → write), E2E integration test suite (9 mocked tests + 1 integration placeholder); all 6 Phase 7 requirements satisfied (REAS-06, REPT-01 through REPT-05)
-Status: Phase 7 COMPLETE — all 5 plans complete (07-01 through 07-05); Phase 8 FastAPI next
-Last activity: 2026-03-16 — 07-05 complete: storage.py (write_report SQLAlchemy Core INSERT + RETURNING), __init__.py updated (generate_report() entry point with deepcopy isolation between vi/en), test_storage.py (19 tests), test_e2e.py (9 mocked E2E + 1 integration placeholder); 130 pipeline tests pass; REPT-05 + REAS-06 satisfied
+Phase: 8 of 9 in progress (FastAPI Gateway and Docker Service)
+Plan: 01 of 3 complete — FastAPI app skeleton (app/main.py, app/dependencies.py, app/routers/health.py), GET /health endpoint with 2 passing tests, reasoning/Dockerfile (python:3.12-slim, 60s start-period), docker-compose.yml reasoning-engine service (mem_limit 2g, profiles [reasoning], port 8001:8000); SRVC-04 and SRVC-05 satisfied
+Status: Phase 8 in progress — 08-01 complete; Plans 02 (report generation endpoint) and 03 (SSE streaming) remaining
+Last activity: 2026-03-16 — 08-01 complete: app/main.py, app/dependencies.py, app/routers/health.py, tests/api/test_health.py (2 tests pass), reasoning/Dockerfile, requirements.txt updated, docker-compose.yml reasoning-engine service
 
 Progress: [██████░░░░] 66% (19/29 plans)
 
@@ -62,6 +62,7 @@ Progress: [██████░░░░] 66% (19/29 plans)
 | Phase 07 P03 | ~15 min | 2 tasks | 3 files |
 | Phase 07 P04 | ~12 min | 2 tasks | 4 files |
 | Phase 07 P05 | ~15 min | 2 tasks | 5 files |
+| Phase 08 P01 | 15min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,8 @@ Key decisions active for v2.0:
 - [Phase 07-05]: pipeline_duration_ms measured via time.monotonic() per-language run — immune to clock drift; millisecond resolution
 - [Phase 07-05]: E2E tests fully mocked (no Docker required for non-integration mark) — fast CI execution; 'integration' marker registered in pytest.ini for Docker-dependent tests
 - [Phase 07-05]: venv created at reasoning/.venv — system python3.11 had brownie pytest plugin with broken web3 dependency; isolated venv resolves pytest startup failures cleanly
+- [Phase 08-01]: lifespan asynccontextmanager pattern used (not deprecated @app.on_event) — FastAPI best practice
+- [Phase 08-01]: GEMINI_API_KEY env var in reasoning-engine service — deferred from Phase 3, now delivered with service creation
 
 ### Pending Todos
 
@@ -164,5 +167,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 07-05-PLAN.md — storage.py (write_report SQLAlchemy Core INSERT + RETURNING), generate_report() async entry point with deepcopy isolation, test_storage.py (19 tests), test_e2e.py (9 mocked E2E tests); 130 pipeline tests pass; Phase 7 COMPLETE — all 6 requirements satisfied (REAS-06, REPT-01 through REPT-05)
+Stopped at: Completed 08-01-PLAN.md — app/main.py, app/dependencies.py (lifespan), app/routers/health.py, tests/api/test_health.py (2 tests pass), reasoning/Dockerfile, requirements.txt (fastapi/uvicorn/sse-starlette/httpx/langgraph-checkpoint-postgres/psycopg[binary]), docker-compose.yml reasoning-engine service; SRVC-04 + SRVC-05 satisfied
 Resume file: None
