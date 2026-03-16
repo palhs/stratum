@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-16T04:09:41.096Z"
+last_updated: "2026-03-16T04:18:35.924Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 21
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 7 of 9 in progress (Graph Assembly and End-to-End Report Generation)
-Plan: 01 of ~5 complete — StateGraph assembly (7-node linear graph), prefetch() two-stage pipeline, ReportOutput Pydantic model, 19 TDD tests pass
-Status: Phase 7 started — 07-01 complete; Plans 02-05 remain (compose_report, report storage, FastAPI, orchestration)
-Last activity: 2026-03-16 — 07-01 complete: build_graph() 7-node StateGraph, run_graph() with AsyncPostgresSaver, prefetch() equity/gold paths, ReportOutput model, ReportState extended with language/report_output
+Plan: 02 of ~5 complete — compose_report_node (7th graph node), report_schema.py Pydantic cards, _collect_data_warnings, 29 TDD tests pass
+Status: Phase 7 in progress — 07-01 + 07-02 complete; Plans 03-05 remain (report storage, FastAPI, orchestration)
+Last activity: 2026-03-16 — 07-02 complete: compose_report_node produces ReportOutput from all upstream outputs in conclusion-first JSON; REPT-01 + REPT-04 satisfied
 
-Progress: [█████░░░░░] 52% (15/29 plans)
+Progress: [█████░░░░░] 55% (16/29 plans)
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████░░░░░] 52% (15/29 plans)
 
 *Updated after each plan completion*
 | Phase 07 P01 | 5 min | 1 tasks | 6 files |
+| Phase 07 P02 | 6 min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,9 @@ Key decisions active for v2.0:
 - [Phase 07-01]: Placeholder compose_report_node in graph.py returns None — real implementation in Plan 02; avoids blocking graph assembly on report generation logic
 - [Phase 07-01]: prefetch() silently catches retrieval exceptions and returns empty lists — graceful degradation pattern; nodes must handle empty inputs
 - [Phase 07-01]: AsyncPostgresSaver imported inside run_graph() body — avoids psycopg3 import errors in test environments where only psycopg2 is available
+- [Phase 07]: report_json uses json.loads(card.model_dump_json(exclude_none=True)) — flat dict suitable for JSONB storage, no nested Pydantic instances
+- [Phase 07]: WGC gold data gap always flagged for gold assets with fixed warning string — known HTTP 501 on central bank buying endpoint
+- [Phase 07]: conflict card excluded via exclude_none=True serialization — ReportCard.conflict=None omits key from JSONB output
 
 ### Pending Todos
 
@@ -147,5 +151,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 07-01-PLAN.md — StateGraph assembly (7-node linear graph), run_graph() with AsyncPostgresSaver checkpointing, prefetch() two-stage pipeline (equity + gold paths), ReportOutput Pydantic model, ReportState extended with language/report_output; REAS-06 satisfied; 19 TDD tests pass
+Stopped at: Completed 07-02-PLAN.md — compose_report_node (7th graph node), report_schema.py Pydantic card models, _collect_data_warnings() with WGC gold gap always-on warning, graph.py real import replacing placeholder; REPT-01 + REPT-04 satisfied; 29 TDD tests + 48 total pipeline tests pass
 Resume file: None
