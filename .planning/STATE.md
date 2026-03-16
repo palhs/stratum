@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 7 of 9 in progress (Graph Assembly and End-to-End Report Generation)
-Plan: 03 of ~5 complete — Vietnamese term dictionary (160 terms, 10 categories), apply_terms() label replacement, user-approved; REPT-03 satisfied
-Status: Phase 7 in progress — 07-01 + 07-02 + 07-03 complete; Plans 04-05 remain (Markdown + bilingual report generation, PostgreSQL storage + e2e integration)
-Last activity: 2026-03-16 — 07-03 complete: term_dict_vi.json (160 Vietnamese financial terms), load_term_dict() with caching, apply_terms() with deepcopy + idempotency + graceful degradation; user reviewed and approved; REPT-03 satisfied
+Plan: 04 of ~5 complete — Markdown renderer with bilingual support (render_markdown), bilingual compose_report_node (Vietnamese Gemini narrative re-generation + term dict labels, English pass-through); REPT-02 + REPT-03 satisfied
+Status: Phase 7 in progress — 07-01 + 07-02 + 07-03 + 07-04 complete; Plan 05 remains (PostgreSQL storage + e2e integration)
+Last activity: 2026-03-16 — 07-04 complete: markdown_renderer.py (render_markdown with conclusion-first ordering, bilingual headers), compose_report.py updated (Vietnamese Gemini narrative re-generation via gemini-2.5-pro, apply_terms on dict, English pass-through); 102 pipeline tests pass; REPT-02 + REPT-03 satisfied
 
 Progress: [█████░░░░░] 59% (17/29 plans)
 
@@ -60,6 +60,7 @@ Progress: [█████░░░░░] 59% (17/29 plans)
 | Phase 07 P01 | 5 min | 1 tasks | 6 files |
 | Phase 07 P02 | 6 min | 1 tasks | 5 files |
 | Phase 07 P03 | ~15 min | 2 tasks | 3 files |
+| Phase 07 P04 | ~12 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,11 @@ Key decisions active for v2.0:
 - [Phase 07]: report_json uses json.loads(card.model_dump_json(exclude_none=True)) — flat dict suitable for JSONB storage, no nested Pydantic instances
 - [Phase 07]: WGC gold data gap always flagged for gold assets with fixed warning string — known HTTP 501 on central bank buying endpoint
 - [Phase 07]: conflict card excluded via exclude_none=True serialization — ReportCard.conflict=None omits key from JSONB output
+- [Phase 07-04]: _rewrite_narrative_vi is synchronous (model.invoke()) — compose_report_node is sync LangGraph node; async would require graph restructuring
+- [Phase 07-04]: apply_terms() applied to serialized dict after narrative re-generation — term_dict.py design contract: operates on plain dict, not Pydantic model
+- [Phase 07-04]: render_markdown called with ReportCard containing Vietnamese narratives (labels still English in model) — Markdown renderer uses card_headers from term_dict for section headers
+- [Phase 07-04]: _rewrite_narrative_vi has graceful degradation — returns English narrative if Gemini call fails; pipeline never blocked by translation failure
+- [Phase 07-04]: data_as_of computed from min timestamp across retrieval row lists; falls back to datetime.now(UTC) when no timestamps present in rows
 
 ### Pending Todos
 
@@ -152,5 +158,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 07-03-PLAN.md — Vietnamese term dictionary (160 terms, 10 categories) authored and user-approved; load_term_dict() with caching + apply_terms() with deepcopy and graceful degradation; 25 TDD tests + 73 total pipeline tests pass; REPT-03 satisfied
+Stopped at: Completed 07-04-PLAN.md — markdown_renderer.py (render_markdown with conclusion-first ordering, bilingual card headers, prohibited-term-free templates); compose_report.py updated (Vietnamese Gemini narrative re-generation via gemini-2.5-pro, apply_terms label translation, English pass-through); 102 pipeline tests pass; REPT-02 + REPT-03 satisfied
 Resume file: None
