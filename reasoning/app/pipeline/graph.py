@@ -4,7 +4,7 @@ Phase 7 | Plan 01 | Requirement: REAS-06
 
 Implements:
     build_graph() — Assemble 7-node linear StateGraph with all Phase 6 nodes
-                    plus a placeholder compose_report_node (real impl in Plan 02).
+                    plus compose_report_node (implemented in Plan 02).
     run_graph()   — Async: compile graph with AsyncPostgresSaver checkpointer
                     using langgraph schema search path, then invoke graph.
 
@@ -15,8 +15,7 @@ Design decisions (locked):
   →entry_quality→grounding_check→compose_report→END (8 edges total)
 - Checkpointer uses: db_uri + "?options=-csearch_path%3Dlanggraph"
   (URL-encoded = sign, Phase 3 langgraph schema decision)
-- compose_report_node placeholder returns {"report_output": None}
-  — real implementation added in Plan 02
+- compose_report_node real implementation added in Plan 02 (replaces placeholder)
 - run_graph() deepcopies state before mutation to avoid caller side-effects
 """
 
@@ -36,21 +35,7 @@ from reasoning.app.nodes import (
     entry_quality_node,
     grounding_check_node,
 )
-
-
-# ---------------------------------------------------------------------------
-# Placeholder compose_report_node (real implementation in Plan 02)
-# ---------------------------------------------------------------------------
-
-
-def compose_report_node(state: ReportState) -> dict[str, Any]:
-    """
-    Placeholder compose_report_node — returns report_output=None.
-
-    This placeholder will be replaced by the real implementation in Plan 02
-    which calls the Gemini API to generate the full bilingual report.
-    """
-    return {"report_output": None}
+from reasoning.app.pipeline.compose_report import compose_report_node
 
 
 # ---------------------------------------------------------------------------
