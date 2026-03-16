@@ -179,6 +179,7 @@ services:
 
   seed-runner:
     image: python:3.12-slim
+    mem_limit: 1g
     # No depends_on — storage services must already be running.
     # Start storage first: docker compose --profile storage up -d
     volumes:
@@ -284,3 +285,42 @@ services:
       - ingestion     # ingestion network only (INFRA-02 enforcement)
     profiles: ["ingestion"]
     # NOTE: No host port mapping — n8n calls data-sidecar:8000 internally
+
+  # ===========================================================================
+  # REASONING TIER — FastAPI reasoning-engine service
+  # Wraps LangGraph pipeline; serves report generation, retrieval, and SSE streaming
+  # Profile: reasoning | Port: 8001:8000 (host:container)
+  # ===========================================================================
+
+  reasoning-engine:
+    build:
+      context: ./reasoning
+      dockerfile: Dockerfile
+    mem_limit: 2g
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    ports:
+      - "8001:8000"
+    networks:
+      - reasoning
+    profiles: ["reasoning"]
