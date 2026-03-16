@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 7 of 9 in progress (Graph Assembly and End-to-End Report Generation)
-Plan: 02 of ~5 complete — compose_report_node (7th graph node), report_schema.py Pydantic cards, _collect_data_warnings, 29 TDD tests pass
-Status: Phase 7 in progress — 07-01 + 07-02 complete; Plans 03-05 remain (report storage, FastAPI, orchestration)
-Last activity: 2026-03-16 — 07-02 complete: compose_report_node produces ReportOutput from all upstream outputs in conclusion-first JSON; REPT-01 + REPT-04 satisfied
+Plan: 03 of ~5 complete — Vietnamese term dictionary (160 terms, 10 categories), apply_terms() label replacement, user-approved; REPT-03 satisfied
+Status: Phase 7 in progress — 07-01 + 07-02 + 07-03 complete; Plans 04-05 remain (Markdown + bilingual report generation, PostgreSQL storage + e2e integration)
+Last activity: 2026-03-16 — 07-03 complete: term_dict_vi.json (160 Vietnamese financial terms), load_term_dict() with caching, apply_terms() with deepcopy + idempotency + graceful degradation; user reviewed and approved; REPT-03 satisfied
 
-Progress: [█████░░░░░] 55% (16/29 plans)
+Progress: [█████░░░░░] 59% (17/29 plans)
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████░░░░░] 55% (16/29 plans)
 *Updated after each plan completion*
 | Phase 07 P01 | 5 min | 1 tasks | 6 files |
 | Phase 07 P02 | 6 min | 1 tasks | 5 files |
+| Phase 07 P03 | ~15 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -139,7 +140,7 @@ Key decisions active for v2.0:
 
 ### Pending Todos
 
-- Vietnamese financial term dictionary must be authored before Phase 6 compose_report node is built (content asset, not code)
+- [RESOLVED 07-03] Vietnamese financial term dictionary authored, user-approved, and ready for import by compose_report_node in Plan 04
 - Gemini model selection (2.0-flash vs 2.5-flash) — benchmark during Phase 6 before committing to production config
 - Neo4j historical regime data coverage plan — RESOLVED in 04-01: 17 regime nodes defined with FRED averages; pending: compute actual FRED period averages from fred_indicators table (Plans 04-02+)
 
@@ -151,5 +152,5 @@ Key decisions active for v2.0:
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 07-02-PLAN.md — compose_report_node (7th graph node), report_schema.py Pydantic card models, _collect_data_warnings() with WGC gold gap always-on warning, graph.py real import replacing placeholder; REPT-01 + REPT-04 satisfied; 29 TDD tests + 48 total pipeline tests pass
+Stopped at: Completed 07-03-PLAN.md — Vietnamese term dictionary (160 terms, 10 categories) authored and user-approved; load_term_dict() with caching + apply_terms() with deepcopy and graceful degradation; 25 TDD tests + 73 total pipeline tests pass; REPT-03 satisfied
 Resume file: None

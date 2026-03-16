@@ -128,7 +128,7 @@ Plans:
 Plans:
 - [ ] 07-01: LangGraph StateGraph assembly with AsyncPostgresSaver checkpointing
 - [ ] 07-02: JSON structured report output and Pydantic schema validation
-- [ ] 07-03: Markdown report rendering and bilingual generation with Vietnamese term dictionary
+- [x] 07-03: Markdown report rendering and bilingual generation with Vietnamese term dictionary
 - [ ] 07-04: Data freshness flag integration and DATA WARNING section generation
 - [ ] 07-05: PostgreSQL report storage and end-to-end pipeline integration test
 
