@@ -1,35 +1,31 @@
 # Feature Research
 
-**Domain:** Analytical reasoning engine — macro regime classification, asset valuation, price structure analysis, AI entry quality scoring, bilingual report generation
-**Researched:** 2026-03-09
-**Confidence:** MEDIUM-HIGH — Global institutional investment platform patterns are HIGH confidence (well-documented); AI-native entry quality scoring with LangGraph is MEDIUM confidence (nascent but growing precedent in 2025–2026); Vietnamese-language generation with Gemini is MEDIUM confidence (limited direct evidence but Gemini 2.5 supports Vietnamese natively).
+**Domain:** Investment advisor product frontend — dashboard, watchlist, report browsing, auth, document ingestion, dictionary expansion
+**Researched:** 2026-03-17
+**Confidence:** MEDIUM-HIGH — Financial platform UX patterns are HIGH confidence (well-documented industry conventions); Supabase invite-only auth patterns are MEDIUM confidence (documented but with known quirks); FOMC automated ingestion is HIGH confidence (RSS feed verified); SBV automated ingestion is LOW confidence (no stable Vietnamese central bank feed confirmed); TradingView Lightweight Charts + Next.js integration is HIGH confidence (official examples exist).
 
 ---
 
 ## Scope Note
 
-This file covers the v2.0 milestone features only: the analytical reasoning engine built on top of the v1.0 data ingestion platform. Features already delivered in v1.0 (OHLCV ingestion, FRED macro ingestion, pre-computed structure markers, pipeline run logging, anomaly detection, Docker infrastructure) are listed as **v1.0 dependencies**, not as features to build.
+This file covers the **v3.0 milestone** only: adding a product frontend and user experience layer on top of the v2.0 analytical reasoning engine. Features already delivered in v1.0 and v2.0 are listed as **existing backend dependencies**, not as features to build.
 
 ---
 
-## v1.0 Data Available as Input
+## Existing Backend Available as Foundation
 
-The following data exists in storage and feeds v2.0 features directly:
+The following capabilities exist and feed v3.0 features directly:
 
-| Data | Storage Location | Cadence | Notes |
-|------|-----------------|---------|-------|
-| VN30 OHLCV (weekly/monthly) | PostgreSQL | Weekly | 9,411 rows; pre-computed MAs, drawdown from ATH, percentile ranks |
-| VN30 fundamentals (P/E, P/B, EPS, ROE) | PostgreSQL | Monthly | 399 rows; validated through vnstock VCI source |
-| FRED macro series (GDP, CPI, unemployment, Fed funds rate) | PostgreSQL | Monthly | Growth rates, level values, YoY change stored |
-| Gold price (FRED spot) | PostgreSQL | Weekly/Monthly | USD spot price with data_as_of timestamp |
-| GLD ETF flows | PostgreSQL | Monthly | Working; WGC central bank data is 501 stub |
-| Pre-computed structure markers | PostgreSQL | Weekly | MAs (50/200), drawdown from ATH, 52-week percentile rank |
-| Pipeline run log | PostgreSQL | Per run | Success/failure, row counts, anomaly flags |
-
-**Gaps in v1.0 data that affect v2.0 features:**
-- WGC central bank buying data: stub only — will require manual CSV import or skip for v2.0
-- Historical regime nodes in Neo4j: empty — must be seeded before regime classification can function
-- Document corpus (Fed minutes, SBV reports, VN earnings): not yet ingested into Qdrant
+| Capability | Backend Location | Notes |
+|-----------|-----------------|-------|
+| POST /reports/generate | FastAPI reasoning-engine | Triggers background report generation, returns job_id |
+| GET /reports/{id} | FastAPI reasoning-engine | Returns full report JSON + markdown (bilingual) |
+| GET /reports/stream/{id} | FastAPI reasoning-engine | SSE stream of pipeline progress events |
+| GET /health | FastAPI reasoning-engine | Docker health monitoring |
+| Reports table in PostgreSQL | PostgreSQL | Stores report_json, report_markdown, ticker, created_at, entry_quality tier |
+| 4-tier entry quality labels | Analytical engine output | Favorable / Neutral / Cautious / Avoid |
+| 162-term Vietnamese dictionary | In-process during report generation | Content asset, not a separate service |
+| Pre-computed structure markers | PostgreSQL | MAs, drawdowns, OHLCV — available for charting |
 
 ---
 
@@ -37,209 +33,197 @@ The following data exists in storage and feeds v2.0 features directly:
 
 ### Table Stakes (Users Expect These)
 
-Features the analytical reasoning engine must deliver. Missing any of these means the platform does not fulfill its stated purpose.
+Features users of any investment research platform assume exist. Missing any of these makes the product feel incomplete or broken.
 
-| Feature | Why Expected | Complexity | v1.0 Dependency | Notes |
-|---------|--------------|------------|-----------------|-------|
-| Retrieval layer over all three stores | Reasoning pipeline cannot access data without a retrieval abstraction; LangGraph nodes cannot query PostgreSQL, Neo4j, and Qdrant directly without a unified interface | MEDIUM | PostgreSQL (all tables), Neo4j (empty regime graph), Qdrant (empty collections) | LlamaIndex as retrieval-only layer; GraphRAGRetriever for Neo4j, HybridRetriever for Qdrant, SQLRetriever for PostgreSQL |
-| Macro regime classification | The root dependency of the entire platform; valuation and entry quality both require regime context; without this the platform produces decontextualized data, not analysis | HIGH | FRED macro series, gold price, VN30 structure markers | Must output probability distribution, not a single label; mixed-signal handling required from day one; regime nodes in Neo4j must be seeded before this can run |
-| Asset valuation assessment relative to historical range | Any investment analysis platform that shows a P/E ratio or price level is expected to contextualize it against history; without this, raw numbers are noise | MEDIUM | VN30 fundamentals (P/E, P/B), gold spot price, pre-computed percentile ranks | Historical percentile already pre-computed in v1.0 structure markers; regime-relative layer is the v2.0 addition |
-| Higher time-frame price structure analysis | Long-term investors expect to see where price sits relative to moving averages and cycle extremes before making an entry decision; platform cannot answer "when to enter" without this | MEDIUM | Pre-computed MAs (50/200), drawdown from ATH, structure markers in PostgreSQL | v1.0 pre-computes these; v2.0 interprets them into narrative — not recomputation |
-| AI-derived entry quality assessment | The platform's stated purpose is to answer "when is a reasonable time to enter"; without a synthesized assessment, users have three separate analyses but no actionable conclusion | HIGH | Depends on macro regime, valuation assessment, and price structure all running first | Must output qualitative tier (Favorable / Neutral / Cautious / Avoid) with three sub-assessments shown before composite; never a standalone number |
-| Structured report output (JSON + Markdown) | Institutional research platforms (BlackRock, VinaCapital) produce structured deliverables; users of research-grade tools expect a formatted, navigable document — not raw LLM text | MEDIUM | Entry quality assessment output, all three analytical layers | Card format: macro regime card, valuation card, price structure card, entry quality card; JSON for programmatic use, Markdown for human reading |
-| Bilingual output (Vietnamese + English) | Vietnamese retail investment platforms (Vietstock, CafeF) produce Vietnamese-language content; the primary user audience expects Vietnamese as the reading language | MEDIUM | Structured report output (must be stable before bilingual generation to avoid double maintenance) | Vietnamese is primary; English is secondary; generate both from same structured data, not translate one from the other |
-| Graceful handling of missing and stale data | WGC data has a known 45-day publication lag; vnstock has known fragility; a platform that silently uses stale data or omits missing fields is worse than useless for investment decisions | LOW | Pipeline run log (data_as_of + ingested_at on every row), anomaly detection flags | Must emit explicit "DATA WARNING" sections in reports when freshness threshold is exceeded; not a nice-to-have |
-| Explainable multi-step reasoning | CFA Institute research confirms that explainability is a table-stakes expectation for AI-assisted investment research; users who cannot see the reasoning chain cannot trust the conclusion | MEDIUM | All three analytical layers must produce intermediate outputs, not just a final answer | Each LangGraph node must output: data source cited, inputs used, intermediate conclusion reached; grounding check node must verify all numbers trace to retrieved records |
-| Conflicting signal representation | When macro conditions are positive but price structure is weak (or vice versa), the platform must say so explicitly; papering over signal conflicts is a research quality failure | MEDIUM | Macro regime classification, valuation assessment, price structure — all three must be functional before conflicts can be surfaced | "Strong thesis, weak structure" output is a first-class report type, not an edge case to handle later |
+| Feature | Why Expected | Complexity | Backend Dependency | Notes |
+|---------|--------------|------------|-------------------|-------|
+| Dashboard with watchlist cards | Any investment platform (Robinhood, Bloomberg, Vietstock) shows watched assets in a card list with summary status; it is the product's entry point | MEDIUM | GET /reports/{ticker} for latest report, PostgreSQL reports table for entry_quality tier and created_at | Cards must show: ticker symbol, entry quality tier badge (color-coded), last report date, sparkline of OHLCV; blank state for tickers with no reports yet |
+| Sparkline chart on watchlist card | Robinhood, Bloomberg, Simply Wall St all use mini-charts for quick price context on list views; absent sparkline makes cards feel data-poor | LOW | OHLCV data in PostgreSQL (pre-computed weekly series) | TradingView Lightweight Charts line series; 52-week weekly close prices; no axis labels; hover tooltip optional |
+| Report summary + full expand | Financial research platforms (FactSet, Simply Wall St) use progressive disclosure: summary → expand for full narrative; prevents information overload on first view | MEDIUM | GET /reports/{id} returns structured JSON with card sections | Summary view: entry quality tier, 3 sub-assessment badges, one-line verdict; Expand: full bilingual markdown rendered card by card |
+| TradingView chart in report view | Interactive price chart with MA overlays is standard in any analytical platform targeting technical-aware users; absent chart forces users to open external tools | MEDIUM | OHLCV + MA data in PostgreSQL | TradingView Lightweight Charts (open-source, 45KB); show 50MA and 200MA as line series; weekly candles; zoom to 1Y/2Y/5Y/All; no real-time feed needed — static weekly data |
+| Report history timeline per ticker | Every research platform with repeat coverage (Morningstar, MSCI) shows historical reports; users want to see how assessment changed over time | MEDIUM | PostgreSQL reports table with created_at + entry_quality per ticker | Vertical timeline or table: date, entry quality tier badge, one-line summary; click to open full historical report; assessment change indicators (upgrade/downgrade arrows) |
+| Manual "Generate Report" trigger | On-demand generation is the core user action; users need a visible, accessible button to request a fresh report on a specific ticker | LOW | POST /reports/generate + GET /reports/stream/{id} SSE endpoint already exist | Button per ticker card; triggers POST, then opens SSE progress display; button disabled during active generation |
+| SSE progress display | Any multi-step AI pipeline with >10s runtime needs visible progress; silent loading spinner creates anxiety and confusion about whether system is working | LOW | GET /reports/stream/{id} SSE already implemented in FastAPI | Progress log showing named nodes as they complete: "Macro regime classified", "Valuation assessed", "Structure interpreted", "Entry quality determined", "Report composed"; estimated time remaining optional |
+| Watchlist management (add/remove) | Every watchlist product allows editing the watchlist; static or admin-only watchlists feel broken | LOW | New FastAPI endpoint or direct Supabase RLS table; PostgreSQL or Supabase watchlists table per user | Ticker search/autocomplete from VN30 list (bounded — only 30 stocks + gold); add to watchlist button; remove via long-press or edit mode; max ~30 items at current scale |
+| Authentication (login/logout) | Any product with per-user state requires auth; without auth, watchlists cannot be persisted and the product cannot serve multiple invite users | MEDIUM | Supabase Auth (in stack); new users table or profiles table linked to Supabase user_id | Email + password login; magic link login as fallback; session persistence; logout clears local session |
+| Empty/loading states | Dashboard without graceful empty states (no reports yet, loading, error) feels unfinished; this is a baseline UX expectation | LOW | None — pure frontend | Skeleton loaders on card list; "No reports yet — click Generate" on empty ticker card; error toast on failed generation |
 
 ### Differentiators (Competitive Advantage)
 
-Features that distinguish Stratum from existing Vietnamese retail investment platforms and from generic AI financial tools.
+Features that distinguish Stratum from existing Vietnamese investment platforms and from generic AI financial tools at the UX layer.
 
-| Feature | Value Proposition | Complexity | v1.0 Dependency | Notes |
-|---------|-------------------|------------|-----------------|-------|
-| Macro regime classification with historical analogues | No Vietnamese retail platform offers regime-aware analysis mapped to historical precedents; this is an institutional capability (BlackRock, Two Sigma use GMM/k-means/PCA for regime detection) delivered at retail scale | HIGH | FRED macro series (GDP, CPI, Fed funds rate, unemployment); Neo4j must be seeded with historical regime nodes before this is meaningful | Quantitative similarity for candidate analogues (k-means or cosine similarity over normalized FRED series); LLM interpretation for narrative; Neo4j RESEMBLES relationships carry similarity_score, dimensions_matched, period |
-| Regime-relative valuation assessment | Most platforms show P/E vs a static historical average; regime-relative valuation asks "is this P/E reasonable given that we are in a late-cycle inflationary regime?"; this reframe is institutional-grade and unavailable in local Vietnamese platforms | MEDIUM | VN30 fundamentals (P/E, P/B), pre-computed percentile ranks; macro regime classification must run first | Gold valuation uses real yield (FRED TIPS rate) and ETF flow context; VN equity valuation uses P/E percentile relative to analogous historical periods from Neo4j regime graph |
-| Mixed-signal and low-confidence regime representation | Institutional investment research (Macrobond, FactSet) explicitly models regime ambiguity; most consumer platforms present regimes as binary and clean; a platform that honestly represents partial matches is more trustworthy for sophisticated users | MEDIUM | Macro regime classification (probability distribution output required) | If top confidence below 70%, surface "Mixed Signal Environment" with two most likely analogues; Neo4j RESEMBLES relationships must carry confidence weights from inception |
-| Vietnamese-native report generation | Existing Vietnamese platforms (Vietstock, CafeF) translate English financial concepts rather than generating Vietnamese-native analysis; Gemini 2.5 Flash supports Vietnamese natively with financial vocabulary | MEDIUM | Structured report output must be stable before Vietnamese generation begins; requires a curated Vietnamese financial term dictionary (content asset, not code) | Generate Vietnamese directly from structured data, not by translating English output; VAS (Vietnamese Accounting Standard) differs from IFRS — term mapping must account for this |
-| Manually curated document corpus (Fed minutes, SBV reports, VN earnings) | Generic RAG systems retrieve from unstructured web content; a manually curated corpus of authoritative primary sources dramatically improves retrieval precision for macro context claims | MEDIUM | Qdrant collections (empty in v1.0, must be populated); FastEmbed embedding model | For v2.0: manual curation only; automated ingestion deferred to v3.0; corpus includes Fed FOMC minutes, State Bank of Vietnam reports, VN30 earnings transcripts |
-| Asset-class cross-referencing (gold + VN stocks in same regime context) | Gold and Vietnamese equities respond differently to the same macro regime; a platform that explicitly covers both within the same analytical frame provides portfolio-level context unavailable in local platforms | MEDIUM | Gold price (FRED), GLD ETF flows, VN30 OHLCV — all in PostgreSQL; regime classification must span both asset classes | At launch: gold and VN stocks only; regime nodes in Neo4j must include period-level correlations between asset classes |
+| Feature | Value Proposition | Complexity | Backend Dependency | Notes |
+|---------|-------------------|------------|-------------------|-------|
+| Entry quality tier badge as primary signal | Vietstock and CafeF show price data and news; no Vietnamese platform surfaces a synthesized entry quality tier front-and-center on the watchlist card; this is the analytical engine's output made visible | LOW | entry_quality field in PostgreSQL reports table | Color-coded badge: Favorable (green), Neutral (yellow/amber), Cautious (orange), Avoid (red); displayed as the most prominent element on the card, not buried in the report |
+| Assessment change tracking across history | Morningstar and FactSet track rating upgrades/downgrades; no Vietnamese retail platform does this; showing "Cautious → Neutral (this week)" in the report timeline is a differentiator for users who monitor regime shifts | MEDIUM | Multiple reports per ticker in PostgreSQL with created_at; requires comparison logic | Compute delta between consecutive entry_quality values; render as "upgrade arrow" (green) or "downgrade arrow" (red) in timeline; highlight when tier changes |
+| Bilingual toggle on full report | No Vietnamese investment platform offers side-by-side or toggle bilingual report viewing; English version is valuable for users who prefer reading analytical terms in English | LOW | Both report_markdown (vi) and report_markdown_en (en) stored in PostgreSQL | Language toggle button (VI / EN) at top of report view; switches rendered markdown; default to Vietnamese; remembers user preference via localStorage |
+| Invite-only access with pre-seeded watchlists | Exclusive early-user access creates trust signal; pre-seeded watchlists for invited users (e.g., VN30 top 10 by market cap) reduce time-to-value on first login | MEDIUM | Supabase Auth admin.inviteUserByEmail(); per-user watchlists table; seed script for initial watchlist entries | Supabase invite flow: admin calls inviteUserByEmail() from server; user clicks invite link, sets password; signup disabled in Supabase dashboard; watchlist seeded on first login via trigger or onboarding step |
+| Automated FOMC minutes ingestion | Most platforms rely on manual document curation; automating FOMC minutes ingestion keeps the macro context fresh without admin burden; Federal Reserve publishes an RSS feed and consistent URL pattern for minutes | MEDIUM | n8n (existing orchestrator); Qdrant macro_docs collection (existing); FastEmbed embedding model (existing); Fed RSS feed at federalreserve.gov/feeds/feeds.htm | n8n cron job: poll Fed RSS feed → detect new minutes release → download PDF → extract text → chunk → embed (FastEmbed 384-dim) → upsert into Qdrant macro_docs; FOMC meets 8x/year; minutes released ~3 weeks after meeting |
+| Automated SBV report ingestion (where available) | State Bank of Vietnam publishes monetary policy reports; automating ingestion keeps Vietnamese macro context current | HIGH | n8n (existing); Qdrant macro_docs collection; SBV website structure is unstable — no confirmed RSS feed | SBV does not publish a stable RSS or structured API; automated ingestion requires scraping sbv.gov.vn which is fragile; consider n8n HTTP Request node + CSS selector scraping as starting point; may require manual fallback; flag as LOW confidence until tested |
+| Dictionary expansion for earnings-season terminology | Earnings season produces specialized Vietnamese financial vocabulary (KQKD, EBITDA transliteration, sector-specific terms) that the 162-term base dictionary does not cover; expanding the dictionary improves report readability for non-financial users | MEDIUM | In-process during report generation; Vietnamese financial term dictionary is a content asset loaded by the bilingual ReportComposer node | Content work: identify gaps by reviewing generated reports for missing or inconsistent term translations; target +80–120 terms covering earnings vocabulary, sector-specific terms, and VAS-to-IFRS mapping |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem valuable for this milestone but create problems disproportionate to their benefit.
+Features that seem natural extensions of the product but create disproportionate problems.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Single numeric entry quality score (e.g., 7.3/10) | Users want a number to act on; it feels precise and comparable | A single number without component breakdown is uninterpretable for investment decisions; it encourages "score = buy" reasoning that bypasses the analytical reasoning the platform exists to provide; it also creates false precision — AI reasoning over probabilistic inputs does not produce 7.3 vs 7.4 distinctions | Qualitative tier (Favorable / Neutral / Cautious / Avoid) with three sub-assessment cards shown first; tier label is the output of the synthesized assessment, not a standalone deliverable |
-| AI chat / Q&A over reports | Popular expectation for AI products in 2026; "ask the report anything" is a common request | Unstructured chat creates unpredictable output quality and dramatically increases LLM cost non-linearly; harder to ensure explainability; may generate responses that appear to be specific investment advice; the structured report format already answers "why" questions better than open-ended chat | Expand report depth through additional analytical cards; if a question keeps arising about a specific aspect, add it as a structured section to the report template |
-| Real-time regime updates (trigger on macro data change) | "Alert me when the regime changes" is a natural extension of regime classification | Regime classification is by definition a persistent-state signal computed on monthly or quarterly cadence; real-time monitoring creates false sensitivity to noise in macro releases; contradicts the weekly/monthly analytical frame; adds infrastructure complexity (streaming pipeline) with no analytical value | Weekly digest that includes a "regime unchanged / regime shifted" status line; regime changes are notable because they are infrequent |
-| Per-asset portfolio context (how does this fit my holdings?) | Users who use the platform regularly will naturally want to see how an entry decision fits their existing positions | Moves the product from "research advisor" to "portfolio manager"; requires holdings data, cost basis, position sizing logic; fundamentally different product; compliance and regulatory exposure in Vietnam if holdings + advice combine | Watchlist-only at launch; Stratum answers "are conditions favorable for a long-term entry" not "should you rebalance today" |
-| Backtesting of entry quality score | Power users will ask "would this have worked?" for any new scoring system | Extremely high complexity; requires clean historical data for all three layers (regime, valuation, structure) going back 10+ years for VN market (limited); can produce false confidence from overfitted backtests; the VN30 market history is too short for statistically meaningful backtesting of multi-layer signals | The historical analogues section IS the evidence layer — showing what happened in historically similar regimes is more honest than simulated P&L on a young market |
-| Raw LLM output as report body | Fastest to implement; just prompt Gemini with all data and get a report | Ungrounded claims; numeric hallucination risk is severe in financial context; no intermediate outputs for explainability; impossible to audit; single monolithic prompt cannot handle mixed-signal and stale data edge cases cleanly | LangGraph StateGraph with five named nodes; each node produces a structured intermediate output that feeds the next; grounding check node at the end verifies all numbers trace to retrieved database records |
+| Real-time price feed on dashboard | "Show me the current price" is the first thing users ask for; feels like a dashboard gap | Requires a live data subscription (vnstock has rate limits; no free real-time VN stock feed exists); contradicts the weekly/monthly analytical cadence; creates expectation mismatch between live price and weekly report data; the platform answers "should I enter" not "what is the price right now" | Show last_close_price from the most recent OHLCV row with an explicit "as of [date]" label; link to Vietstock/CafeF for live price lookup |
+| Portfolio P&L tracking (cost basis, returns) | Natural extension after watching stocks and reading reports | Requires holdings data input (privacy risk), cost basis calculation, multi-transaction history; fundamentally different product scope; opens compliance questions in VN financial regulations if advice + holdings combine | Watchlist only at launch; Stratum answers "conditions for entry" not "how is my position performing" |
+| Push notifications for regime changes | "Alert me when the macro regime changes" is the natural evolution of regime monitoring | Regime classification runs on weekly/monthly cadence; push infrastructure (FCM, APNs, or email delivery service) adds ops complexity; false urgency from incremental regime shifts contradicts the long-term analytical frame | Weekly digest email (or scheduled n8n notification) with "regime unchanged / regime shifted" status; use n8n's built-in email alerting which is already operational |
+| AI chat / Q&A over reports | "Ask the report a question" is the common AI product expectation in 2026 | Uncontrolled LLM responses over financial reports create liability; cost scales non-linearly; harder to ensure grounding; may contradict structured report findings; investment advice regulations in Vietnam require controlled, auditable outputs | Deep report expand view with all analytical reasoning visible; if a question recurs, add it as a structured card to the report template |
+| PDF export of reports | "Save and share my report" is a common user request | PDF generation (Puppeteer, wkhtmltopdf, react-pdf) adds a dependency; PDF styling is a separate implementation concern; bilingual PDF layout is complex; reports are structured markdown — already printable via browser print | Browser print CSS (print stylesheet) for the report view; this handles 90% of the export use case without a PDF library |
+| User-submitted tickers beyond VN30 + gold | "Can I add US stocks or crypto?" | Data ingestion for non-VN30 tickers requires new vnstock integration work; US stocks require a different data source entirely; gold is already covered; expands scope dramatically before product is validated with the primary audience | Hard-code the supported ticker universe to VN30 + XAU; ticker search autocomplete shows only supported tickers; display a clear "VN30 + gold only in v3.0" message |
+| Social features (share watchlist, follow other users) | Sharing investment ideas is common on retail platforms (Stocktwits, CafeF community) | Requires user profiles, social graph, content moderation, notification infrastructure; adds complexity 10x beyond the core product; Vietnamese investment community platforms (CafeF) already exist for this | Focus on single-user analytical depth; defer social features until product-market fit is established for the core advisory function |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[v1.0: FRED macro data in PostgreSQL]
-    └──required by──> [Macro regime classification]
+[Supabase Auth — invite-only setup]
+    └──required by──> [Per-user watchlist management]
+    └──required by──> [Report history (user-scoped access)]
+    └──required by──> [Dashboard (authenticated route)]
 
-[v1.0: Gold price in PostgreSQL]
-    └──required by──> [Macro regime classification]
-    └──required by──> [Gold valuation assessment]
+[Per-user watchlist management]
+    └──required by──> [Dashboard watchlist cards]
+    └──required by──> [Entry quality badge display]
+    └──required by──> [Sparkline chart on card]
 
-[v1.0: VN30 fundamentals in PostgreSQL]
-    └──required by──> [VN equity valuation assessment]
+[Dashboard watchlist cards]
+    └──requires──> [GET /reports/{ticker} — latest report per ticker]
+    └──requires──> [OHLCV data in PostgreSQL — for sparkline]
 
-[v1.0: Pre-computed structure markers in PostgreSQL]
-    └──required by──> [Price structure analysis (v2.0 interprets, not recomputes)]
+[Manual "Generate Report" trigger]
+    └──requires──> [POST /reports/generate — existing FastAPI endpoint]
+    └──requires──> [SSE progress display — connects to existing GET /reports/stream/{id}]
 
-[Neo4j regime graph — seeded with historical nodes]
-    └──required by──> [Macro regime classification (analogue retrieval)]
-    └──required by──> [Regime-relative valuation assessment]
+[SSE progress display]
+    └──requires──> [GET /reports/stream/{id} — already implemented]
 
-[Qdrant corpus — populated with curated documents]
-    └──required by──> [Macro context retrieval in reasoning nodes]
-    └──enables──> [Narrative grounding in report]
+[Report summary + expand view]
+    └──requires──> [GET /reports/{id} — returns structured JSON]
+    └──enhances──> [Report history timeline — expand any historical report]
 
-[Retrieval layer (LlamaIndex)]
-    └──required by──> [All LangGraph reasoning nodes]
+[Report history timeline]
+    └──requires──> [Multiple reports per ticker in PostgreSQL]
+    └──enhances──> [Assessment change tracking — computed from consecutive entries]
 
-[Macro regime classification]
-    └──required by──> [Regime-relative valuation assessment]
-    └──required by──> [Entry quality assessment]
-    └──required by──> [Historical analogues display]
+[TradingView chart in report view]
+    └──requires──> [OHLCV + MA data in PostgreSQL — fetched via new GET /tickers/{symbol}/ohlcv endpoint]
 
-[Regime-relative valuation assessment]
-    └──required by──> [Entry quality assessment]
-    └──required by──> [Structured report output — valuation card]
+[Bilingual toggle]
+    └──requires──> [Both report_markdown (vi) and report_markdown_en (en) in PostgreSQL]
 
-[Price structure analysis]
-    └──required by──> [Entry quality assessment]
-    └──required by──> [Structured report output — structure card]
+[Automated FOMC minutes ingestion]
+    └──requires──> [n8n cron job (new workflow)]
+    └──requires──> [Qdrant macro_docs collection (existing, populated in v2.0)]
+    └──enhances──> [Report macro context depth]
 
-[Entry quality assessment]
-    └──required by──> [Structured report output — entry quality card]
-    └──required by──> [Conflicting signal representation]
+[Automated SBV report ingestion]
+    └──requires──> [n8n HTTP scraping workflow (new, fragile)]
+    └──requires──> [Qdrant macro_docs collection (existing)]
+    └──blocks on──> [SBV website stability investigation]
 
-[Structured report output (JSON + Markdown)]
-    └──required by──> [Bilingual output (Vietnamese + English)]
-
-[Vietnamese financial term dictionary]
-    └──required by──> [Bilingual output — quality Vietnamese generation]
-
-[Bilingual output]
-    └──required by──> [Report storage in PostgreSQL]
-    └──required by──> [Report history archive]
+[Dictionary expansion]
+    └──requires──> [162-term base dictionary (existing content asset)]
+    └──enhances──> [Bilingual report quality — incremental improvement]
+    └──does not block──> [Any v3.0 frontend feature]
 ```
 
 ### Dependency Notes
 
-- **Neo4j regime graph must be seeded before classification runs.** The v1.0 Neo4j instance has constraints and APOC triggers but no regime data. Seeding historical macro regime nodes (with period metadata, FRED series values, and asset class correlations) is a prerequisite for any regime classification to be meaningful. This is a content curation task, not a code task.
+- **Auth must be the first feature built.** Watchlist management, per-user state, and authenticated routes all depend on Supabase Auth being configured. Without auth, there is no user_id to scope watchlist records to.
 
-- **Retrieval layer validation must precede reasoning integration.** LlamaIndex retrievers (GraphRAGRetriever for Neo4j, HybridRetriever for Qdrant, SQLRetriever for PostgreSQL) must be tested independently against real data before being embedded in LangGraph nodes. Bugs inside a 5-node reasoning graph are extremely difficult to root-cause.
+- **Supabase invite-only requires explicit configuration.** In Supabase dashboard, "Allow new users to sign up" must be disabled; user creation must happen exclusively via `auth.admin.inviteUserByEmail()` called from a trusted server context using the `service_role` key. There is a known issue where invite flows can fail when signups are disabled — the documented workaround is to ensure the Site URL points to a password-set page, not a login page.
 
-- **Macro regime classification is the root dependency for everything downstream.** Valuation assessment (regime-relative context), entry quality assessment (macro sub-score), and analogues display all require regime to be functional and validated before they can be built reliably. Build and validate regime classification before adding valuation or entry quality nodes.
+- **New FastAPI endpoint needed for OHLCV data.** The TradingView chart requires OHLCV + MA data for a given ticker in a time-series format. The current FastAPI service exposes report endpoints only. A new `GET /tickers/{symbol}/ohlcv` endpoint reading from PostgreSQL is needed.
 
-- **Bilingual output depends on stable report structure.** Generating Vietnamese and English from the same structured data requires the report structure (cards, fields, terminology) to be finalized. Building bilingual before structure is stable causes double maintenance burden on every structural change.
+- **SSE progress display requires no new backend work.** The existing `GET /reports/stream/{id}` endpoint is already implemented. The v3.0 work is purely frontend: consume the SSE stream in Next.js and render named progress steps.
 
-- **Vietnamese financial term dictionary is a content prerequisite, not a code task.** Gemini generates Vietnamese natively but financial terminology (định giá tương đối, cấu trúc giá, chế độ vĩ mô) requires consistent mapping that must be authored before the ReportComposer node is built. This is a blocker for bilingual output quality.
+- **Dictionary expansion does not block frontend.** It is a content work stream that can run in parallel with frontend development and ships as an incremental improvement to report quality within any phase.
 
-- **WGC central bank data gap does not block v2.0 launch.** Gold valuation can function with FRED gold spot price, GLD ETF flows, and real yield (FRED TIPS). WGC central bank buying is supplementary context. The 501 stub in v1.0 should be flagged as a known data gap in reports, not treated as a blocker.
+- **FOMC ingestion can ship independently of frontend.** The n8n workflow is self-contained: it writes to Qdrant and does not affect the frontend at all. It can be built and tested in parallel with any frontend phase.
+
+- **SBV automated ingestion is high-risk.** The SBV website (sbv.gov.vn) does not publish a structured RSS feed or API. Automated ingestion requires CSS-selector scraping, which is fragile to layout changes. This should be prototyped before committing to it as a v3.0 deliverable; manual PDF upload via n8n file trigger is the safe fallback.
 
 ---
 
 ## MVP Definition
 
-### v2.0 Launch: Analytical Reasoning Engine
+### v3.0 Launch: Product Frontend
 
-Minimum viable product for the v2.0 milestone — what's needed to produce one complete, explainable, bilingual report that meets the founder's stated analytical standard.
+Minimum viable product for v3.0 — what's needed to make Stratum usable as a product for a small group of invite-only users.
 
-- [ ] Retrieval layer (LlamaIndex) validated over all three stores — without this, no reasoning node can access data
-- [ ] Neo4j regime graph seeded with historical macro periods — without this, regime classification has nothing to match against
-- [ ] Qdrant document corpus populated with manually curated documents — without this, macro narrative lacks grounding
-- [ ] Macro regime classification with probability distribution output and mixed-signal handling — root dependency for all downstream features
-- [ ] Regime-relative valuation assessment for VN equities (P/E, P/B vs historical analogues) and gold (real yield, ETF flow context)
-- [ ] Price structure interpretation node (reads pre-computed v1.0 markers, produces narrative) — do not recompute what v1.0 already computes
-- [ ] Entry quality assessment with qualitative tier and three visible sub-assessments (macro, valuation, structure)
-- [ ] Grounding check node verifying all report numbers trace to retrieved database records — not optional, blocks hallucination
-- [ ] Structured report output in JSON + Markdown (card format: macro regime card, valuation card, structure card, entry quality card)
-- [ ] Bilingual generation (Vietnamese primary, English secondary) using Vietnamese financial term dictionary
-- [ ] Explicit data freshness flags and "DATA WARNING" sections when data_as_of exceeds freshness threshold
-- [ ] Conflicting signal handling producing "strong thesis, weak structure" report type explicitly
+- [ ] Supabase Auth configured: signup disabled, invite-only via admin API — without this, per-user state is impossible
+- [ ] Per-user watchlist management (add/remove from VN30 + gold universe) — without this, the dashboard has nothing to show
+- [ ] Dashboard with watchlist cards (entry quality tier badge, last report date, sparkline) — the product's entry point
+- [ ] Manual "Generate Report" trigger with SSE progress display — the core user action
+- [ ] Report summary + full expand view with bilingual toggle — how users consume the analytical output
+- [ ] TradingView chart in report view (weekly OHLCV + 50MA + 200MA) — contextualizes the price structure analysis
+- [ ] Report history timeline per ticker (date, tier badge, assessment change indicator) — enables monitoring regime shifts over time
+- [ ] New FastAPI GET /tickers/{symbol}/ohlcv endpoint — required for TradingView chart data
 
-### Add After First Report Validates (v2.x)
+### Add After First Users Validate (v3.x)
 
-Features to add once the first end-to-end report is validated against the founder's analytical standard:
+Features to add once the core product is live and invite users are engaged:
 
-- [ ] LangGraph checkpoint persistence (langgraph-checkpoint-postgres) for audit trail and interrupted run recovery — trigger: first time a pipeline run needs to be debugged or resumed
-- [ ] Additional VN30 assets (beyond initial test set of 2–3 stocks) — trigger: first report quality confirmed
-- [ ] Automated Neo4j regime graph update on new FRED data ingestion — trigger: manual seeding workflow becomes burdensome
-- [ ] Enhanced Qdrant corpus (additional SBV reports, VN earnings) — trigger: report narrative lacks macro context depth
+- [ ] Automated FOMC minutes ingestion via n8n — trigger: macro context depth in reports is insufficient or manual curation becomes burdensome
+- [ ] Dictionary expansion (+80–120 terms) — trigger: users report terminology confusion in Vietnamese reports
+- [ ] Assessment change email digest — trigger: users ask for notifications when their watched tickers change tier
 
-### Defer to v3.0
+### Future Consideration (v4.0+)
 
-Features out of scope for v2.0 analytical engine — belong to the UI/productization milestone:
+Features to defer until product-market fit is established:
 
-- [ ] FastAPI API layer — v2.0 reports run as Python scripts or n8n-triggered jobs; API shapes cannot be stable until report structure is finalized
-- [ ] Frontend (Next.js) — no user-facing UI in v2.0; reports are JSON + Markdown files written to PostgreSQL
-- [ ] Watchlist management UI — single-asset manual triggering is sufficient for v2.0 validation
-- [ ] On-demand report generation via API — requires FastAPI layer; defer to v3.0
-- [ ] Report history archive UI — data is stored in PostgreSQL; UI is a v3.0 concern
-- [ ] PDF export — v3.0 frontend concern
+- [ ] Automated SBV ingestion — defer until sbv.gov.vn scraping is validated as stable; manual upload is sufficient for v3.0
+- [ ] Browser print CSS for report export — low effort but not blocking; add after core is validated
+- [ ] Additional ticker universe beyond VN30 + gold — defer until VN30 coverage is validated
+- [ ] OpenRouter LLM cost optimization — already listed in PROJECT.md as v4.0 scope
 
 ---
 
 ## Feature Prioritization Matrix
 
-### v2.0 Scope Only
-
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Retrieval layer (LlamaIndex over 3 stores) | HIGH — blocks everything | MEDIUM | P1 |
-| Neo4j regime graph seeding | HIGH — blocks classification | LOW (content curation) | P1 |
-| Qdrant corpus population | MEDIUM — improves narrative grounding | LOW (content curation) | P1 |
-| Macro regime classification | HIGH — root dependency | HIGH | P1 |
-| Grounding check node | HIGH — prevents hallucination | LOW | P1 |
-| Stale data flags in reports | HIGH — prevents presenting misleading data | LOW | P1 |
-| Conflicting signal handling | HIGH — prevents false confidence | MEDIUM | P1 |
-| Regime-relative valuation assessment | HIGH | MEDIUM | P1 |
-| Price structure interpretation node | HIGH | LOW (reads pre-computed data) | P1 |
-| Entry quality assessment (qualitative tier) | HIGH | MEDIUM | P1 |
-| Structured report output (JSON + Markdown) | HIGH | MEDIUM | P1 |
-| Vietnamese financial term dictionary | HIGH — blocks bilingual quality | LOW (content, not code) | P1 |
-| Bilingual generation (VN + EN) | HIGH | MEDIUM | P1 |
-| Mixed-signal representation | HIGH | MEDIUM | P1 |
-| LangGraph checkpoint persistence | MEDIUM | LOW | P2 |
-| Additional VN30 assets | MEDIUM | LOW | P2 |
-| Automated regime graph updates | LOW | MEDIUM | P3 |
+| Supabase Auth (invite-only) | HIGH — gates all per-user features | MEDIUM | P1 |
+| Per-user watchlist management | HIGH — gates dashboard content | LOW | P1 |
+| Dashboard with watchlist cards | HIGH — product entry point | MEDIUM | P1 |
+| Manual report trigger + SSE progress | HIGH — core user action | LOW (backend exists) | P1 |
+| Report summary + expand view | HIGH — core report consumption | MEDIUM | P1 |
+| TradingView chart in report view | HIGH — contextualizes analysis | MEDIUM | P1 |
+| New GET /tickers/{symbol}/ohlcv endpoint | HIGH — required by chart | LOW | P1 |
+| Report history timeline | HIGH — enables trend monitoring | MEDIUM | P1 |
+| Bilingual toggle | MEDIUM — differentiator for EN readers | LOW | P2 |
+| Assessment change indicators | MEDIUM — differentiator | LOW (computed from existing data) | P2 |
+| Automated FOMC ingestion | MEDIUM — keeps macro context fresh | MEDIUM | P2 |
+| Dictionary expansion | MEDIUM — report quality improvement | LOW (content work) | P2 |
+| Automated SBV ingestion | MEDIUM — VN macro context | HIGH (scraping risk) | P3 |
+| Assessment change email digest | LOW — nice-to-have at small scale | MEDIUM | P3 |
 
 **Priority key:**
-- P1: Must have for v2.0 launch
-- P2: Should have, add after first report validates
-- P3: Nice to have, v2.x or v3.0
+- P1: Must have for v3.0 launch
+- P2: Should have, add after core is working
+- P3: Nice to have, v3.x or v4.0
 
 ---
 
 ## Competitor Feature Analysis
 
-### How Existing Platforms Handle Each v2.0 Feature
+### How Existing Platforms Handle Each v3.0 Feature Area
 
-| Feature | Vietstock / CafeF | Simply Wall St | Stockopedia | Stratum v2.0 approach |
-|---------|-------------------|----------------|-------------|----------------------|
-| Macro regime classification | Not present — news commentary, not regime analysis | Not present | Not present | Core intellectual property — quantitative similarity over FRED series + LLM interpretation of matched analogues |
-| Historical analogues | Not present | Not present | Not present | Neo4j RESEMBLES relationships with similarity_score, dimensions_matched, period; surfaces 2–3 analogues with narrative per matched period |
-| Valuation vs historical range | Basic P/E data shown; no historical percentile | DCF-based fair value (global stocks) | StockRanks value score | Pre-computed percentile rank (v1.0); regime-relative context added in v2.0 |
-| Price structure analysis | Technical analysis (daily/intraday focus, short-term TA) | Not present | Momentum score | Weekly/monthly MA positioning and drawdown from ATH; explicitly framed as entry context, not trading signal |
-| Entry quality score | Not present | "Snowflake" score (5 dimensions, no macro layer) | StockRanks composite (value + quality + momentum) | Qualitative tier with three visible sub-assessments; AI-derived through multi-step LangGraph reasoning, not formula |
-| Explainability | Not applicable (data portal) | Methodology page; no per-report reasoning | Factor definitions; no per-report chain | Every LangGraph node outputs data source, inputs used, intermediate conclusion; grounding check verifies numbers |
-| Mixed-signal representation | Not applicable | Not applicable | Not applicable | First-class output type; probability distribution for regime; confidence level on every report section |
-| Vietnamese-language output | Yes (primary) | No | No | Vietnamese generated natively (not translated); curated financial term dictionary; VAS accounting context |
-| Gold fundamental analysis | Price data only | Not present | Not present | Real yield (FRED TIPS), ETF flows (GLD), macro regime framing; WGC central bank data flagged as lagged |
-| Bilingual output | Vietnamese only (no structured bilingual) | English only | English only | Both Vietnamese and English from same structured data; not translation |
-| Stale data disclosure | Not present | Not present | Not present | Explicit "DATA WARNING" sections; data_as_of shown on every data point cited in report |
+| Feature | Vietstock / CafeF | Simply Wall St | Bloomberg Terminal | Stratum v3.0 approach |
+|---------|-------------------|----------------|-------------------|----------------------|
+| Dashboard watchlist | Price-focused card grid; no entry quality synthesis | Snowflake score card with 5 dimensions | Full-screen watchlist with all market data columns | Entry quality tier as primary signal; sparkline + last report date as secondary; minimal data density for analytical clarity |
+| Report history timeline | CafeF news archive by ticker (not analytical reports) | Not present | Research report history per ticker (institutional) | Vertical timeline per ticker: entry quality tier per date; assessment change delta (upgrade/downgrade); click-to-expand full historical report |
+| Interactive chart | Full technical analysis charting suite (daily/intraday) | Static price chart with fair value marker | Full Bloomberg charting | Weekly OHLCV + 50MA + 200MA only; TradingView Lightweight Charts; no intraday, no indicator overlays — matches analytical cadence |
+| Auth / access control | Open registration | Free tier + paid subscription | License-based institutional access | Invite-only via Supabase admin invite flow; per-user watchlists via RLS; signup disabled |
+| Report generation | Automated daily price/fundamental data pulls | Automated (data provider feeds) | Automated (Bloomberg data infrastructure) | Manual user-triggered via button; SSE progress display showing named LangGraph nodes; weekly cadence is appropriate for long-term analysis |
+| Document corpus freshness | Aggregated news feeds (automated) | Not applicable | Automated Bloomberg data and news feeds | FOMC automated (n8n RSS); SBV manual/semi-automated; earnings corpus manual curation for v3.0 |
+| Bilingual support | Vietnamese only | English only | English only; terminal has some language settings | Language toggle: Vietnamese (default) / English; both generated natively by analytical engine — not translated |
+| On-demand generation | Not present — data refreshes automatically | Not present — refreshes on schedule | Not present — live data | Explicit "Generate Report" button per ticker; user controls when analysis runs; prevents unnecessary Gemini API spend |
 
 ---
 
@@ -247,46 +231,45 @@ Features out of scope for v2.0 analytical engine — belong to the UI/productiza
 
 For roadmap phase planning:
 
-**LOW implementation complexity (existing data, straightforward interpretation):**
-- Price structure interpretation node — v1.0 pre-computes all markers; v2.0 only interprets them into narrative
-- Grounding check node — structural validation of LangGraph output against retrieved records
-- Stale data flags — read data_as_of from PostgreSQL, compare to freshness threshold, emit warning section
-- Vietnamese financial term dictionary — content work, no code complexity
-- Neo4j regime graph seeding — data curation and Cypher import, no new code required
+**LOW implementation complexity (backend exists, frontend plumbing):**
+- Manual report trigger + SSE progress display — POST and stream endpoints already implemented; frontend consumes existing API
+- Bilingual toggle — both language variants already in PostgreSQL; toggle is a React state change
+- Sparkline on watchlist card — OHLCV data in PostgreSQL; TradingView Lightweight Charts line series
+- Assessment change indicators — compute delta between consecutive reports in same query; render arrow icon
+- Watchlist add/remove — bounded ticker universe (VN30 + gold = ~31 items); simple Supabase RLS table
+- Dictionary expansion — content work; no code changes required, only dictionary file updates
 
-**MEDIUM implementation complexity (new reasoning logic, well-understood patterns):**
-- Retrieval layer (LlamaIndex) — integration work; GraphRAGRetriever, HybridRetriever, SQLRetriever each need independent validation
-- Regime-relative valuation assessment — requires macro regime classification output as input; the valuation percentile is already computed
-- Entry quality assessment — aggregation of three sub-assessments into qualitative tier
-- Structured report output (JSON + Markdown) — schema design and template engineering
-- Bilingual generation — Gemini structured output with term dictionary; not translation, direct generation
-- Conflicting signal handling — conditional logic in LangGraph routing based on sub-assessment disagreement
+**MEDIUM implementation complexity (new patterns, well-understood):**
+- Dashboard with watchlist cards — fetching latest report per ticker for N tickers; aggregate query optimization needed to avoid N+1 queries
+- Report summary + expand view — rendering structured JSON report cards; markdown rendering for full view; React accordion or drawer pattern
+- TradingView chart in report view — Next.js dynamic import (SSR-safe); custom data adapter feeding OHLCV from API; MA series overlay
+- Report history timeline — query multiple reports per ticker ordered by created_at; render timeline component; click-to-expand historical reports
+- Supabase Auth invite-only — configuration + admin API call from server; RLS policies for watchlists table; session handling in Next.js middleware
+- Automated FOMC ingestion — n8n workflow: HTTP Request → PDF extraction → text chunking → FastEmbed → Qdrant upsert; deduplication by document date
 
-**HIGH implementation complexity (novel integration, highest risk):**
-- Macro regime classification — quantitative similarity over time-series FRED data; Neo4j analogue retrieval; LLM interpretation of matched periods; probability distribution output; mixed-signal edge cases; seeded graph data required; most critical pitfalls originate here
-- Full LangGraph StateGraph (all five nodes together) — each node is medium complexity individually; integration of all five with state passing, error handling, and conditional routing across real data is HIGH complexity overall
+**HIGH implementation complexity (fragile dependencies, novel integration):**
+- New GET /tickers/{symbol}/ohlcv FastAPI endpoint — reads from PostgreSQL, returns time-series JSON; simple to build but must be added to the reasoning-engine FastAPI service and Docker image
+- Automated SBV ingestion — sbv.gov.vn has no RSS feed; scraping requires CSS selector maintenance; PDF extraction from Vietnamese government PDFs is fragile; treat as experimental until validated
 
 ---
 
 ## Sources
 
-- FactSet macro regime framework: https://insight.factset.com/mapping-asset-returns-to-economic-regimes-a-practical-investors-guide (MEDIUM confidence)
-- Macrosynergy regime classification research: https://macrosynergy.com/research/classifying-market-regimes/ (MEDIUM confidence)
-- Two Sigma machine learning regime modeling: https://www.twosigma.com/articles/a-machine-learning-approach-to-regime-modeling/ (MEDIUM confidence)
-- AlphaArchitect k-means macro regime clustering: https://alphaarchitect.com/clustering-macroeconomic-regimes/ (MEDIUM confidence)
-- Tactical asset allocation with FRED-MD regime detection: https://arxiv.org/html/2503.11499v2 (MEDIUM confidence — recent preprint)
-- CFA Institute Explainable AI in Finance: https://rpc.cfainstitute.org/research/reports/2025/explainable-ai-in-finance (HIGH confidence — CFA Institute official)
-- AWS blog: LangGraph + Strands Agents financial analysis: https://aws.amazon.com/blogs/machine-learning/build-an-intelligent-financial-analysis-agent-with-langgraph-and-strands-agents/ (MEDIUM confidence)
-- Neo4j + LlamaIndex integration: https://neo4j.com/labs/genai-ecosystem/llamaindex/ (HIGH confidence — official Neo4j Labs)
-- Qdrant + Neo4j GraphRAG: https://qdrant.tech/documentation/examples/graphrag-qdrant-neo4j/ (HIGH confidence — official Qdrant docs)
-- LLM Pro Finance Suite (multilingual financial LLMs): https://arxiv.org/html/2511.08621v1 (MEDIUM confidence — academic preprint)
-- Macrobond gold valuation outlier 2025: https://www.macrobond.com/resources/macro-trends/gold-beyond-geopolitical-hedge-and-valuation-outlier (MEDIUM confidence)
-- World Gold Council gold outlook 2025: https://www.gold.org/goldhub/research/gold-outlook-2025 (HIGH confidence — official WGC)
-- Advisor Perspectives CAPE/P/E10 historical percentile analysis: https://www.advisorperspectives.com/dshort/updates/2026/01/06/pe10-market-valuation-december-2025 (MEDIUM confidence)
-- Simply Wall St features: https://simplywall.st/ (HIGH confidence — official)
-- Stockopedia StockRanks: https://www.stockopedia.com/ (HIGH confidence — official)
-- Vietstock platform: https://en.vietstock.vn/about-us.htm (MEDIUM confidence — official)
+- Supabase Auth invite-only pattern (sign up disabled): https://github.com/orgs/supabase/discussions/4296 (MEDIUM confidence — community discussion, known limitation documented)
+- Supabase auth.admin.inviteUserByEmail() API: https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail (HIGH confidence — official docs)
+- Supabase Row Level Security: https://supabase.com/docs/guides/database/postgres/row-level-security (HIGH confidence — official docs)
+- TradingView Lightweight Charts: https://tradingview.github.io/lightweight-charts/docs (HIGH confidence — official docs)
+- TradingView + Next.js integration examples: https://github.com/tradingview/charting-library-examples (HIGH confidence — official repo)
+- Federal Reserve RSS feeds (FOMC minutes): https://www.federalreserve.gov/feeds/feeds.htm (HIGH confidence — official)
+- FOMC meeting calendar and minutes release schedule: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm (HIGH confidence — official; minutes released ~3 weeks after meeting)
+- n8n Qdrant Vector Store node: https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/ (HIGH confidence — official n8n docs)
+- n8n PDF → Qdrant RAG workflow template: https://n8n.io/workflows/4400-build-a-pdf-document-rag-system-with-mistral-ocr-qdrant-and-gemini-ai/ (MEDIUM confidence — community template, validated pattern)
+- FastAPI SSE implementation: https://fastapi.tiangolo.com/tutorial/server-sent-events/ (HIGH confidence — official FastAPI docs)
+- SSE + Next.js progress tracking: https://medium.com/@ruslanfg/long-running-nextjs-requests-eff158e75c1d (MEDIUM confidence — community article)
+- Robinhood watchlist card + sparkline design: https://robinhood.com/us/en/support/articles/watchlist-and-cards/ (HIGH confidence — official)
+- Consumer Financial Protection Bureau Vietnamese financial glossary: https://files.consumerfinance.gov/f/documents/cfpb_adult-fin-ed_vietnamese-style-guide-glossary.pdf (HIGH confidence — official CFPB, March 2024)
+- Simply Wall St portfolio tracker features: https://simplywall.st/ (HIGH confidence — official)
 
 ---
-*Feature research for: Analytical reasoning engine — Stratum v2.0 milestone*
-*Researched: 2026-03-09*
+*Feature research for: Stratum v3.0 — Product Frontend and User Experience*
+*Researched: 2026-03-17*

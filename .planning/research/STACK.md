@@ -1,103 +1,113 @@
 # Stack Research
 
-**Domain:** AI analytical reasoning engine — multi-store RAG + LangGraph orchestration + bilingual report generation
-**Researched:** 2026-03-09
-**Confidence:** HIGH (all versions verified against PyPI and official sources as of March 2026)
+**Domain:** Investment advisor product frontend — Next.js dashboard, Supabase auth, TradingView charts, document ingestion, dictionary expansion
+**Researched:** 2026-03-17
+**Confidence:** HIGH (versions verified against npm, official docs, and GitHub releases)
 
 ---
 
-## Scope: v2.0 Additions Only
+## Scope: v3.0 Additions Only
 
-This document covers only what is NEW for v2.0. The v1.0 stack (Docker Compose, PostgreSQL, Neo4j, Qdrant, n8n, FastAPI data-sidecar, SQLAlchemy, pytest) is validated and operational. Do not re-add any of the following:
+This document covers only what is NEW for v3.0. The existing stack is validated and operational:
 
-| Already Installed (sidecar/requirements.txt) | Version |
-|---|---|
-| `sqlalchemy` | >=2.0.0 |
-| `psycopg2-binary` | >=2.9.9 |
-| `fastapi` | >=0.115.0 |
-| `uvicorn` | >=0.30.0 |
-| `pandas` | >=2.2.0 |
-| `python-dotenv` | >=1.0.0 |
-| `httpx` | >=0.27.0 |
-| `pytest` | >=8.0.0 |
-| `pytest-asyncio` | >=0.24.0 |
-
-Docker Compose already defines and runs: `postgres:16-alpine`, `neo4j:5.26.21`, `qdrant/qdrant:v1.15.3`, `flyway:10`, dual networks (`ingestion` + `reasoning`). The `reasoning` network exists but has no service attached yet — v2.0 populates it.
+| Already Operational (DO NOT re-add) | Version |
+|--------------------------------------|---------|
+| Docker Compose (8 services) | — |
+| PostgreSQL (Flyway V1-V7) | `postgres:16-alpine` |
+| Neo4j | `neo4j:5.26.21` |
+| Qdrant | `qdrant/qdrant:v1.15.3` |
+| FastAPI reasoning-engine | `fastapi>=0.115.0` |
+| LangGraph 7-node pipeline | `langgraph==1.0.10` |
+| httpx (Python) | `>=0.27.0` |
+| SQLAlchemy Core | `>=2.0.0` |
+| Pydantic v2 | `>=2.0.0` |
+| pymupdf / pdfplumber | — (not yet installed — see Document Ingestion below) |
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies (Frontend)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| `langgraph` | 1.0.10 | Multi-step reasoning graph orchestration | Reached v1.0 stable GA (Oct 2025); current latest is 1.0.10 (Feb 27, 2026). Provides explicit graph nodes — each reasoning step (macro regime classification, valuation, price structure, entry scoring) is a named node with visible inputs, outputs, and state. Cyclical graph support lets the LLM request additional data retrieval before proceeding. Required over LangChain chains because the reasoning pipeline has branching paths (mixed-signal handling, low-confidence regimes) that need graph-level control. |
-| `langchain-google-genai` | >=4.0.0 | Gemini API integration for LangGraph nodes | v4.0.0 (released Feb 19, 2026) migrated from the deprecated `google-ai-generativelanguage` SDK to the new `google-genai` SDK. Provides `ChatGoogleGenerativeAI` — the correct class for attaching Gemini to LangGraph nodes with tool-calling and structured output. Use this rather than `google-genai` directly: it provides the `bind_tools()` and `.with_structured_output()` interfaces that LangGraph expects. Official Google + LangChain joint documentation confirms this as the canonical integration path. |
-| `llama-index-core` | 0.14.15 | RAG retrieval framework over multi-store | LlamaIndex is the retrieval layer. Unifies access to PostgreSQL (SQL query engine), Neo4j (property graph + text-to-Cypher), and Qdrant (vector similarity) behind a single interface. LangGraph calls LlamaIndex retrievers as tools — this is the dominant production pattern as of 2025/2026. LlamaIndex handles document corpus ingestion, chunking, embedding, and retrieval; LangGraph orchestrates which retriever to call and when. Version 0.14.15 released Feb 18, 2026. |
-| `llama-index-graph-stores-neo4j` | 0.5.1 | LlamaIndex → Neo4j property graph integration | Provides `Neo4jPropertyGraphStore` for LlamaIndex to query regime relationships, historical analogues, and asset correlations in Neo4j. Supports `TextToCypherRetriever` (natural language → Cypher) and `VectorContextRetriever` (vector + graph traversal). Required as a separate plugin package from `llama-index-core`. |
-| `llama-index-vector-stores-qdrant` | 0.9.1 | LlamaIndex → Qdrant vector retrieval | Provides `QdrantVectorStore` for LlamaIndex to run semantic similarity queries over the manually curated document corpus (Fed minutes, SBV reports, VN earnings) in Qdrant. The existing Qdrant collection uses BAAI/bge-small-en-v1.5 at 384 dimensions — any new document ingestion must use the same model to avoid dimension mismatch. Version 0.9.1 released Jan 13, 2026. |
-| `llama-index-llms-google-genai` | 0.3.0 | LlamaIndex → Gemini LLM for retrieval synthesis | Replaces the deprecated `llama-index-llms-gemini` (deprecated at v0.6.2). Provides `GoogleGenAI` LLM class for LlamaIndex's internal query synthesis — turning retrieved context into structured answers before returning results to LangGraph. Required so LlamaIndex can use Gemini for its synthesis steps independently of the LangGraph orchestration layer. Version 0.3.0 released Jul 30, 2025. |
+| `next` | 15.3.x (latest 15.x) | React framework for the frontend service | App Router is stable and the standard for new Next.js projects. SSR is needed for the report view (SEO-irrelevant here, but SSR enables Server Components for direct Supabase data fetching without an extra API layer). v16 is in development; building on 15.x avoids canary instability. `create-next-app` scaffolds with TypeScript + App Router by default. |
+| `react` + `react-dom` | 19.x (pulled by Next 15.3) | UI rendering | Next.js 15 ships with React 19 as the default. React 19 stabilizes `useOptimistic` and improves concurrent features. Do not pin to React 18 — it introduces unnecessary version conflicts. |
+| `typescript` | 5.x | Type safety across the frontend | Already expected for a finance UI. Next.js 15.5 added stable `typedRoutes` — compile-time type checking of all `<Link href>` values. Worth enabling in `next.config.ts`. |
+| `tailwindcss` | 4.x | Utility-first CSS | Tailwind v4 is the current release (January 2025). No `tailwind.config.ts` file required — configuration lives in `globals.css`. Next.js 15 + shadcn/ui have documented Tailwind v4 setup guides. Use v4, not v3 — v3 is in maintenance mode. |
+| `shadcn/ui` | latest CLI | Component library | Not a versioned npm package — it's a CLI that copies components into your repo. Built on Radix UI primitives + Tailwind. Correct choice for a dashboard: accessible, composable, no runtime overhead from unused components. Use `npx shadcn@latest init` with the New York style and CSS variables. |
 
-### Supporting Libraries
+### Core Technologies (Auth)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `@supabase/supabase-js` | 2.99.2 | Supabase JS client (auth + DB queries) | v2 is the current stable SDK. Provides `supabase.auth.admin.inviteUserByEmail()` — the correct mechanism for invite-only access. Disable public signups in Supabase project settings (Authentication → General → User Signups toggle off) and issue all accounts via admin invite. |
+| `@supabase/ssr` | latest | Cookie-based auth for Next.js App Router | Required package when using Supabase auth with Next.js. Server Components cannot set cookies — this package provides `createServerClient()` and `createBrowserClient()` helpers that manage cookie-based session refresh. Without it, sessions expire silently in Server Components. The Supabase official docs mandate this package for App Router projects. |
+
+### Core Technologies (Charting)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `lightweight-charts` | 5.1.0 | OHLCV candlestick + MA overlay chart | TradingView's open-source charting library. 45KB, canvas-rendered, handles large OHLCV datasets without frame drops. v5.1.0 adds data conflation (automatic performance optimization when zoomed out) — relevant for multi-year VN stock history. This is a canvas-based library: it must be wrapped in a `'use client'` component and loaded with `next/dynamic` + `{ ssr: false }` to avoid `window is not defined` errors during SSR. |
+
+### Supporting Libraries (Frontend)
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `langgraph-checkpoint-postgres` | 3.0.4 | Persist LangGraph reasoning state across runs | Required in production. Stores LangGraph graph state as checkpoints in the existing PostgreSQL instance (separate schema from application data). Enables: resume interrupted reasoning chains, audit trail of each reasoning step (required by the explainability constraint in PROJECT.md), and human-review interrupt points. Version 3.0.4 released Jan 31, 2026. |
-| `psycopg[binary]` | >=3.1.0 | psycopg3 driver for LangGraph checkpointing | `langgraph-checkpoint-postgres` requires psycopg3 specifically — it is incompatible with psycopg2. The existing sidecar uses `psycopg2-binary` for its ingestion work. Add psycopg3 only in the reasoning service requirements; do not replace or modify the sidecar. Both can coexist in the same Python environment if needed. |
-| `llama-index-readers-database` | latest | SQL query engine for PostgreSQL structured data | Allows LlamaIndex to query PostgreSQL tables (OHLCV, fundamentals, structure markers) via SQLAlchemy. Used to pull structured quantitative data as context for regime classification and valuation assessment steps. Wraps the existing SQLAlchemy + psycopg2 connection pattern. |
-| `qdrant-client` | >=1.7.0 | Qdrant Python driver | Required by `llama-index-vector-stores-qdrant`. Pin to a version compatible with the running `qdrant/qdrant:v1.15.3` server. The existing Qdrant server is v1.15.3 — `qdrant-client>=1.7.0` supports this server version. |
-| `neo4j` | >=5.0.0 | Neo4j Python driver | Required by `llama-index-graph-stores-neo4j` and for direct Cypher queries in LangGraph nodes. Compatible with the running `neo4j:5.26.21` server. |
-| `fastembed` | >=0.3.0 | FastEmbed for consistent embedding of new documents | The existing Qdrant collection was initialized with BAAI/bge-small-en-v1.5 at 384 dimensions (locked decision in PROJECT.md). Any new documents added to Qdrant for the v2.0 manually curated corpus must use the same model. Use `fastembed` directly for corpus document embedding during ingestion. |
-| `jinja2` | >=3.1.0 | Report template rendering | Renders the JSON + Markdown report templates with dynamic data. Use Jinja2 to produce language-specific (Vietnamese/English) Markdown output from bilingual templates. Separates report presentation logic from LLM output. |
-| `markdown` | >=3.5.0 | Markdown → HTML conversion (optional) | Converts Jinja2-rendered Markdown to HTML for any downstream rendering or preview. Use `markdown` (Python-Markdown) rather than `markdown2` — better CommonMark compliance and active maintenance. |
-| `pydantic` | >=2.0.0 | Structured LLM output validation | For validating Gemini structured output (JSON report cards, entry quality scores). LangGraph state nodes should use Pydantic models to enforce schema. Already a transitive dependency but should be pinned explicitly in the reasoning service. |
+| `@tanstack/react-query` | 5.90.x | Server state, caching, background refetch | For all data-fetching from the FastAPI backend (report lists, watchlist, pipeline status). v5 is stable and 20% smaller than v4. Eliminates manual loading/error state boilerplate. Use `useQuery` for reports and `useMutation` for watchlist changes. Required — do not use plain `fetch` in components. |
+| `zustand` | 5.0.x | Minimal client-side state | For UI state only: SSE progress events, open/collapsed report sections, watchlist optimistic updates. v5 uses `useSyncExternalStore` natively (React 18+). Do not use for server data — that belongs in React Query. |
+| `@microsoft/fetch-event-source` | 2.0.1 | SSE client that supports POST + headers | The native `EventSource` API does not support POST requests or custom headers, making it incompatible with the existing FastAPI SSE endpoint (which requires auth headers). This package wraps `fetch` with SSE semantics. **Note:** Last published ~3 years ago, but stable and widely deployed. No maintained alternative with equivalent API. |
+| `recharts` | 2.x | Sparkline mini-charts on watchlist cards | Lightweight SVG charts for the dashboard watchlist cards (7-day price sparkline). TradingView Lightweight Charts is overkill for tiny sparklines — Recharts provides a `<LineChart>` with minimal config. Recharts requires `"use client"` directive. |
+
+### Supporting Libraries (Python — Document Ingestion)
+
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| `pymupdf4llm` | latest (`pip install -U pymupdf4llm`) | PDF → Markdown extraction for ingestion pipeline | Converts PDFs (Fed minutes, SBV reports, earnings) to clean Markdown that maps directly to the existing Qdrant document schema. `pymupdf4llm.to_markdown("doc.pdf")` handles multi-column layouts and tables. Chosen over `pdfplumber` because: outputs Markdown (matching Qdrant chunk format), faster (PyMuPDF C bindings), and has LlamaIndex integration. Install with `pip install -U pymupdf4llm` — auto-installs `PyMuPDF` dependency. |
+| `httpx` | `>=0.27.0` (already installed) | Async PDF download from Fed website, SBV, etc. | Already in the sidecar `requirements.txt`. Use `httpx.AsyncClient` with streaming for PDF downloads. No new library needed — reuse existing. |
+| `apscheduler` | 3.11.x | Scheduled ingestion job triggering inside FastAPI | For triggering weekly/monthly document ingestion jobs (FOMC schedule, SBV publication dates). Use `AsyncIOScheduler` with `CronTrigger` inside FastAPI's `lifespan` context manager. **Alternative considered: n8n cron.** Prefer APScheduler here because document ingestion is tightly coupled to the Python embedding pipeline (FastEmbed → Qdrant) — keeping it in Python avoids an n8n → FastAPI HTTP roundtrip for each document. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| `pytest-asyncio` | Async test support for LangGraph nodes | Already in sidecar requirements. The reasoning service needs it too — LangGraph nodes are async by default. Use `asyncio_mode = "auto"` in `pyproject.toml` or `pytest.ini`. |
-| `langsmith` (optional) | LangGraph observability and step tracing | Provides time-travel debugging for LangGraph graph runs. Zero code changes required: set `LANGCHAIN_TRACING_V2=true` and `LANGCHAIN_API_KEY` env vars to activate. Not required for v2.0 but worth knowing if debugging the reasoning chain becomes difficult. |
+| `eslint` + `eslint.config.mjs` | Frontend linting | Next.js 15.5 deprecated `next lint` — create-next-app now generates explicit ESLint config. Do not use `next lint` in scripts; call `eslint` directly. |
+| `@types/node`, `@types/react`, `@types/react-dom` | TypeScript definitions | Generated by `create-next-app` — ensure these are in `devDependencies`. |
+| `next` standalone output mode | Minimizes Docker image size for self-hosted VPS | Set `output: 'standalone'` in `next.config.ts`. The standalone build includes only the files needed to run the server, reducing image size significantly. Required for VPS deployment. |
 
 ---
 
 ## Installation
 
-New `reasoning/requirements.txt` for the new Docker service:
+New `frontend/` service in the repository:
 
 ```bash
-# Core reasoning orchestration
-langgraph==1.0.10
-langchain-google-genai>=4.0.0
+# Scaffold (run once)
+npx create-next-app@latest frontend --typescript --tailwind --app --no-src-dir
 
-# LlamaIndex multi-store retrieval
-llama-index-core==0.14.15
-llama-index-graph-stores-neo4j==0.5.1
-llama-index-vector-stores-qdrant==0.9.1
-llama-index-llms-google-genai==0.3.0
-llama-index-readers-database
+# Core auth
+npm install @supabase/supabase-js @supabase/ssr
 
-# LangGraph state persistence
-langgraph-checkpoint-postgres==3.0.4
-psycopg[binary]>=3.1.0
+# Charting
+npm install lightweight-charts recharts
 
-# Storage drivers
-qdrant-client>=1.7.0
-neo4j>=5.0.0
-fastembed>=0.3.0
+# Data fetching + state
+npm install @tanstack/react-query zustand
 
-# Report generation
-jinja2>=3.1.0
-markdown>=3.5.0
-pydantic>=2.0.0
+# SSE client (for FastAPI pipeline progress)
+npm install @microsoft/fetch-event-source
 
-# Testing
-pytest>=8.0.0
-pytest-asyncio>=0.24.0
+# shadcn/ui (CLI — installs components on demand)
+npx shadcn@latest init
+npx shadcn@latest add card button badge skeleton table
 ```
 
-Note: `sqlalchemy`, `psycopg2-binary`, `pandas`, `python-dotenv`, and `httpx` are already in the sidecar. The reasoning service may inherit or duplicate these — keep them separate per-service to maintain Docker layer independence.
+New Python packages for document ingestion (add to `sidecar/requirements.txt` or a new `ingestion/requirements.txt`):
+
+```bash
+pip install -U pymupdf4llm
+pip install apscheduler>=3.11.0
+```
 
 ---
 
@@ -105,14 +115,15 @@ Note: `sqlalchemy`, `psycopg2-binary`, `pandas`, `python-dotenv`, and `httpx` ar
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| `langchain-google-genai>=4.0.0` | `google-genai` directly | Only if not using LangGraph — direct SDK lacks `bind_tools()` and `.with_structured_output()` that LangGraph requires. |
-| `langchain-google-genai>=4.0.0` | `google-generativeai` | Never — deprecated Nov 30, 2025. No new features, no Gemini 2.x support. |
-| `llama-index-llms-google-genai` | `llama-index-llms-gemini` | Never — deprecated at v0.6.2. Migration to `google-genai` is mandatory. |
-| `llama-index-core` for retrieval | LangChain retrievers | Only if already invested in LangChain ecosystem. LlamaIndex has native `Neo4jPropertyGraphStore` with text-to-Cypher and `QdrantVectorStore` with FastEmbed matching the existing collection. LangChain's Neo4j integration requires `langchain-neo4j` and lacks the same property graph retriever sophistication. |
-| `langgraph-checkpoint-postgres` | `MemorySaver` (in-memory) | Only for local development and testing. `MemorySaver` loses all state on container restart — unacceptable for weekly/monthly production runs. |
-| `psycopg[binary]` (psycopg3) | `psycopg2-binary` | psycopg2 is incompatible with `langgraph-checkpoint-postgres`. Must use psycopg3 for the checkpoint system specifically. |
-| `jinja2` + `markdown` for reports | WeasyPrint (PDF generation) | Only when a PDF output is required — v3.0 when the frontend exists. WeasyPrint requires heavy system dependencies (Pango, Cairo, Fontconfig binaries). For v2.0 JSON + Markdown output, it is unnecessary overhead on a self-hosted VPS. |
-| `jinja2` + `markdown` for reports | Raw LLM string output only | Never rely on raw strings alone. Gemini structured output → Pydantic validation → Jinja2 template rendering enforces the report JSON schema and produces consistent Markdown across runs without prompt-formatting drift. |
+| Next.js 15 App Router | Next.js Pages Router | Never for new projects — Pages Router is legacy. App Router is the default since Next.js 13 and the only one receiving new features. |
+| `@supabase/ssr` + cookie auth | JWT in localStorage | Never for production auth — localStorage tokens are vulnerable to XSS. Cookie-based auth with httpOnly cookies is the secure default. |
+| Supabase cloud (free tier) | Self-hosted Supabase via Docker | Self-hosted Supabase requires ~15 Docker containers and significant operational overhead. The cloud free tier (50,000 MAU, 500MB DB) is sufficient for an invite-only product with <20 users. Accept the managed-service dependency for auth — the free tier cost is zero. |
+| `lightweight-charts` (v5, direct) | `react-lightweight-charts` wrapper | The community wrapper packages are unmaintained or lag behind LWC versions. Use the official library directly in a `'use client'` component with `useRef` + `useEffect` — the pattern is 30 lines and requires no wrapper. |
+| `recharts` for sparklines | Victory, Nivo, Chart.js | Recharts is the lightest option with native React integration. Victory is heavier. Nivo requires D3. Chart.js (canvas) requires `'use client'` + `dynamic` like LWC — more setup for identical output. |
+| `pymupdf4llm` | `pdfplumber` | Use `pdfplumber` only if you need precise character-level coordinates or table extraction with cell boundaries. For LLM/RAG ingestion where Markdown output is the goal, `pymupdf4llm` is faster and produces cleaner output. |
+| `pymupdf4llm` | `pypdf` | `pypdf` is pure-Python with no C deps (good for Lambda). On a self-hosted VPS, `pymupdf4llm`'s C bindings are an asset (speed). pypdf also produces spacing artifacts on complex financial PDFs (multi-column Fed minutes). |
+| `apscheduler` in FastAPI | n8n cron → FastAPI HTTP | n8n cron is correct for data ingestion (vnstock OHLCV, FRED) because those workflows are self-contained shell scripts. Document ingestion requires Python embedding (FastEmbed → Qdrant) — keeping that in Python avoids a second HTTP hop and lets the scheduler share the same FastEmbed model instance already loaded in memory. |
+| `@tanstack/react-query` | SWR | React Query v5 has better DevTools, mutation handling, and background refetch logic. SWR is simpler but lacks the `useMutation` + optimistic update patterns needed for watchlist management. |
 
 ---
 
@@ -120,75 +131,75 @@ Note: `sqlalchemy`, `psycopg2-binary`, `pandas`, `python-dotenv`, and `httpx` ar
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `google-generativeai` | Deprecated Nov 30, 2025. No new features. Does not support Gemini 2.x models including gemini-2.0-flash and gemini-2.5-flash. Official deprecation notice on GitHub. | `langchain-google-genai>=4.0.0` for LangGraph nodes; `llama-index-llms-google-genai` for LlamaIndex synthesis |
-| `llama-index-llms-gemini` | Deprecated at v0.6.2. Official replacement exists and is actively maintained. | `llama-index-llms-google-genai==0.3.0` |
-| `langchain` (core) as a direct dependency | LangGraph 1.x is standalone — it does not require the full `langchain` package for graph orchestration. Adding `langchain` directly pulls unnecessary weight. | `langgraph` + `langchain-google-genai` only (the latter has required LangChain interfaces as a transitive dep) |
-| OpenAI embeddings (1536-dim) for new corpus documents | Would create a dimension mismatch with the existing Qdrant collection (384-dim BAAI/bge-small-en-v1.5). Changing embedding models would require re-embedding all existing vectors — a costly migration. | `fastembed` with `BAAI/bge-small-en-v1.5` — the same model used at Qdrant init |
-| `pgvector` / `PGVectorStore` for retrieval | Qdrant already exists and is purpose-built for vector search. Adding pgvector would split vector retrieval across two backends (Qdrant and PostgreSQL) with no benefit. | `llama-index-vector-stores-qdrant` over the existing Qdrant service |
-| WeasyPrint in v2.0 | Requires Pango, Cairo, Fontconfig system libraries — significant binary overhead for a self-hosted VPS. Report spec for v2.0 is JSON + Markdown, not PDF. | `jinja2` + `markdown` library; defer PDF to v3.0 when a frontend UI exists |
-| CrewAI / AutoGen for orchestration | Less control over execution graph. LangGraph's explicit graph definition suits the structured 3-layer analysis (regime → valuation → price structure → entry score). CrewAI agents are less deterministic and harder to audit step-by-step. | `langgraph` |
+| `@supabase/auth-helpers-nextjs` | Deprecated — replaced by `@supabase/ssr`. The auth-helpers package has known issues with App Router cookie refresh and is no longer maintained. Official Supabase docs redirect to `@supabase/ssr`. | `@supabase/ssr` |
+| `EventSource` (native browser API) | Does not support POST requests or custom Authorization headers. The FastAPI SSE endpoint requires auth headers. `EventSource` silently falls back to a GET-only request. | `@microsoft/fetch-event-source` |
+| Redux / Redux Toolkit | Vastly over-engineered for this use case. Stratum frontend has two concerns: server data (reports, watchlist) and UI state (open sections, SSE progress). React Query handles server data; Zustand handles UI state. Redux adds boilerplate with no architectural benefit. | `@tanstack/react-query` + `zustand` |
+| `next-auth` / Auth.js | Adds a separate auth layer that duplicates Supabase's auth infrastructure. Supabase auth is already chosen (PROJECT.md). Mixing Auth.js with Supabase creates two session systems. | `@supabase/supabase-js` + `@supabase/ssr` |
+| TradingView Advanced Charting Library | Not open-source — requires a commercial license and a private npm registry token. The Lightweight Charts library (open-source, Apache 2.0) provides exactly what v3.0 needs: candlestick series, line series (MAs), crosshair, time scale zoom. | `lightweight-charts` (open-source) |
+| Vercel deployment | VPS constraint in PROJECT.md. Vercel's free tier has 100GB bandwidth limit and no persistent filesystem. The reasoning engine and PostgreSQL run on the VPS — frontend must be co-located to avoid cross-origin SSE complexity and latency. | Docker container on the existing VPS, proxied via Nginx |
+| `tailwindcss` v3 | Maintenance mode. v4 is current with CSS-first configuration, no config file required, and better performance. Shadcn/ui now ships with v4 support as default. | `tailwindcss` v4 |
+| Tremor (component library) | Tremor wraps Recharts and adds another abstraction. For this project, direct Recharts usage for sparklines + shadcn/ui for layout components is sufficient. Tremor's opinionated dashboard components would require fighting the library to match Stratum's research-report aesthetic. | `recharts` for charts + `shadcn/ui` for components |
 
 ---
 
 ## Stack Patterns by Variant
 
-**For a LangGraph node that needs structured quantitative data (regime metrics, valuation ratios, price structure markers):**
-- Use `llama-index-readers-database` SQL query engine → existing SQLAlchemy → PostgreSQL
-- Return Pydantic-validated dict to LangGraph state
-- Because: Structure markers and fundamentals are pre-computed and stored in PostgreSQL during ingestion (PROJECT.md constraint: LangGraph reads them, never computes on the fly)
+**For the TradingView chart component (OHLCV + moving averages):**
+- Create a `'use client'` React component
+- Use `next/dynamic` with `{ ssr: false }` to import it in any Server Component page
+- Initialize chart inside `useEffect` with `chartContainerRef`
+- Destroy chart in cleanup: `chart.remove()`
+- Because: `lightweight-charts` accesses `window` and `document` on import — SSR will throw `window is not defined` without `{ ssr: false }`
 
-**For a LangGraph node that needs historical analogue matching (macro regime similarity search):**
-- Use `llama-index-graph-stores-neo4j` with `TextToCypherRetriever`
-- Because: Neo4j stores regime relationships and historical analogues with APOC triggers maintaining graph consistency; text-to-Cypher lets Gemini query the graph without hardcoded Cypher templates that would break with schema changes
+**For the Supabase invite-only pattern:**
+- Disable "Allow new users to sign up" in Supabase Dashboard → Authentication → General
+- Issue invites via `supabase.auth.admin.inviteUserByEmail(email)` from a server-side admin route
+- Protect all pages with middleware: `supabase.auth.getUser()` (not `getSession()`) in `middleware.ts`
+- Because: `getSession()` reads from the cookie without server-side validation — it can be spoofed. `getUser()` validates the JWT against Supabase servers on every request.
 
-**For a LangGraph node that needs document context (Fed minutes, SBV reports, VN earnings):**
-- Use `llama-index-vector-stores-qdrant` with `QdrantVectorStore`
-- Embed query using `fastembed` BAAI/bge-small-en-v1.5 before querying (must match collection embedding model)
-- Because: The existing 384-dim Qdrant collection holds the manually curated document corpus; same embedding model is mandatory
+**For FastAPI SSE consumption in Next.js:**
+- Use `@microsoft/fetch-event-source` in a `'use client'` component
+- Pass the Supabase JWT from `supabase.auth.getSession()` as `Authorization: Bearer <token>` header
+- Pipe SSE events into Zustand store for progress display
+- Because: FastAPI SSE endpoint already exists and streams pipeline progress. The frontend needs to consume it with auth headers — not possible with native `EventSource`.
 
-**For bilingual report generation (Vietnamese + English):**
-- Use Gemini structured output → Pydantic model with `vi_text` / `en_text` fields per report card
-- Then render each language variant through a Jinja2 template
-- Output: `report_{ticker}_{date}_vi.md` + `report_{ticker}_{date}_en.md` + `report_{ticker}_{date}.json`
-- Because: Single Gemini call with structured output produces both languages atomically; Pydantic enforces schema; Jinja2 separates presentation from data; raw LLM string output alone produces inconsistent formatting across runs
+**For document ingestion scheduling:**
+- Add `AsyncIOScheduler` to the existing FastAPI reasoning-engine `lifespan` context
+- Schedule FOMC ingestion jobs against the Fed calendar (8 meetings/year) using `CronTrigger`
+- SBV reports: weekly poll of the SBV website with `httpx` + hash-based deduplication
+- Earnings PDFs: triggered manually or by a date-based cron aligned with VN reporting season
+- Because: All ingestion ultimately calls FastEmbed (loaded in-process) and writes to Qdrant — co-location avoids serializing the embedding pipeline over HTTP.
 
 ---
 
 ## Docker Compose Integration
 
-The reasoning service belongs in the `reasoning` Docker network profile. The `reasoning` network already exists in `docker-compose.yml` and `postgres`, `neo4j`, and `qdrant` are already members of it. Suggested new service addition:
+Add a new `frontend` service to `docker-compose.yml`:
 
 ```yaml
-  reasoning:
+  frontend:
     build:
-      context: ./reasoning
+      context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      NEO4J_URL: bolt://neo4j:7687
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: "6333"
-      QDRANT_API_KEY: ${QDRANT_API_KEY}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_API_URL: http://reasoning:8000   # internal Docker network
+    depends_on:
+      - reasoning
     networks:
-      - reasoning    # reasoning network ONLY — cannot reach n8n (INFRA-02 enforcement)
-    profiles: ["reasoning"]
+      - reasoning
+    ports:
+      - "3000:3000"
+    profiles: ["frontend"]
 ```
 
 Key integration points:
-- `GEMINI_API_KEY` is a new env var — must be added to `.env` on the VPS
-- Storage service names (`postgres`, `neo4j`, `qdrant`) resolve identically inside the reasoning network — same hostnames the sidecar uses
-- Flyway already joins both networks via the `storage` profile; any new PostgreSQL tables needed for checkpoint storage (V6+ migrations) use the existing Flyway pipeline
-- The `reasoning` service intentionally has no host port mapping — it is invoked by triggers (n8n HTTP request → FastAPI reasoning endpoint), not exposed directly
+- `output: 'standalone'` in `next.config.ts` is mandatory — reduces Docker image from ~1GB to ~150MB by including only the files needed to run the server.
+- `NEXT_PUBLIC_API_URL` points to the `reasoning` service on the internal Docker network. Server Components call it directly (no CORS). Client Components must go through a Next.js API route that proxies the FastAPI call with the session token attached.
+- Nginx must be configured with `proxy_buffering off` for SSE routes — buffering breaks streaming responses. Add to your Nginx server block: `location /api/sse { proxy_buffering off; proxy_pass http://frontend:3000; }`
+- Supabase is cloud-hosted (free tier) — no Docker service needed for auth. The `SUPABASE_URL` and `SUPABASE_ANON_KEY` are environment variables pointing to the Supabase project.
 
 ---
 
@@ -196,34 +207,35 @@ Key integration points:
 
 | Package | Compatible With | Notes |
 |---------|-----------------|-------|
-| `langgraph==1.0.10` | Python >=3.10 | LangGraph 1.x requires Python >=3.10. The reasoning service Dockerfile must use `python:3.12-slim` or similar — NOT the same base as the sidecar if sidecar is on 3.9. |
-| `llama-index-core==0.14.15` | Python >=3.9, <4.0 | Compatible with Python 3.10+ used for the reasoning service |
-| `llama-index-vector-stores-qdrant==0.9.1` | `qdrant-client>=1.7.0` | Pin qdrant-client to a version that supports `qdrant/qdrant:v1.15.3` server — `>=1.7.0` satisfies this |
-| `llama-index-graph-stores-neo4j==0.5.1` | `neo4j>=5.0.0` | Compatible with running `neo4j:5.26.21` server |
-| `langchain-google-genai>=4.0.0` | Pulls `google-genai` transitively | Do not pin `google-genai` separately — let `langchain-google-genai` manage the SDK version to avoid conflicts |
-| `langgraph-checkpoint-postgres==3.0.4` | `psycopg[binary]>=3.1.0` | Requires psycopg3. Cannot substitute psycopg2. Both psycopg2 and psycopg3 can coexist in one Python environment |
-| `fastembed>=0.3.0` | BAAI/bge-small-en-v1.5 (384-dim) | Must use the same model as the existing Qdrant collection. Changing the model requires re-embedding all existing vectors — treat this as immutable |
+| `next@15.3.x` | React 19.x, TypeScript 5.x, Tailwind v4 | `create-next-app` pulls compatible React version automatically. Do not manually pin React 18 — causes peer dep conflicts. |
+| `lightweight-charts@5.1.0` | Vanilla JS, React (manual wrapper) | No official React package. Build a 30-line wrapper with `useRef` + `useEffect`. Requires `dynamic` + `{ ssr: false }` in Next.js. |
+| `@supabase/supabase-js@2.99.x` | `@supabase/ssr` latest | Both must be in sync — `@supabase/ssr` depends on `@supabase/supabase-js`. Install together: `npm install @supabase/supabase-js @supabase/ssr`. |
+| `@tanstack/react-query@5.90.x` | React 19 | v5 supports React 18 and 19. Import from `@tanstack/react-query`, not the deprecated `react-query` package. |
+| `tailwindcss@4.x` | `shadcn/ui` latest CLI | shadcn/ui now generates Tailwind v4-compatible CSS variable configs. Run `npx shadcn@latest init` after Tailwind v4 is installed — do not use the v3 init flow. |
+| `pymupdf4llm` | `PyMuPDF>=1.24.0`, Python >=3.9 | `pip install -U pymupdf4llm` auto-installs the correct `PyMuPDF` version. No manual PyMuPDF pin needed. |
+| `apscheduler@3.11.x` | Python >=3.8, asyncio | Use `AsyncIOScheduler` (not `BackgroundScheduler`) inside an async FastAPI app. Start/stop inside the `lifespan` context manager. |
 
 ---
 
 ## Sources
 
-- [langgraph PyPI](https://pypi.org/project/langgraph/) — version 1.0.10, Feb 27, 2026. HIGH confidence.
-- [google-genai PyPI](https://pypi.org/project/google-genai/) — version 1.66.0, Mar 4, 2026. HIGH confidence.
-- [langchain-google-genai PyPI](https://pypi.org/project/langchain-google-genai/) — v4.0.0 SDK migration confirmed, last release Feb 19, 2026. HIGH confidence.
-- [llama-index-core PyPI](https://pypi.org/project/llama-index-core/) — version 0.14.15, Feb 18, 2026. HIGH confidence.
-- [llama-index-graph-stores-neo4j PyPI](https://pypi.org/project/llama-index-graph-stores-neo4j/) — version 0.5.1. HIGH confidence.
-- [llama-index-vector-stores-qdrant PyPI](https://pypi.org/project/llama-index-vector-stores-qdrant/) — version 0.9.1, Jan 13, 2026. HIGH confidence.
-- [llama-index-llms-google-genai PyPI](https://pypi.org/project/llama-index-llms-google-genai/) — version 0.3.0, deprecates `llama-index-llms-gemini`. HIGH confidence.
-- [llama-index-llms-gemini PyPI deprecation notice](https://pypi.org/project/llama-index-llms-gemini/) — confirmed deprecated at v0.6.2. HIGH confidence.
-- [langgraph-checkpoint-postgres PyPI](https://pypi.org/project/langgraph-checkpoint-postgres/) — version 3.0.4, Jan 31, 2026. HIGH confidence.
-- [google-generativeai deprecated GitHub](https://github.com/google-gemini/deprecated-generative-ai-python) — deprecated Nov 30, 2025. HIGH confidence.
-- [LangGraph + Gemini ReAct agent — Google AI for Developers](https://ai.google.dev/gemini-api/docs/langgraph-example) — official Google documentation confirming LangGraph + langchain-google-genai as the canonical integration path. HIGH confidence.
-- [LlamaIndex Neo4j property graph docs](https://developers.llamaindex.ai/python/framework/module_guides/indexing/lpg_index_guide/) — TextToCypherRetriever and VectorContextRetriever confirmed. HIGH confidence.
-- [LlamaIndex + LangGraph integration pattern — ZenML](https://www.zenml.io/blog/llamaindex-vs-langgraph) — LlamaIndex for retrieval + LangGraph for orchestration is the dominant production pattern. MEDIUM confidence (non-official, consistent with multiple sources).
-- [Google GenAI SDK libraries overview](https://ai.google.dev/gemini-api/docs/libraries) — confirms `google-genai` as the recommended SDK, `google-generativeai` deprecated. HIGH confidence.
+- [Next.js 15.5 blog](https://nextjs.org/blog/next-15-5) — Confirmed current stable release (published August 18, 2025). Turbopack builds beta, stable Node.js middleware, typed routes stable. HIGH confidence.
+- [next-changelog.vercel.app](https://next-changelog.vercel.app/) — Version history confirming 15.x is latest stable, 16 in development. HIGH confidence.
+- [lightweight-charts GitHub releases](https://github.com/tradingview/lightweight-charts/releases) — v5.1.0 released December 16, 2024. Latest confirmed. HIGH confidence.
+- [lightweight-charts React tutorial](https://tradingview.github.io/lightweight-charts/tutorials/react/simple) — Official guide confirms `useRef` + `useEffect` pattern; no official React wrapper package. HIGH confidence.
+- [@supabase/supabase-js npm](https://www.npmjs.com/package/@supabase/supabase-js) — v2.99.2, published March 17, 2026. HIGH confidence.
+- [Supabase SSR docs](https://supabase.com/docs/guides/auth/server-side/nextjs) — `@supabase/ssr` confirmed as mandatory package for Next.js App Router. `@supabase/auth-helpers-nextjs` deprecated. HIGH confidence.
+- [Supabase inviteUserByEmail API docs](https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail) — Admin invite pattern confirmed. HIGH confidence.
+- [Supabase invite-only discussion #4296](https://github.com/orgs/supabase/discussions/4296) — Confirmed: disable public signups + admin invite is the standard invite-only pattern. MEDIUM confidence (community discussion, consistent with official docs).
+- [@tanstack/react-query npm](https://www.npmjs.com/package/@tanstack/react-query) — v5.90.21, published ~1 month ago. HIGH confidence.
+- [Zustand GitHub](https://github.com/pmndrs/zustand) — v5.0.x current, uses `useSyncExternalStore`. HIGH confidence.
+- [pymupdf4llm PyPI](https://pypi.org/project/pymupdf4llm/) — Active, `pip install -U pymupdf4llm` is the install command. HIGH confidence.
+- [APScheduler docs](https://apscheduler.readthedocs.io/en/3.x/userguide.html) — v3.11.x, `AsyncIOScheduler` for asyncio apps. HIGH confidence.
+- [@microsoft/fetch-event-source npm](https://www.npmjs.com/package/@microsoft/fetch-event-source) — v2.0.1, stable. Note: last published ~5 years ago but widely used (1.1M downloads/week). MEDIUM confidence (unmaintained but no known issues or maintained alternatives).
+- [Tailwind CSS v4 install for Next.js](https://tailwindcss.com/docs/guides/nextjs) — v4 is current release, CSS-first config, compatible with Next.js 15 and shadcn/ui. HIGH confidence.
+- [shadcn/ui Next.js install](https://ui.shadcn.com/docs/installation/next) — CLI-based, Tailwind v4 supported. HIGH confidence.
 
 ---
 
-*Stack research for: Stratum v2.0 Analytical Reasoning Engine — new capabilities only*
-*Researched: 2026-03-09*
+*Stack research for: Stratum v3.0 Product Frontend — new capabilities only*
+*Researched: 2026-03-17*

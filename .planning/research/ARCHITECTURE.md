@@ -1,101 +1,128 @@
 # Architecture Patterns
 
-**Domain:** Analytical reasoning engine integration — LangGraph + LlamaIndex + Gemini over existing Docker Compose platform
-**Researched:** 2026-03-09
-**Confidence:** HIGH (existing codebase fully inspected; integration patterns verified against official docs)
+**Domain:** Investment advisor platform — Next.js frontend + Supabase auth + TradingView charts + document ingestion over existing Docker Compose + FastAPI + PostgreSQL
+**Researched:** 2026-03-17
+**Confidence:** HIGH (existing codebase fully inspected; integration patterns verified against official docs and community sources)
 
 ---
 
-## Context: What Already Exists (v1.0)
+## Context: What Already Exists (v2.0)
 
-The v1.0 platform is fully operational. This document focuses exclusively on how v2.0 reasoning components integrate with it. Do not rebuild what exists.
+This document focuses exclusively on how v3.0 components integrate with the existing platform. Do not rebuild what exists.
 
-**Existing Docker Compose services (7):**
+**Existing Docker Compose services (9 active):**
 
-| Service | Network | Role |
-|---------|---------|------|
-| `postgres` | ingestion + reasoning | Structured storage — OHLCV, fundamentals, structure markers, pipeline logs |
-| `neo4j` | ingestion + reasoning | Graph storage — regime nodes, time period nodes, APOC triggers live |
-| `qdrant` | ingestion + reasoning | Vector storage — 384-dim FastEmbed collections ready |
-| `flyway` | ingestion | One-shot Flyway migration runner (V1–V5 applied) |
-| `neo4j-init` | ingestion | One-shot constraints + APOC trigger installer |
-| `qdrant-init` | ingestion | One-shot collection initializer |
-| `n8n` | ingestion only | Cron orchestrator for all data ingestion |
-| `data-sidecar` | ingestion only | FastAPI sidecar — vnstock, FRED, gold, structure marker computation |
+| Service | Network | Role | mem_limit |
+|---------|---------|------|-----------|
+| `postgres` | ingestion + reasoning | Structured storage — OHLCV, fundamentals, structure markers, reports, report_jobs, LangGraph checkpoints | 512m |
+| `neo4j` | ingestion + reasoning | Regime graph — 17 nodes, HAS_ANALOGUE relationships | 2g |
+| `qdrant` | ingestion + reasoning | Vector store — macro_docs + earnings_docs hybrid collections | 1g |
+| `n8n` | ingestion only | Cron orchestration — data ingestion pipelines | 512m |
+| `data-sidecar` | ingestion only | FastAPI — vnstock, FRED, gold, structure marker computation | 512m |
+| `reasoning-engine` | reasoning only | FastAPI + LangGraph — POST /reports/generate, GET /reports/{id}, SSE /reports/stream/{id} | 2g |
+| `flyway` | ingestion | One-shot migration runner (V1–V7 applied) | — |
+| `neo4j-init` | ingestion | One-shot constraints + APOC trigger installer | — |
+| `qdrant-init` | ingestion | One-shot collection initializer | — |
 
-**Key architectural constraint (locked):** `n8n` is on `ingestion` network only. Storage services (postgres, neo4j, qdrant) are on both `ingestion` and `reasoning` networks. New reasoning services join `reasoning` network only. n8n and reasoning services never communicate directly.
+**Existing FastAPI endpoints (reasoning-engine, port 8001):**
 
-**Data already in storage:**
+| Method | Path | Behavior |
+|--------|------|----------|
+| POST | `/reports/generate` | 202 + job_id, triggers BackgroundTask LangGraph pipeline |
+| GET | `/reports/{id}` | Fetch completed report JSON from PostgreSQL |
+| GET | `/reports/stream/{id}` | SSE stream — per-node progress events during generation |
+| GET | `/health` | Health check for Docker monitoring |
 
-| Store | Contents |
-|-------|----------|
-| PostgreSQL | 9,411 OHLCV rows, 399 fundamentals, FRED macro series, gold data, 9,985 structure marker rows, pipeline run logs |
-| Neo4j | Regime + TimePeriod constraints active; APOC triggers live; regime relationships empty (populated in v2.0) |
-| Qdrant | 384-dim collections initialized; document corpus empty (populated in v2.0) |
+**Hard architectural constraints (locked, do not modify):**
+- n8n on `ingestion` network only — cannot reach reasoning-engine
+- reasoning-engine on `reasoning` network only — cannot reach n8n or data-sidecar
+- PostgreSQL has no host port mapping — internal only
+- Qdrant has no host port mapping — internal only
+- FastEmbed 384-dim locked — cannot change Qdrant collection dimensions
+
+**Current VPS memory budget (8GB total, 4GB swap):**
+
+| Service | mem_limit | Actual Usage |
+|---------|-----------|--------------|
+| postgres | 512m | ~200MB typical |
+| neo4j | 2g | ~1.5GB (heap + pagecache) |
+| qdrant | 1g | ~200MB current corpus |
+| n8n | 512m | ~300MB |
+| data-sidecar | 512m | ~150MB |
+| reasoning-engine | 2g | ~800MB–1.5GB during LangGraph run |
+| **Total committed** | **6.5g** | **~3.1–4.1GB typical** |
+| **Available for v3.0** | **~1.5g headroom** | Within 8GB total |
 
 ---
 
-## System Overview
+## System Overview (v3.0 Target State)
 
 ```
 +=====================================================================+
-|  INGESTION NETWORK (existing — do not modify)                       |
+|  PUBLIC INTERNET                                                    |
 |                                                                     |
-|  n8n ──────────► data-sidecar (FastAPI)                            |
-|                        │                                            |
-|              ┌─────────┼──────────┐                                 |
-|              ▼         ▼          ▼                                 |
+|  Browser ──────────────────────────────────────────────────────►   |
 +=====================================================================+
-|  STORAGE LAYER (dual-network — existing services, new migrations)   |
+|  NGINX (new — reverse proxy + TLS termination)                      |
 |                                                                     |
-|  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐            |
-|  │ PostgreSQL  │  │    Neo4j     │  │     Qdrant      │            |
-|  │ (port 5432) │  │ (port 7687) │  │   (port 6333)  │            |
-|  │             │  │              │  │                 │            |
-|  │ v2.0 adds:  │  │ v2.0 adds:   │  │ v2.0 adds:      │            |
-|  │ reports     │  │ Regime nodes │  │ doc embeddings  │            |
-|  │ report_jobs │  │ analogues    │  │ (Fed, SBV,      │            |
-|  │             │  │ relationships│  │  earnings)      │            |
-|  └─────────────┘  └──────────────┘  └─────────────────┘            |
+|  /         → frontend:3000 (Next.js)                                |
+|  /api/*    → reasoning-engine:8000 (FastAPI, existing)              |
+|                                                                     |
+|  All traffic must carry valid Supabase JWT to /api/* routes          |
 +=====================================================================+
-|  REASONING NETWORK (new in v2.0)                                    |
+|  FRONTEND NETWORK (new — Next.js + nginx)                           |
 |                                                                     |
-|  ┌──────────────────────────────────────────────────────────┐       |
-|  │  reasoning-engine  (new Docker service)                  │       |
-|  │                                                          │       |
-|  │  FastAPI (reasoning gateway + SSE streaming)             │       |
-|  │    └── POST /reports/generate   → trigger LangGraph      │       |
-|  │    └── GET  /reports/{id}       → fetch stored report    │       |
-|  │    └── GET  /reports/stream/{id} → SSE step events       │       |
-|  │    └── GET  /health                                      │       |
-|  │                                                          │       |
-|  │  LangGraph StateGraph                                    │       |
-|  │    ├── Node: macro_regime                                │       |
-|  │    │     reads Neo4j via LlamaIndex PropertyGraphIndex   │       |
-|  │    │     calls Gemini API (langchain-google-genai)       │       |
-|  │    ├── Node: valuation                                   │       |
-|  │    │     reads PostgreSQL directly (fundamentals, pct)   │       |
-|  │    │     reads Qdrant via LlamaIndex QdrantVectorStore   │       |
-|  │    │     calls Gemini API                                │       |
-|  │    ├── Node: structure                                   │       |
-|  │    │     reads PostgreSQL directly (structure_markers)   │       |
-|  │    │     calls Gemini API                                │       |
-|  │    ├── Node: entry_quality                               │       |
-|  │    │     synthesizes all prior node outputs from state   │       |
-|  │    │     calls Gemini API                                │       |
-|  │    └── Node: compose_report                              │       |
-|  │          assembles structured JSON report cards          │       |
-|  │          generates Vietnamese + English narrative        │       |
-|  │          calls Gemini API (two-pass: VN then EN)         │       |
-|  │          writes completed report to PostgreSQL           │       |
-|  │                                                          │       |
-|  │  LlamaIndex (retrieval abstraction — called by nodes)    │       |
-|  │    ├── Neo4jPropertyGraphIndex  → regime traversal       │       |
-|  │    └── QdrantVectorStore        → hybrid dense+sparse    │       |
-|  │                                                          │       |
-|  │  PostgreSQLSaver (LangGraph checkpointer)                │       |
-|  │    → checkpoint state to existing postgres service       │       |
-|  └──────────────────────────────────────────────────────────┘       |
+|  ┌─────────────────────────────────────────────────────────┐        |
+|  │  frontend  (new Docker service)                          │        |
+|  │  Next.js 15 App Router — port 3000                       │        |
+|  │                                                          │        |
+|  │  Pages:                                                  │        |
+|  │    /           → Dashboard (watchlist cards)             │        |
+|  │    /report/[id] → Report view + TradingView chart        │        |
+|  │    /login       → Supabase magic link / email+pw         │        |
+|  │                                                          │        |
+|  │  Client calls:                                           │        |
+|  │    supabase-js → Supabase Cloud (auth + session)         │        |
+|  │    fetch /api/reports/* → reasoning-engine (w/ JWT)      │        |
+|  │    EventSource polyfill → reasoning-engine SSE (w/ JWT)  │        |
+|  │    TradingView Lightweight Charts (CDN/npm, client-only) │        |
+|  └─────────────────────────────────────────────────────────┘        |
++=====================================================================+
+|  SUPABASE CLOUD (external — auth + watchlist + user profiles)       |
+|                                                                      |
+|  ┌─────────────────────────────────────────────────────────┐        |
+|  │  Supabase Project (free tier)                            │        |
+|  │    Auth: email/password, magic link, invite-only         │        |
+|  │    Database: watchlists table (user_id, ticker, order)   │        |
+|  │    RLS: watchlists rows gated by auth.uid()              │        |
+|  └─────────────────────────────────────────────────────────┘        |
++=====================================================================+
+|  REASONING NETWORK (existing — unchanged)                            |
+|                                                                      |
+|  reasoning-engine (FastAPI + LangGraph)                             |
+|    + NEW: JWT verification middleware (Supabase JWT secret)          |
+|    + NEW: GET /reports (list by ticker)                              |
+|    + NEW: GET /watchlist-data (batch entry quality for tickers)      |
+|    EXISTING: POST /reports/generate, GET /reports/{id}, SSE stream  |
++=====================================================================+
+|  INGESTION NETWORK (existing — unchanged)                            |
+|                                                                      |
+|  n8n ──────────► data-sidecar (existing, unchanged)                 |
+|    + NEW: n8n document ingestion workflows                           |
+|      ├── FOMC minutes auto-fetch → PDF → Qdrant upsert              |
+|      ├── SBV reports manual trigger → PDF → Qdrant upsert           |
+|      └── Earnings transcripts fetch → text → Qdrant upsert          |
++=====================================================================+
+|  STORAGE LAYER (existing — add new Flyway migrations only)           |
+|                                                                      |
+|  ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐        |
+|  │   PostgreSQL    │  │    Neo4j     │  │     Qdrant      │        |
+|  │                 │  │  (unchanged) │  │                  │        |
+|  │ v3.0 adds:      │  │              │  │ v3.0 adds:       │        |
+|  │  V8__dictionary │  │              │  │  expanded doc    │        |
+|  │  (terminology   │  │              │  │  corpus (FOMC,   │        |
+|  │   expansion)    │  │              │  │  SBV, earnings)  │        |
+|  └─────────────────┘  └──────────────┘  └─────────────────┘        |
 +=====================================================================+
 ```
 
@@ -103,664 +130,695 @@ The v1.0 platform is fully operational. This document focuses exclusively on how
 
 ## New vs Modified Components
 
-### New Docker Service: `reasoning-engine`
+### New Docker Service: `frontend`
 
-**One new service.** No new database services are needed — the existing postgres, neo4j, and qdrant services are already on the `reasoning` network.
+One new service. Joins a new `frontend` network shared with nginx.
 
 ```yaml
-# Addition to docker-compose.yml
-reasoning-engine:
+frontend:
   build:
-    context: ./reasoning
+    context: ./frontend
     dockerfile: Dockerfile
+  mem_limit: 512m
   restart: unless-stopped
-  depends_on:
-    postgres:
-      condition: service_healthy
-    neo4j:
-      condition: service_healthy
-    qdrant:
-      condition: service_healthy
   environment:
-    DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    NEO4J_URI: bolt://neo4j:7687
-    NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-    QDRANT_HOST: qdrant
-    QDRANT_PORT: "6333"
-    QDRANT_API_KEY: ${QDRANT_API_KEY}
-    GEMINI_API_KEY: ${GEMINI_API_KEY}
-    GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
-  ports:
-    - "8001:8000"   # Exposed on host for direct testing; not internal-only in v2.0
-  healthcheck:
-    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-    interval: 15s
-    timeout: 5s
-    retries: 3
-    start_period: 30s
+    NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+    # Note: no direct DB connection — all data via reasoning-engine API
   networks:
-    - reasoning     # reasoning network only — cannot reach ingestion services
-  profiles: ["reasoning"]
+    - frontend
+  profiles: ["frontend"]
+  # No host port — nginx proxies to frontend:3000
 ```
 
-**Why one service, not separate LangGraph + FastAPI containers:** At single-user VPS scale, the reasoning-engine service runs FastAPI as the HTTP gateway and imports LangGraph inline. Splitting them would add container networking overhead with no benefit at this scale. LangGraph's state is persisted to PostgreSQL via `langgraph-checkpoint-postgres`, so it is stateless at the process level and survives restarts.
+**Why 512m mem_limit:** Next.js standalone output (output: 'standalone') is a stripped Node.js server. At single-user invite-only scale, 512MB is sufficient. The standalone build produces ~150MB images vs 1GB+ default.
 
-### New Flyway Migrations
+### New Docker Service: `nginx`
 
-Two new SQL migrations extend PostgreSQL for v2.0 reasoning outputs:
+Reverse proxy providing TLS termination, routing, and SSE buffer disabling. Joins both `frontend` and `reasoning` networks to proxy both services.
+
+```yaml
+nginx:
+  image: nginx:alpine
+  mem_limit: 64m
+  restart: unless-stopped
+  volumes:
+    - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./nginx/ssl:/etc/nginx/ssl:ro   # certbot-managed certs
+  ports:
+    - "80:80"
+    - "443:443"
+  depends_on:
+    - frontend
+    - reasoning-engine
+  networks:
+    - frontend
+    - reasoning
+  profiles: ["frontend"]
+```
+
+**Critical nginx config — SSE requires proxy buffering disabled:**
+
+```nginx
+# /api/* → reasoning-engine (FastAPI)
+location /api/ {
+    proxy_pass http://reasoning-engine:8000/;
+    proxy_set_header Authorization $http_authorization;
+    proxy_set_header Host $host;
+
+    # SSE: disable buffering, enable long-lived connections
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 300s;
+    proxy_set_header X-Accel-Buffering no;
+    chunked_transfer_encoding on;
+}
+
+# / → Next.js frontend
+location / {
+    proxy_pass http://frontend:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
+
+### New Docker Network: `frontend`
+
+```yaml
+networks:
+  ingestion:
+    driver: bridge    # existing
+  reasoning:
+    driver: bridge    # existing
+  frontend:
+    driver: bridge    # NEW — nginx + Next.js only
+```
+
+Nginx joins both `frontend` (to reach Next.js) and `reasoning` (to reach reasoning-engine). Next.js joins `frontend` only — it cannot reach storage services directly, which is the correct isolation.
+
+### Modified Service: `reasoning-engine`
+
+Two additions only — no structural changes:
+
+1. **JWT verification middleware:** FastAPI dependency that validates the Supabase JWT on protected routes.
+2. **New endpoints:** `GET /reports` (list reports by ticker) and `GET /watchlist-data` (batch entry quality summary for multiple tickers).
+
+The `reasoning-engine` service joins the `reasoning` network. Nginx proxies `/api/*` to it. No host port change needed (8001 can be removed from docker-compose in production — nginx handles routing).
+
+### New Flyway Migration: V8
 
 ```
 db/migrations/
-├── V1__initial_schema.sql        (existing — pipeline_run_log)
-├── V2__stock_data.sql            (existing — ohlcv, fundamentals)
-├── V3__gold_data.sql             (existing — gold series)
-├── V4__fred_indicators.sql       (existing — macro indicators)
-├── V5__structure_markers.sql     (existing — computed markers)
-├── V6__reports.sql               (NEW — report output storage)
-└── V7__report_jobs.sql           (NEW — async job tracking)
+├── V1–V7 (existing)
+└── V8__dictionary_expansion.sql  # NEW — financial terminology table
 ```
 
-V6 creates `reports` table: `id, asset_id, report_json, report_markdown_vn, report_markdown_en, regime_label, entry_quality_score, generated_at, data_as_of`.
+V8 adds a `financial_terms` table for the expanded Vietnamese financial dictionary (162 existing terms + v3.0 additions). This is optional — the dictionary may remain in a JSON/Python file if the reasoning engine only needs it at runtime.
 
-V7 creates `report_jobs` table: `id, asset_id, status (queued/running/complete/failed), created_at, completed_at, error_message, report_id (FK to reports)`.
+### Supabase Cloud Project (external, not Docker)
 
-### New Neo4j Population (in v2.0 ingestion workflows)
+Not a Docker service — Supabase Cloud is called from Next.js client only.
 
-Neo4j already has constraints and APOC triggers. v2.0 adds Cypher to populate regime analogue data via new n8n workflows. The schema is pre-wired — only data is missing.
+**What lives in Supabase Cloud:**
+- Auth: email/password + magic link, invite-only via email allowlist
+- `watchlists` table: `(id, user_id uuid REFERENCES auth.users, ticker text, position int, created_at)`
+- RLS policy on `watchlists`: `user_id = auth.uid()`
 
-Regime nodes: `(:Regime {id, label, start_date, end_date, description})`
-TimePeriod nodes: `(:TimePeriod {id, period})`
-Relationships: `(:Regime)-[:HAS_ANALOGUE {similarity_score}]->(:Regime)`, `(:Regime)-[:OCCURRED_DURING]->(:TimePeriod)`
+**What does NOT live in Supabase:**
+- Reports, OHLCV data, fundamentals, structure markers — all stay in the existing PostgreSQL service
+- Document embeddings — stay in Qdrant
+- Regime graph — stays in Neo4j
 
-### New Qdrant Document Corpus (manual load in v2.0)
-
-Document collections for manually curated corpus (Fed minutes, SBV reports, VN earnings):
-- Collection `macro_docs` — Fed minutes, SBV policy statements
-- Collection `earnings_docs` — VN company earnings transcripts
-
-Embeddings remain 384-dim FastEmbed (BAAI/bge-small-en-v1.5) — locked from v1.0. LlamaIndex uses `FastEmbedEmbedding` to match existing collection dimensions.
+**Why Supabase Cloud (not self-hosted):** Self-hosted Supabase requires 7+ additional Docker containers (GoTrue, PostgREST, Realtime, Kong, etc.) consuming ~2–3GB RAM — which would exceed the VPS budget. The cloud free tier supports 50K MAU and 500MB database — vastly more than needed for an invite-only platform. Watchlist data is small (< 1MB for any realistic user count). Using Supabase Cloud for auth + watchlist only is the memory-efficient choice.
 
 ---
 
-## Component Boundaries
+## Auth Flow: Supabase → Next.js → FastAPI
+
+### Flow Diagram
+
+```
+User (Browser)
+  │
+  │  1. POST credentials (email + password OR magic link)
+  ▼
+Supabase Cloud (auth.supabase.co)
+  │
+  │  2. Returns: access_token (JWT), refresh_token
+  │     JWT payload: { sub: user_id, email, role: "authenticated", exp, aud: "authenticated" }
+  │     JWT signed with HS256 using project JWT_SECRET
+  ▼
+Next.js (browser client — @supabase/ssr + @supabase/supabase-js)
+  │
+  │  3. Stores session in HTTP-only cookies via @supabase/ssr middleware
+  │     Middleware refreshes expired tokens on each request (getClaims())
+  │
+  │  4. For API calls: reads access_token from session
+  │     Attaches as Authorization: Bearer <access_token> header
+  ▼
+nginx (proxy — passes Authorization header unchanged)
+  │
+  ▼
+FastAPI (reasoning-engine — JWT verification dependency)
+  │
+  │  5. JWTBearer dependency extracts Bearer token from Authorization header
+  │     Decodes with python-jose: jwt.decode(token, JWT_SECRET, algorithms=["HS256"],
+  │                                           audience="authenticated")
+  │     JWT_SECRET = Supabase project JWT secret (env var SUPABASE_JWT_SECRET)
+  │     On success: returns decoded payload (user_id, email available to route)
+  │     On failure: raises HTTPException 403
+  │
+  │  6. Protected route runs with verified user context
+  ▼
+PostgreSQL / Neo4j / Qdrant (no change — existing services)
+```
+
+### SSE Auth: Special Handling Required
+
+The browser-native `EventSource` API cannot send custom headers. For the SSE stream endpoint (`GET /api/reports/stream/{id}`), use a library that supports headers:
+
+```typescript
+// Next.js client — use @microsoft/fetch-event-source (npm)
+import { fetchEventSource } from '@microsoft/fetch-event-source';
+
+fetchEventSource(`/api/reports/stream/${jobId}`, {
+  headers: {
+    Authorization: `Bearer ${session.access_token}`,
+  },
+  onmessage(event) {
+    // handle step completion events
+  },
+});
+```
+
+**Why `@microsoft/fetch-event-source` over native EventSource:** It supports Authorization headers, automatic reconnection, and handles HTTP error codes correctly. The native EventSource spec does not support custom headers (GitHub issue #2177 — WHATWG, still unresolved as of 2026).
+
+### FastAPI JWT Middleware Implementation
+
+```python
+# reasoning/app/auth.py (NEW — add to existing reasoning-engine service)
+from fastapi import Request, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
+import os
+
+SUPABASE_JWT_SECRET = os.environ["SUPABASE_JWT_SECRET"]
+
+class JWTBearer(HTTPBearer):
+    async def __call__(self, request: Request) -> str:
+        credentials: HTTPAuthorizationCredentials = await super().__call__(request)
+        if not credentials or credentials.scheme != "Bearer":
+            raise HTTPException(status_code=403, detail="Invalid auth scheme")
+        try:
+            payload = jwt.decode(
+                credentials.credentials,
+                SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+            return payload  # contains sub (user_id), email, exp
+        except JWTError:
+            raise HTTPException(status_code=403, detail="Invalid or expired token")
+
+jwt_bearer = JWTBearer()
+
+# Apply to routes:
+# @router.post("/reports/generate", dependencies=[Depends(jwt_bearer)])
+# @router.get("/reports/{report_id}", dependencies=[Depends(jwt_bearer)])
+# @router.get("/reports/stream/{job_id}", dependencies=[Depends(jwt_bearer)])
+```
+
+**Environment variable to add to reasoning-engine:**
+
+```yaml
+# docker-compose.yml — reasoning-engine service
+environment:
+  SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}   # NEW — from Supabase Settings > Auth
+```
+
+---
+
+## Document Ingestion Architecture
+
+Document ingestion uses the existing n8n + data-sidecar + Qdrant architecture. No new Docker services needed.
+
+### Three Document Pipelines
+
+| Pipeline | Source | Trigger | Current Status |
+|----------|--------|---------|---------------|
+| FOMC Minutes | federalreserve.gov (HTML/PDF) | n8n cron (monthly) | Partially automated (v2.0) |
+| SBV Reports | sbv.gov.vn (PDF) | n8n manual trigger | Manual PDF curation |
+| VN Earnings Transcripts | company IR pages / HOSE disclosures | n8n cron (quarterly) | Manual curation |
+
+### Document Ingestion Flow (via existing n8n + data-sidecar)
+
+```
+n8n cron / manual trigger
+  │
+  │  1. HTTP node: fetch PDF URL or upload file
+  ▼
+n8n workflow (ingestion network)
+  │
+  │  2. Call data-sidecar: POST /documents/ingest
+  │     Body: { source_type: "fomc|sbv|earnings", url: "...", ticker?: "..." }
+  ▼
+data-sidecar (FastAPI — ingestion network)
+  │
+  │  3. Download PDF → extract text (pypdf or pdfminer)
+  │  4. Chunk text: 512 tokens, 50 token overlap
+  │  5. Embed with FastEmbed BAAI/bge-small-en-v1.5 (384-dim — LOCKED)
+  │  6. Upsert into Qdrant: macro_docs or earnings_docs collection
+  │     Payload metadata: { source, date, ticker?, chunk_index, total_chunks }
+  ▼
+Qdrant (ingestion network)
+  │
+  └── Vector stored → available to reasoning-engine LlamaIndex retrieval
+```
+
+**New data-sidecar endpoint to add:** `POST /documents/ingest` — handles PDF download, text extraction, chunking, embedding, and Qdrant upsert. This keeps the embedding logic server-side (not in n8n) and reuses the existing FastEmbed model already loaded by the sidecar.
+
+**Why not embed directly in n8n:** n8n's LangChain nodes use different embedding libraries that may produce different vector dimensions or normalizations than FastEmbed BAAI/bge-small-en-v1.5. Mixing embedding models for the same Qdrant collection causes incorrect similarity scores. The data-sidecar is the single embedding entrypoint — this constraint is locked.
+
+---
+
+## Component Boundaries (v3.0 Full Picture)
 
 | Component | Responsibility | Reads From | Writes To | Does NOT |
 |-----------|---------------|------------|-----------|----------|
-| n8n (existing) | Fetch, transform, pre-compute, store | External APIs | PostgreSQL, Neo4j, Qdrant | Talk to reasoning-engine |
-| data-sidecar (existing) | Data ingestion endpoints for n8n | External APIs, PostgreSQL | PostgreSQL | Talk to reasoning-engine |
-| PostgreSQL | Structured storage — OHLCV, fundamentals, structure markers, reports, jobs | — | — | Compute anything |
-| Neo4j | Graph storage — regime nodes, analogue relationships | — | — | Compute anything |
-| Qdrant | Vector index — document embeddings | — | — | Compute anything |
-| LlamaIndex (inside reasoning-engine) | Retrieval abstraction over Neo4j and Qdrant | Neo4j (Cypher), Qdrant (vector search) | — | Call LLM, orchestrate reasoning, write to storage |
-| LangGraph (inside reasoning-engine) | Multi-step reasoning state machine | Via LlamaIndex, directly from PostgreSQL | PostgreSQL (reports, report_jobs only) | Fetch external APIs, compute structure markers |
-| FastAPI (inside reasoning-engine) | HTTP gateway, async job management, SSE streaming | PostgreSQL (job status, reports), LangGraph (invoke) | PostgreSQL (job status) | Contain business logic |
-| Gemini API (external) | LLM inference for all reasoning nodes | Prompt + context assembled by LangGraph nodes | — | Retrieve data, write to storage |
+| Next.js frontend | UI, auth session management, user watchlist CRUD | Supabase (auth + watchlist), reasoning-engine (reports API) | Supabase (watchlist rows via RLS) | Read PostgreSQL, Neo4j, Qdrant directly |
+| Supabase Cloud | Auth tokens, user identity, watchlist data, RLS enforcement | — | Supabase DB (watchlists) | Know about reports, OHLCV, structure markers |
+| nginx | TLS termination, routing, SSE buffering config | — | — | Business logic |
+| reasoning-engine (modified) | Report generation, report retrieval, SSE streaming, JWT verification | PostgreSQL (reports, jobs, structure_markers, fundamentals), Neo4j, Qdrant | PostgreSQL (reports, report_jobs) | Write watchlists, authenticate users |
+| n8n (modified — new workflows) | Document ingestion orchestration | External URLs (Fed, SBV, IR sites) | data-sidecar (via HTTP) | Embed documents directly |
+| data-sidecar (modified — new endpoint) | Data ingestion + document embedding | External APIs, PDF downloads | PostgreSQL (ingestion data), Qdrant (embeddings) | Generate reports, verify auth |
+| PostgreSQL | Structured data — reports, structure markers, fundamentals | — | — | Store watchlists or user profiles |
+| Supabase DB | User identity, watchlists | — | — | Store analytical data, reports |
+
+**Design decision: two separate databases.** Analytical data (reports, OHLCV, structure markers) stays in the VPS PostgreSQL. User data (watchlist, identity) lives in Supabase Cloud. This is the correct separation — it keeps the VPS PostgreSQL internal-only (no host port) while Supabase Cloud handles auth complexity.
 
 ---
 
-## Data Flow: Storage → Retrieval → Reasoning → Output
+## Data Flows
 
-### Flow 1: Macro Regime Classification
-
-```
-LangGraph node: macro_regime
-  │
-  ├── [RETRIEVAL] LlamaIndex Neo4jPropertyGraphIndex
-  │     cypher: MATCH (r:Regime)-[:HAS_ANALOGUE]->(analogue:Regime)
-  │             WHERE r conditions match current macro indicators
-  │             RETURN r, analogue, similarity_score
-  │     current macro indicators sourced from PostgreSQL fred_indicators table
-  │     returns: list of historical regime analogues with similarity scores
-  │
-  ├── [REASONING] Gemini API call
-  │     prompt: current macro indicator snapshot + analogue list
-  │     output: {regime_label, confidence (0-1), analogue_summary, key_drivers}
-  │     structured output via langchain-google-genai with_structured_output()
-  │
-  └── state["regime"] = {label, confidence, analogues, drivers}
-      → passes to valuation node via LangGraph state
-```
-
-### Flow 2: Asset Valuation Assessment
+### Flow 1: Dashboard Load (Watchlist Cards)
 
 ```
-LangGraph node: valuation
+Browser → Next.js page (/dashboard)
   │
-  ├── [RETRIEVAL] PostgreSQL direct query
-  │     SELECT pe_ratio, pb_ratio, ps_ratio, roe, dividend_yield
-  │     FROM fundamentals
-  │     WHERE symbol = {asset_id} ORDER BY data_as_of DESC LIMIT 1
-  │     JOIN structure_markers ON symbol WHERE pe_pct_rank, close_pct_rank
-  │     returns: current fundamentals + percentile ranks
+  ├── [Supabase client] GET watchlist (tickers for user)
+  │     supabase.from('watchlists').select('*').eq('user_id', user.id)
+  │     Returns: [{ticker: 'VIC', position: 1}, {ticker: 'VHM', position: 2}, ...]
   │
-  ├── [RETRIEVAL] LlamaIndex QdrantVectorStore hybrid search
-  │     query: "valuation analysis {regime_label} {asset_sector}"
-  │     enable_hybrid=True, sparse_top_k=5, similarity_top_k=3
-  │     collection: earnings_docs (company earnings) + macro_docs (analyst context)
-  │     returns: relevant document chunks (earnings excerpts, macro context)
+  ├── [fetch with JWT] GET /api/watchlist-data?tickers=VIC,VHM,...
+  │     reasoning-engine queries PostgreSQL:
+  │       SELECT r.asset_id, r.entry_quality_score, r.generated_at,
+  │              s.close, s.ma_10w, s.ma_20w
+  │       FROM reports r JOIN structure_markers s ON r.asset_id = s.symbol
+  │       WHERE r.asset_id IN (tickers) AND r.generated_at = (latest per ticker)
+  │     Returns: [{ticker, entry_quality_tier, last_report_date, sparkline_data}, ...]
   │
-  ├── [REASONING] Gemini API call
-  │     prompt: fundamentals snapshot + percentile ranks + regime (from state) + doc chunks
-  │     output: {valuation_verdict, historical_context, regime_adjustment, narrative}
-  │     structured output via with_structured_output()
-  │
-  └── state["valuation"] = {verdict, context, narrative}
-      → passes to structure node via LangGraph state
+  └── Render watchlist cards (tier badge + sparkline + last report date)
 ```
 
-### Flow 3: Price Structure Analysis
+### Flow 2: Report View + TradingView Chart
 
 ```
-LangGraph node: structure
+Browser → Next.js page (/report/[id])
   │
-  ├── [RETRIEVAL] PostgreSQL direct query
-  │     SELECT close, ma_10w, ma_20w, ma_50w,
-  │            drawdown_from_ath, drawdown_from_52w_high,
-  │            close_pct_rank, data_as_of
-  │     FROM structure_markers
-  │     WHERE symbol = {asset_id} AND resolution = 'weekly'
-  │     ORDER BY data_as_of DESC LIMIT 52  -- last year of weekly markers
-  │     returns: pre-computed structure marker series (no computation here)
+  ├── [fetch with JWT] GET /api/reports/{id}
+  │     Returns: full report JSON (regime, valuation, structure, entry_quality, markdown_vn, markdown_en)
   │
-  ├── [REASONING] Gemini API call
-  │     prompt: structure marker series + regime (from state)
-  │     output: {trend_quality, ma_alignment, drawdown_context, support_proximity, structure_verdict}
-  │     structured output via with_structured_output()
+  ├── [fetch with JWT] GET /api/ohlcv/{ticker}?weeks=52
+  │     reasoning-engine queries PostgreSQL:
+  │       SELECT date, open, high, low, close, volume FROM ohlcv
+  │       WHERE symbol = ticker ORDER BY date DESC LIMIT 52
+  │     Returns: OHLCV array + MA series (from structure_markers)
   │
-  └── state["structure"] = {trend_quality, ma_alignment, drawdown_context, verdict}
-      → passes to entry_quality node via LangGraph state
+  ├── Render report markdown (Vietnamese primary)
+  │
+  └── [Client-side only — dynamic import] TradingView Lightweight Charts
+        createChart(container, { width, height })
+        chart.addCandlestickSeries() → setData(ohlcvArray)
+        chart.addLineSeries() → setData(ma10w), addLineSeries() → setData(ma20w)
+        No SSR — dynamic import with { ssr: false } required
 ```
 
-### Flow 4: Entry Quality Scoring
+### Flow 3: Generate Report with SSE Progress
 
 ```
-LangGraph node: entry_quality
+Browser → Next.js "Generate Report" button click
   │
-  ├── [NO RETRIEVAL] reads only from LangGraph state
-  │     state["regime"]    — macro regime output
-  │     state["valuation"] — valuation assessment output
-  │     state["structure"] — price structure output
+  ├── [fetch with JWT] POST /api/reports/generate { asset_id: "VIC" }
+  │     FastAPI creates report_job, returns { job_id }
   │
-  ├── [REASONING] Gemini API call
-  │     prompt: all three prior outputs assembled into synthesis prompt
-  │     task: synthesize multi-layer reasoning into entry quality assessment
-  │     output: {entry_quality_score (1-10), score_rationale, risk_factors,
-  │              thesis_strength, structure_quality, conflicting_signals}
-  │     structured output via with_structured_output()
-  │
-  └── state["entry_quality"] = {score, rationale, risk_factors, conflicts}
-      → passes to compose_report node via LangGraph state
+  └── [@microsoft/fetch-event-source] GET /api/reports/stream/{job_id}
+        Headers: { Authorization: Bearer <jwt> }
+        Events received:
+          data: {"node": "macro_regime", "status": "complete", "elapsed_ms": 12400}
+          data: {"node": "valuation", "status": "complete", "elapsed_ms": 8200}
+          data: {"node": "structure", "status": "complete", "elapsed_ms": 3100}
+          data: {"node": "entry_quality", "status": "complete", "elapsed_ms": 7800}
+          data: {"node": "compose_report", "status": "complete", "elapsed_ms": 18500}
+          data: {"status": "complete", "report_id": "uuid"}
+        → redirect to /report/{report_id}
 ```
 
-### Flow 5: Bilingual Report Composition
+### Flow 4: Document Ingestion (n8n → data-sidecar → Qdrant)
 
 ```
-LangGraph node: compose_report
+n8n cron (monthly, ingestion network)
   │
-  ├── [NO RETRIEVAL] reads only from LangGraph state
-  │     all four prior node outputs
+  ├── HTTP node: GET https://federalreserve.gov/.../minutes.pdf
   │
-  ├── [REASONING] Gemini API call — Pass 1 (Vietnamese)
-  │     prompt: all state outputs + "generate Vietnamese investor narrative"
-  │     output: structured report cards in Vietnamese markdown
+  ├── HTTP node: POST http://data-sidecar:8000/documents/ingest
+  │     { source_type: "fomc", content_url: "...", document_date: "2026-01-29" }
   │
-  ├── [REASONING] Gemini API call — Pass 2 (English)
-  │     prompt: all state outputs + "generate English investor narrative"
-  │     output: structured report cards in English markdown
-  │
-  ├── [ASSEMBLY] assemble final report JSON
-  │     {
-  │       asset_id, generated_at, data_as_of,
-  │       regime: {label, confidence, analogues, drivers},
-  │       valuation: {verdict, context, narrative},
-  │       structure: {trend_quality, ma_alignment, verdict},
-  │       entry_quality: {score, rationale, risk_factors, conflicts},
-  │       report_markdown_vn: "...",
-  │       report_markdown_en: "..."
-  │     }
-  │
-  ├── [WRITE] PostgreSQL INSERT
-  │     INSERT INTO reports (...) VALUES (...)
-  │     UPDATE report_jobs SET status='complete', report_id=... WHERE id=...
-  │
-  └── state["report_id"] = new report UUID
-      LangGraph graph terminates → FastAPI BackgroundTask completes
-```
-
-### Flow 6: Full Report Generation Request Lifecycle
-
-```
-Trigger: HTTP POST /reports/generate {asset_id}
-  │
-  ├── FastAPI: INSERT INTO report_jobs (asset_id, status='queued')
-  │            return {job_id, status: "queued"}
-  │
-  ├── FastAPI BackgroundTask: run_report_pipeline(job_id, asset_id)
-  │     │
-  │     ├── UPDATE report_jobs SET status='running'
-  │     │
-  │     ├── PostgreSaver checkpointer connects to postgres
-  │     │   thread_id = job_id (unique per report run)
-  │     │
-  │     ├── LangGraph graph.invoke({asset_id}, config={thread_id})
-  │     │     → macro_regime node (Flow 1)
-  │     │     → valuation node   (Flow 2)
-  │     │     → structure node   (Flow 3)
-  │     │     → entry_quality node (Flow 4)
-  │     │     → compose_report node (Flow 5)
-  │     │
-  │     └── UPDATE report_jobs SET status='complete', report_id=...
-  │
-  └── Parallel: GET /reports/stream/{job_id}
-        FastAPI SSE stream — LangGraph emits events per node completion
-        Frontend consumes SSE: "macro_regime_complete", "valuation_complete", etc.
+  └── data-sidecar (/documents/ingest handler):
+        1. Download PDF → pypdf.PdfReader → extract text
+        2. Chunk: RecursiveCharacterTextSplitter(chunk_size=512, overlap=50)
+        3. Embed: FastEmbed BAAI/bge-small-en-v1.5 → 384-dim vectors
+        4. Qdrant upsert: macro_docs collection
+           Payload: { source: "fomc", date: "2026-01-29", chunk_index: N }
+        5. Return: { chunks_upserted: 47, collection: "macro_docs" }
 ```
 
 ---
 
-## Recommended Project Structure
+## Recommended Project Structure (v3.0 additions)
 
 ```
-reasoning/                       # New Docker context — reasoning-engine service
-├── Dockerfile
-├── requirements.txt
-├── app/
-│   ├── __init__.py
-│   ├── main.py                  # FastAPI app — /reports/generate, /reports/{id}, /reports/stream/{id}
-│   ├── db.py                    # PostgreSQL connection (SQLAlchemy Core, reuses sidecar pattern)
-│   ├── models.py                # Pydantic schemas — ReportRequest, ReportJob, Report
-│   ├── graph/
-│   │   ├── __init__.py
-│   │   ├── state.py             # ReportState TypedDict — all node outputs
-│   │   ├── graph.py             # LangGraph StateGraph definition + compilation
-│   │   └── nodes/
-│   │       ├── __init__.py
-│   │       ├── macro_regime.py  # MacroRegime node — Neo4j retrieval + Gemini call
-│   │       ├── valuation.py     # Valuation node — PostgreSQL + Qdrant retrieval + Gemini call
-│   │       ├── structure.py     # Structure node — PostgreSQL retrieval + Gemini call
-│   │       ├── entry_quality.py # EntryQuality node — state synthesis + Gemini call
-│   │       └── compose_report.py # Report node — bilingual generation + PostgreSQL write
-│   ├── retrieval/
-│   │   ├── __init__.py
-│   │   ├── neo4j_retriever.py   # LlamaIndex Neo4jPropertyGraphIndex wrapper
-│   │   └── qdrant_retriever.py  # LlamaIndex QdrantVectorStore hybrid retriever
-│   ├── routers/
-│   │   ├── __init__.py
-│   │   ├── health.py            # GET /health
-│   │   └── reports.py           # POST /generate, GET /{id}, GET /stream/{id}
-│   └── services/
-│       ├── __init__.py
-│       ├── pipeline_service.py  # BackgroundTask runner — invokes LangGraph graph
-│       └── report_service.py    # PostgreSQL read/write for reports + jobs
+stratum/
+├── docker-compose.yml          # Add: frontend service, nginx service, frontend network
+├── frontend/                   # NEW — Next.js App Router service
+│   ├── Dockerfile              # Multi-stage: builder (node:20-alpine) → runner (node:20-alpine)
+│   ├── next.config.ts          # output: 'standalone' (required for Docker)
+│   ├── package.json
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── layout.tsx      # Root layout — Supabase session provider
+│   │   │   ├── page.tsx        # / → redirect to /dashboard or /login
+│   │   │   ├── login/
+│   │   │   │   └── page.tsx    # Email/password login form (Supabase auth)
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx    # Watchlist cards — server component fetches data
+│   │   │   └── report/
+│   │   │       └── [id]/
+│   │   │           └── page.tsx  # Report view — TradingView chart (client component)
+│   │   ├── components/
+│   │   │   ├── WatchlistCard.tsx        # Entry quality tier + sparkline + date
+│   │   │   ├── ReportView.tsx           # Markdown report + expand/collapse sections
+│   │   │   ├── TradingViewChart.tsx     # Client-only — dynamic import wrapper
+│   │   │   └── GenerateReportButton.tsx # SSE progress display
+│   │   ├── lib/
+│   │   │   ├── supabase/
+│   │   │   │   ├── client.ts    # createBrowserClient (client components)
+│   │   │   │   └── server.ts    # createServerClient with cookies (server components)
+│   │   │   └── api.ts           # fetch wrappers for reasoning-engine endpoints (w/ JWT)
+│   │   └── middleware.ts        # @supabase/ssr middleware — token refresh + route protection
+│   └── public/
 │
-db/migrations/
-├── ...existing V1-V5...
-├── V6__reports.sql              # New: reports table
-└── V7__report_jobs.sql          # New: report_jobs table
+├── nginx/                      # NEW — reverse proxy config
+│   ├── nginx.conf              # Proxy rules: /api/* → reasoning-engine, / → frontend
+│   └── ssl/                    # certbot-managed TLS certificates
+│
+├── reasoning/                  # MODIFIED — add auth middleware + 2 new endpoints
+│   └── app/
+│       ├── auth.py             # NEW — JWTBearer dependency (Supabase JWT verification)
+│       └── routers/
+│           └── reports.py      # MODIFIED — add JWT deps + GET /reports + GET /watchlist-data
+│
+├── sidecar/                    # MODIFIED — add document ingestion endpoint
+│   └── app/
+│       └── routers/
+│           └── documents.py    # NEW — POST /documents/ingest (PDF → chunk → embed → Qdrant)
+│
+└── db/migrations/
+    ├── V1–V7 (existing)
+    └── V8__dictionary_expansion.sql   # NEW (optional — if dictionary moves to DB)
 ```
-
-**Structure rationale:**
-- `graph/nodes/` — one file per LangGraph node keeps reasoning logic isolated and independently testable
-- `retrieval/` — LlamaIndex retriever wrappers are separate from node logic; nodes call retriever functions, not LlamaIndex internals directly
-- `services/` — mirrors data-sidecar pattern for consistency; pipeline_service owns the BackgroundTask lifecycle
-- Mirrors `sidecar/app/` structure so the codebase stays consistent between the two Python services
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Storage-Boundary Isolation (inherited from v1.0, unchanged)
+### Pattern 1: Supabase Cloud for Auth, VPS PostgreSQL for Analytical Data
 
-**What:** n8n and reasoning-engine share no runtime connection. The only interface is the storage layer. n8n writes. reasoning-engine reads (except for reports and report_jobs which it writes).
+**What:** Supabase Cloud handles only auth + watchlist (tiny user data). All analytical data (reports, OHLCV, fundamentals, structure markers) stays in the self-hosted PostgreSQL service.
 
-**When:** Always. This is a hard constraint. `n8n` is on `ingestion` network. `reasoning-engine` is on `reasoning` network. They cannot reach each other by Docker network topology.
+**When to use:** Always — this is the v3.0 design. Do not store analytical data in Supabase.
 
-**Why:** Decouples ingestion schedule from reasoning schedule. If n8n pipeline fails overnight, an in-progress or queued report is not affected. If reasoning-engine crashes, ingestion continues uninterrupted.
+**Why:** Self-hosted Supabase requires 7+ containers (~2–3GB RAM) — exceeds the VPS budget. Supabase Cloud free tier is adequate for invite-only scale. The JWT from Supabase Cloud is verifiable by FastAPI with just the JWT secret — no Supabase SDK needed on the backend.
+
+**Trade-offs:** Two databases to manage. Watchlist data (in Supabase) and report data (in VPS PostgreSQL) are never in the same query. Dashboard must make two separate calls: Supabase for tickers, reasoning-engine for report summaries. This is acceptable at invite-only scale.
 
 ---
 
-### Pattern 2: LangGraph as Explicit State Machine (not a freeform agent)
+### Pattern 2: TradingView Lightweight Charts as Client-Only Dynamic Import
 
-**What:** A `StateGraph` with five fixed named nodes and explicit edges. Nodes do not autonomously decide to call tools. Each node has a defined input (from state), defined retrieval operations, a defined LLM call, and a defined output (written back to state).
+**What:** The TradingView chart component is wrapped in `next/dynamic` with `{ ssr: false }`. The chart is never rendered on the server.
 
-**When:** Always. No `create_react_agent`, no autonomous tool selection.
+**When to use:** Always — TradingView Lightweight Charts uses `window` and DOM APIs not available in Node.js SSR context.
 
-**Why:** The platform's core value is explainable, reproducible reasoning. A freeform agent produces non-deterministic reasoning paths. The StateGraph guarantees the same five-step structure for every report.
+**Why:** TradingView Lightweight Charts is a pure client-side canvas library. SSR rendering would throw `window is not defined`. Dynamic import with `{ ssr: false }` tells Next.js to only load and render the component in the browser.
 
-```python
-from langgraph.graph import StateGraph, END
-from app.graph.state import ReportState
-from app.graph.nodes import macro_regime, valuation, structure, entry_quality, compose_report
+```typescript
+// app/report/[id]/page.tsx
+import dynamic from 'next/dynamic';
 
-graph = StateGraph(ReportState)
-graph.add_node("macro_regime", macro_regime.run)
-graph.add_node("valuation", valuation.run)
-graph.add_node("structure", structure.run)
-graph.add_node("entry_quality", entry_quality.run)
-graph.add_node("compose_report", compose_report.run)
-
-graph.set_entry_point("macro_regime")
-graph.add_edge("macro_regime", "valuation")
-graph.add_edge("valuation", "structure")
-graph.add_edge("structure", "entry_quality")
-graph.add_edge("entry_quality", "compose_report")
-graph.add_edge("compose_report", END)
-
-compiled = graph.compile(checkpointer=PostgresSaver.from_conn_string(DATABASE_URL))
+const TradingViewChart = dynamic(
+  () => import('@/components/TradingViewChart'),
+  { ssr: false, loading: () => <div>Loading chart...</div> }
+);
 ```
 
+**Trade-offs:** Chart is not included in initial HTML — it renders after hydration. For a research report tool (not a trading terminal), this is acceptable. The report text renders immediately; the chart loads ~200ms later.
+
 ---
 
-### Pattern 3: LlamaIndex as Retrieval Function (not an orchestrator)
+### Pattern 3: JWT Passed as Authorization Header, Not Cookie
 
-**What:** LlamaIndex is called as a Python function inside LangGraph nodes. It does not orchestrate, does not call LLMs for synthesis, and does not produce report content.
+**What:** Next.js reads the Supabase access_token from the client-side session and passes it as `Authorization: Bearer <token>` on all calls to the FastAPI reasoning-engine.
 
-**When:** In `macro_regime.py` (Neo4j PropertyGraph retrieval) and `valuation.py` (Qdrant hybrid retrieval).
+**When to use:** Always for reasoning-engine calls.
 
-**Why:** LlamaIndex and LangGraph have overlapping orchestration capabilities. Using LlamaIndex as an orchestrator creates conflicting control flow. Clean division: LangGraph owns orchestration, LlamaIndex owns retrieval.
+**Why:** The reasoning-engine is a separate Docker service — it cannot read the Next.js cookie domain. HTTP Authorization header is the correct pattern for service-to-service auth where the backend is not a Supabase-aware service.
 
-```python
-# retrieval/neo4j_retriever.py
-from llama_index.graph_stores.neo4j import Neo4jPropertyGraphStore
-from llama_index.core import PropertyGraphIndex
+**SSE exception:** Native `EventSource` cannot send headers. Use `@microsoft/fetch-event-source` which wraps `fetch` (supports headers) with SSE semantics. Token is still in the Authorization header — same pattern, different client library.
 
-def retrieve_regime_analogues(current_indicators: dict) -> list[dict]:
-    graph_store = Neo4jPropertyGraphStore(
-        username="neo4j",
-        password=NEO4J_PASSWORD,
-        url=NEO4J_URI,
-    )
-    # Use LlamaIndex as a thin Cypher execution wrapper
-    # LangGraph node passes result to Gemini for interpretation
-    ...
+---
 
-# retrieval/qdrant_retriever.py
-from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llama_index.core import VectorStoreIndex
-from llama_index.core.retrievers import VectorIndexRetriever
+### Pattern 4: n8n Document Ingestion Calls data-sidecar (Not Qdrant Directly)
 
-def retrieve_analyst_context(query: str, collection: str) -> list[str]:
-    vector_store = QdrantVectorStore(
-        collection_name=collection,
-        client=qdrant_client,
-        enable_hybrid=True,
-        batch_size=20,
-    )
-    ...
+**What:** n8n sends PDFs or document URLs to the data-sidecar via HTTP. The data-sidecar handles download, extraction, chunking, embedding, and Qdrant upsert. n8n never talks to Qdrant directly.
+
+**When to use:** Always for document ingestion.
+
+**Why:** The FastEmbed BAAI/bge-small-en-v1.5 384-dim embedding model is locked — it must match the dimensions of existing Qdrant collections. The data-sidecar already has FastEmbed loaded. If n8n called Qdrant directly via the n8n Qdrant node, it would use n8n's built-in embedding models (typically OpenAI 1536-dim or different FastEmbed configurations) which would produce incompatible vectors. Centralizing embedding in data-sidecar enforces the dimension constraint.
+
+---
+
+### Pattern 5: nginx Joins Both `frontend` and `reasoning` Networks
+
+**What:** The nginx service is the only component that bridges the `frontend` network (for Next.js) and the `reasoning` network (for FastAPI). Next.js cannot reach reasoning-engine directly.
+
+**When to use:** Always — this is the network isolation model.
+
+**Why:** Maintains Docker network isolation. Next.js fetches go to nginx (`/api/*`), nginx proxies to reasoning-engine. If Next.js tried to call reasoning-engine directly (port 8001 on host), it would bypass nginx and TLS. All traffic goes through nginx, which enforces HTTPS and passes the Authorization header through.
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Storing Analytical Data in Supabase Cloud
+
+**What people do:** Use Supabase as the single database for both user data (watchlists) and analytical data (reports, OHLCV, structure markers).
+
+**Why it's wrong:** Supabase free tier is 500MB — VN30 reports alone will exceed this at scale. The existing PostgreSQL service is already populated with V1–V7 migrations and 9,000+ rows of structured data. Migrating analytical data to Supabase requires rewriting all SQLAlchemy queries in the reasoning-engine. At 8GB VPS, self-hosted Supabase is memory-prohibitive.
+
+**Do this instead:** Supabase Cloud for auth + watchlist only (tiny data). VPS PostgreSQL for all analytical data. Two separate databases with a clear boundary: user identity lives in Supabase, analytical outputs live in PostgreSQL.
+
+---
+
+### Anti-Pattern 2: Self-Hosting Supabase on the Same VPS
+
+**What people do:** Run the full Supabase stack (GoTrue, PostgREST, Realtime, Kong, Storage, Analytics, Meta) alongside the existing services.
+
+**Why it's wrong:** Supabase requires 7+ containers consuming 2–3GB RAM minimum. The current services already use ~6.5GB committed limit. Adding Supabase self-hosted would push total committed memory to ~9.5GB on an 8GB VPS, relying entirely on swap — which degrades performance and risks OOM kills on Neo4j or reasoning-engine during LangGraph runs.
+
+**Do this instead:** Supabase Cloud free tier. 50K MAU limit and 500MB storage are more than sufficient for an invite-only platform. The JWT verification in FastAPI only needs the JWT secret — it does not require a Supabase SDK or any Supabase services running on the VPS.
+
+---
+
+### Anti-Pattern 3: Using Native `EventSource` for Authenticated SSE
+
+**What people do:** Use the browser's built-in `EventSource` API for the report generation progress stream and try to attach authentication via URL parameters (e.g., `?token=xxx`).
+
+**Why it's wrong:** Tokens in URL query parameters appear in server logs, browser history, and nginx access logs — a security exposure. Native `EventSource` cannot send Authorization headers (WHATWG spec issue #2177 — unresolved). URL-parameter auth is not acceptable even for an invite-only internal tool.
+
+**Do this instead:** Use `@microsoft/fetch-event-source` which implements SSE over `fetch`. Supports Authorization header. Token never appears in URL. The FastAPI SSE endpoint can use the same `JWTBearer` dependency as other protected routes.
+
+---
+
+### Anti-Pattern 4: Next.js Directly Querying PostgreSQL
+
+**What people do:** Add a PostgreSQL connection string to the Next.js environment and use it in Server Components to query reports, OHLCV, or structure markers directly.
+
+**Why it's wrong:** PostgreSQL is on the `reasoning` network only — intentionally without a host port. Adding a host port for Next.js to reach it exposes PostgreSQL to the network. Next.js would also need SQLAlchemy or pg libraries, bypassing the reasoning-engine's data access layer. This violates the architecture where reasoning-engine is the single gateway to analytical data.
+
+**Do this instead:** Next.js calls reasoning-engine API endpoints for all analytical data. The reasoning-engine is the data gateway. Next.js only has direct connections to Supabase Cloud (for auth + watchlist).
+
+---
+
+### Anti-Pattern 5: Embedding Documents in n8n Workflows Directly
+
+**What people do:** Use n8n's built-in LangChain Embeddings + Qdrant nodes to process documents, bypassing data-sidecar.
+
+**Why it's wrong:** n8n's embedding nodes use whatever model is configured in the node UI — typically OpenAI text-embedding-ada-002 (1536-dim) or a different FastEmbed configuration. The existing Qdrant collections (`macro_docs`, `earnings_docs`) were initialized with 384-dim vectors (BAAI/bge-small-en-v1.5). Upserting 1536-dim vectors into a 384-dim collection will fail at the Qdrant API level or silently corrupt retrieval quality.
+
+**Do this instead:** n8n sends document sources to `data-sidecar:8000/documents/ingest`. The data-sidecar is the only component that embeds into Qdrant, ensuring BAAI/bge-small-en-v1.5 384-dim is used consistently.
+
+---
+
+## VPS Memory Budget (v3.0)
+
+```
+Existing committed:
+  postgres:         512m
+  neo4j:            2g
+  qdrant:           1g
+  n8n:              512m
+  data-sidecar:     512m
+  reasoning-engine: 2g
+  ──────────────────────
+  Existing total:   6.5g committed
+
+New in v3.0:
+  frontend:         512m  (Next.js standalone — typical 150-300MB runtime)
+  nginx:            64m   (nginx:alpine — trivial)
+  ──────────────────────
+  v3.0 additions:   576m
+
+Total committed v3.0:  ~7g
+VPS RAM:               8g
+Headroom:              ~1g  (+ 4g swap for spike handling)
 ```
 
+**Memory pressure analysis:**
+- neo4j (2g) is the most memory-intensive service with 1.5GB JVM heap + pagecache. It runs at near-constant memory use (heap is pre-allocated).
+- reasoning-engine (2g) spikes during LangGraph pipeline runs (~800MB–1.5GB) then falls back to ~300MB idle.
+- frontend (512m) and nginx (64m) are low-footprint additions.
+- The system stays within 8GB committed at all times. The 4GB swap handles concurrent spikes (e.g., report generation while browser has dashboard open).
+- No service should have its mem_limit reduced to fit — existing limits were tuned against measured usage. Accept the ~7GB committed total.
+
 ---
 
-### Pattern 4: Gemini via langchain-google-genai with Structured Output
+## Build Order (v3.0 Phase Dependencies)
 
-**What:** All LLM calls use `ChatGoogleGenerativeAI` from `langchain-google-genai`. Each node uses `.with_structured_output(NodeOutputSchema)` to enforce JSON structure on LLM responses.
+Dependencies are strict — each phase must be complete before the next begins.
 
-**When:** Every node that calls Gemini API (macro_regime, valuation, structure, entry_quality, compose_report).
-
-**Why:** Structured output prevents fragile string parsing. Pydantic schemas validate node outputs before they enter state. Failures surface as validation errors with specific field context, not opaque string parse failures.
-
-```python
-from langchain_google_genai import ChatGoogleGenerativeAI
-from pydantic import BaseModel
-
-class MacroRegimeOutput(BaseModel):
-    regime_label: str
-    confidence: float          # 0.0 to 1.0
-    analogue_summary: str
-    key_drivers: list[str]
-    mixed_signals: list[str]   # conflicting indicators, if any
-
-llm = ChatGoogleGenerativeAI(
-    model=GEMINI_MODEL,        # "gemini-2.0-flash" default
-    temperature=0.2,           # Low temperature for analytical consistency
-    google_api_key=GEMINI_API_KEY,
-)
-structured_llm = llm.with_structured_output(MacroRegimeOutput)
-result: MacroRegimeOutput = structured_llm.invoke(prompt)
 ```
+Phase 1: JWT Middleware in reasoning-engine
+  ├── Add auth.py with JWTBearer to reasoning-engine
+  ├── Add SUPABASE_JWT_SECRET env var to docker-compose.yml
+  ├── Apply JWT dependency to all existing /reports/* endpoints
+  └── Test: curl with invalid token → 403; curl with valid Supabase token → 200
+  WHY FIRST: Auth must be in place before any frontend code calls the API.
+             Without this, the API is unprotected during development.
 
-**Note:** Temperature 0.0 causes degraded reasoning on Gemini 2.0+. Use 0.1–0.3 for analytical tasks (not 0.0). [HIGH confidence — Google official docs warn about this.]
+Phase 2: New reasoning-engine Endpoints
+  ├── GET /reports (list reports by ticker, paginated)
+  ├── GET /reports/{id}/ohlcv (OHLCV + MA series for chart)
+  └── GET /watchlist-data?tickers=VIC,VHM (batch entry quality summary)
+  WHY SECOND: Frontend cannot be built without the data contracts being defined.
+              Implement endpoints with clear Pydantic response schemas first.
 
----
+Phase 3: Supabase Cloud Project Setup
+  ├── Create Supabase project (free tier)
+  ├── Configure invite-only: Auth → Email → disable sign-ups, manually invite users
+  ├── Create watchlists table + RLS policy (user_id = auth.uid())
+  └── Note: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_JWT_SECRET for env
+  WHY THIRD: Frontend needs Supabase env vars to bootstrap.
+             JWT secret needed for Phase 1 (can proceed in parallel with Phase 1 if
+             Supabase project is created simultaneously).
 
-### Pattern 5: PostgreSQL Checkpointer for LangGraph State Persistence
+Phase 4: Next.js Frontend (Core Shell)
+  ├── Scaffold Next.js 15 App Router with @supabase/ssr
+  ├── Implement auth middleware.ts (route protection)
+  ├── Build login page (email/password)
+  ├── Build dashboard page (watchlist cards from Supabase + report summaries from API)
+  └── Wire Dockerfile (multi-stage, standalone output)
+  WHY FOURTH: Auth and API endpoints must exist before frontend can function.
 
-**What:** `PostgresSaver` from `langgraph-checkpoint-postgres` writes LangGraph checkpoint state to the existing `postgres` service. Each report run uses `thread_id = job_id`.
+Phase 5: TradingView Charts + Report View
+  ├── Add GET /reports/{id}/ohlcv endpoint to reasoning-engine (if not in Phase 2)
+  ├── Build TradingViewChart component (dynamic import, ssr: false)
+  ├── Build report view page (/report/[id]) — markdown render + chart
+  └── Build SSE progress display (GenerateReportButton with @microsoft/fetch-event-source)
+  WHY FIFTH: Depends on Phase 4 frontend shell being in place.
+             TradingView chart is self-contained client-side — can be built in parallel
+             with Phase 4 once the page shell exists.
 
-**When:** Always — the reasoning-engine container is stateless; all state persists to PostgreSQL.
+Phase 6: nginx + Docker Compose Integration
+  ├── Write nginx.conf (proxy rules + SSE config)
+  ├── Add frontend + nginx services to docker-compose.yml
+  ├── Add frontend network
+  ├── Set up TLS (certbot or manual cert)
+  └── End-to-end test: full auth flow from browser to FastAPI through nginx
+  WHY SIXTH: nginx is the final integration layer. All services must work independently
+             before wiring nginx routing. TLS is the last step.
 
-**Why:** If the reasoning-engine container restarts mid-run (VPS reboot, OOM), the checkpoint allows the run to resume from the last completed node rather than restarting. Also provides a full audit trail of intermediate reasoning state per report.
+Phase 7: Document Ingestion Pipelines
+  ├── Add POST /documents/ingest to data-sidecar
+  ├── Build n8n FOMC minutes workflow (monthly cron + HTTP to data-sidecar)
+  ├── Build n8n SBV reports workflow (manual trigger + PDF upload)
+  └── Test: ingest 2 FOMC documents, verify Qdrant query returns them in LangGraph
+  WHY SEVENTH: Document ingestion improves report quality but does not block the
+               product frontend. The reasoning-engine already works with existing corpus.
+               Ship the UI first, then expand the document corpus.
 
-```python
-from langgraph.checkpoint.postgres import PostgresSaver
-import psycopg
-
-# On startup — create checkpoint tables if not present
-with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
-    saver = PostgresSaver(conn)
-    saver.setup()  # Creates langgraph_checkpoint_* tables — idempotent
-
-# Per report run
-with PostgresSaver.from_conn_string(DATABASE_URL) as checkpointer:
-    compiled_graph = graph.compile(checkpointer=checkpointer)
-    result = compiled_graph.invoke(
-        {"asset_id": asset_id},
-        config={"configurable": {"thread_id": job_id}}
-    )
-```
-
-**Caution:** `PostgresSaver.setup()` must be called with `autocommit=True`. The checkpoint tables (`langgraph_checkpoints`, `langgraph_checkpoint_blobs`, `langgraph_checkpoint_writes`) are created in the same PostgreSQL database. Add these to a V8 migration if you want Flyway to own the schema, OR let `setup()` handle it on first run.
-
----
-
-### Pattern 6: FastAPI BackgroundTask for Long-Running Pipeline
-
-**What:** `POST /reports/generate` returns immediately with a `job_id`. The LangGraph pipeline runs in a `BackgroundTask`. The client polls `GET /reports/stream/{job_id}` via SSE for step-completion events.
-
-**When:** Always — report generation takes 30–120 seconds. FastAPI cannot block the HTTP response for that duration.
-
-**Why:** Single-user VPS scale. BackgroundTask is sufficient. No need for Celery/Redis at this scale. PostgreSQL `report_jobs` table provides persistence — job status survives process restart (unlike in-memory queues).
-
-```python
-@app.post("/reports/generate")
-async def generate_report(request: ReportRequest, background_tasks: BackgroundTasks, db=Depends(get_db)):
-    job_id = create_job_record(db, request.asset_id)
-    background_tasks.add_task(run_report_pipeline, job_id, request.asset_id)
-    return {"job_id": job_id, "status": "queued"}
-
-@app.get("/reports/stream/{job_id}")
-async def stream_report_progress(job_id: str):
-    return StreamingResponse(
-        report_event_stream(job_id),
-        media_type="text/event-stream"
-    )
+Phase 8: Vietnamese Dictionary Expansion
+  ├── Audit current 162-term dictionary for gaps in v3.0 report coverage
+  ├── Expand dictionary (target: 300+ terms for full financial domain coverage)
+  └── Optionally: V8 Flyway migration to store dictionary in PostgreSQL
+  WHY EIGHTH: Dictionary expansion is independent of all other phases.
+              Can be done any time, but is the lowest-priority item.
 ```
 
 ---
 
 ## Integration Points: Existing Services
 
-| Existing Service | How reasoning-engine connects | What it reads/writes |
-|-----------------|-------------------------------|---------------------|
-| `postgres` | SQLAlchemy Core (direct query) + PostgresSaver (checkpointer) | Reads: fundamentals, structure_markers, fred_indicators. Writes: reports, report_jobs, langgraph checkpoints |
-| `neo4j` | LlamaIndex `Neo4jPropertyGraphStore` via bolt://neo4j:7687 | Reads: Regime nodes, TimePeriod nodes, HAS_ANALOGUE relationships |
-| `qdrant` | LlamaIndex `QdrantVectorStore` via qdrant:6333 with API key | Reads: macro_docs, earnings_docs vector collections |
-| `n8n` | No direct connection — storage boundary enforced by network | None |
-| `data-sidecar` | No direct connection — ingestion network only | None |
-
----
-
-## Build Order (v2.0 Phase Dependencies)
-
-The dependency chain is strict. Each phase requires the prior to be complete and verified.
-
-```
-Phase 1: Database Migrations (V6, V7)
-  └── Add V6__reports.sql and V7__report_jobs.sql
-  └── Run Flyway migrate against existing postgres
-  WHY FIRST: reasoning-engine service startup will fail if tables don't exist.
-             Do this before writing a single line of reasoning-engine code.
-
-Phase 2: Neo4j Regime Data Population
-  └── Write n8n workflow or manual Cypher to populate:
-      Regime nodes (historical macro regimes)
-      TimePeriod nodes
-      HAS_ANALOGUE relationships with similarity_score
-  WHY SECOND: MacroRegime node cannot retrieve analogues from an empty graph.
-              Retrieval quality must be validated independently before wiring into LangGraph.
-
-Phase 3: Qdrant Document Corpus Load
-  └── Manually embed and upsert Fed minutes, SBV reports, VN earnings into:
-      macro_docs collection (existing)
-      earnings_docs collection (existing)
-  └── Use BAAI/bge-small-en-v1.5 FastEmbed — 384-dim, locked from v1.0
-  WHY THIRD: Valuation node cannot retrieve analyst context without document corpus.
-             Test retrieval quality with direct LlamaIndex queries before LangGraph wiring.
-
-Phase 4: Retrieval Layer (LlamaIndex wrappers)
-  └── Build reasoning/app/retrieval/neo4j_retriever.py — test with manual queries
-  └── Build reasoning/app/retrieval/qdrant_retriever.py — test hybrid search quality
-  WHY FOURTH: Retrieval bugs are hard to isolate inside a running LangGraph graph.
-              Verify retrieval returns relevant content before embedding in nodes.
-
-Phase 5: LangGraph Nodes (one at a time, bottom-up)
-  └── structure.py  — PostgreSQL-only, no LLM retrieval, simplest node, test first
-  └── valuation.py  — PostgreSQL + Qdrant retrieval + Gemini call
-  └── macro_regime.py — Neo4j retrieval + Gemini call
-  └── entry_quality.py — state synthesis + Gemini call, no retrieval
-  └── compose_report.py — bilingual generation + PostgreSQL write
-  WHY THIS ORDER: Start with the node that has fewest dependencies (structure).
-                  Test each node in isolation with mock state before wiring into graph.
-
-Phase 6: LangGraph Graph Assembly
-  └── Assemble state.py (ReportState TypedDict)
-  └── Assemble graph.py (StateGraph with all five nodes)
-  └── Wire PostgresSaver checkpointer
-  └── End-to-end test: single asset, full pipeline, inspect PostgreSQL reports table
-  WHY SIXTH: Only assemble the graph after each node is independently verified.
-
-Phase 7: FastAPI reasoning-engine Service
-  └── Implement /reports/generate (BackgroundTask wrapper over LangGraph)
-  └── Implement /reports/{id} (read from PostgreSQL reports table)
-  └── Implement /reports/stream/{id} (SSE via LangGraph astream_events)
-  └── Implement /health
-  └── Build Dockerfile + add reasoning-engine to docker-compose.yml
-  WHY LAST IN THIS MILESTONE: FastAPI is a thin gateway. Cannot build endpoints
-                              without the LangGraph pipeline being functional.
-                              v2.0 milestone ends here. Frontend is v3.0.
-```
-
----
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Computing Metrics Inside LangGraph Nodes
-
-**What people do:** Pull raw OHLCV rows inside a LangGraph node and compute moving averages, drawdown, or percentile ranks during report generation.
-
-**Why it's wrong:** Adds 5–30 seconds of computation per node, duplicates logic that already lives in the data-sidecar, and makes nodes dependent on raw data rather than pre-computed outputs. Violates the pre-computation constraint.
-
-**Do this instead:** The `structure` node reads from `structure_markers` table — everything is pre-computed. `SELECT ma_20w, drawdown_from_ath, close_pct_rank FROM structure_markers WHERE symbol = ? ORDER BY data_as_of DESC LIMIT 52`. Zero computation in the node.
-
----
-
-### Anti-Pattern 2: Single Monolithic LLM Prompt for Full Report
-
-**What people do:** One large Gemini call receiving all data (macro indicators, fundamentals, structure markers, document chunks) and asked to produce the full report.
-
-**Why it's wrong:** No intermediate state to inspect. Cannot attribute which conclusion derives from which source. Violates explainability requirement. Large context degrades Gemini output quality. Cannot partially resume from a checkpoint.
-
-**Do this instead:** Five distinct nodes, each with a scoped prompt. Each node's output is stored in `ReportState` and is a fully inspectable dict. The checkpointer saves state after each node completes.
-
----
-
-### Anti-Pattern 3: Using LlamaIndex QueryEngine for Reasoning
-
-**What people do:** Use LlamaIndex `QueryEngine` or `RouterQueryEngine` as the top-level reasoning loop, routing questions to different backends based on query type.
-
-**Why it's wrong:** LlamaIndex routing is designed for document Q&A, not structured multi-step analysis with explicit state. The RouterQueryEngine does not guarantee the macro → valuation → structure → entry_quality sequence. Makes the reasoning path non-deterministic and non-inspectable.
-
-**Do this instead:** LangGraph defines the sequence. LlamaIndex is called as a Python function within nodes. The retrieval result is a list of strings that the node assembles into a prompt. LlamaIndex does not call the LLM.
-
----
-
-### Anti-Pattern 4: In-Memory Report State in FastAPI
-
-**What people do:** Store generated report content in a FastAPI global dict keyed by `job_id`, accessed by the GET endpoint.
-
-**Why it's wrong:** State lost on process restart (VPS reboots). Cannot serve report after container redeploy. Memory leak risk on a long-running VPS process.
-
-**Do this instead:** Write completed reports to PostgreSQL `reports` table in the `compose_report` node. `GET /reports/{id}` queries the database. FastAPI is stateless.
-
----
-
-### Anti-Pattern 5: Separate LangGraph Server Container
-
-**What people do:** Run LangGraph as a separate container (using `langchain/langgraph-api` Docker image) alongside a FastAPI container, connecting them over HTTP.
-
-**Why it's wrong:** The `langchain/langgraph-api` server is designed for the LangGraph Cloud platform subscription. At single-user VPS scale, it adds networking overhead, requires licensing consideration, and duplicates the FastAPI layer. The official pattern for self-hosted is FastAPI importing LangGraph as a Python library.
-
-**Do this instead:** FastAPI and LangGraph run in the same `reasoning-engine` container. FastAPI invokes the compiled LangGraph graph directly via `graph.invoke()` or `graph.astream_events()`. State persists to PostgreSQL via `PostgresSaver`, so the process is effectively stateless.
-
----
-
-## Scaling Considerations
-
-This platform is single-user at launch. These notes are for future reference only — do not implement prematurely.
-
-| Concern | Single User (v2.0) | Multi-User (v3.0+) |
-|---------|-------------------|--------------------|
-| Report generation concurrency | FastAPI BackgroundTask — one report at a time is fine | Add Celery + Redis task queue; multiple reasoning-engine workers |
-| LangGraph state isolation | `thread_id = job_id` — each report has unique thread | `thread_id = f"{user_id}_{job_id}"` for multi-user isolation |
-| Database connection pooling | SQLAlchemy `create_engine` with pool_size=5 sufficient | Increase pool_size; consider PgBouncer proxy |
-| Gemini API rate limits | 15 calls per report × single user = trivial | Add per-user rate limiting; consider Gemini Pro tier |
-| Neo4j memory | 512MB heap / 512MB pagecache (existing config) | Sufficient through ~10K regime analogue nodes |
-| Qdrant | 384-dim, manual corpus = small; memory sufficient | No change needed until corpus exceeds ~100K documents |
-
----
-
-## Requirements Summary
-
-```
-# reasoning/requirements.txt (new)
-langgraph>=0.3.0
-langgraph-checkpoint-postgres>=3.0.0
-langchain-google-genai>=2.1.0
-langchain-core>=0.3.0
-llama-index-core>=0.12.0
-llama-index-graph-stores-neo4j>=0.3.0
-llama-index-vector-stores-qdrant>=0.3.0
-llama-index-embeddings-fastembed>=0.3.0
-fastapi>=0.115.0
-uvicorn>=0.30.0
-sqlalchemy>=2.0.0
-psycopg[binary,pool]>=3.2.0
-psycopg2-binary>=2.9.9   # for existing SQLAlchemy patterns
-qdrant-client>=1.9.0
-neo4j>=5.20.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-httpx>=0.27.0
-```
-
-**Key version note:** `psycopg[binary,pool]` (psycopg3) is required for `PostgresSaver`. The existing `data-sidecar` uses `psycopg2-binary` (psycopg2). Both can coexist. The reasoning-engine uses psycopg3 for the checkpointer and can use psycopg2 for direct SQLAlchemy queries if the existing db.py pattern is copied.
+| Existing Service | v3.0 Integration | What Changes |
+|-----------------|-----------------|--------------|
+| `reasoning-engine` | JWT middleware added; 2–3 new read-only endpoints | auth.py (new), reports.py (modified) |
+| `data-sidecar` | New `/documents/ingest` endpoint for document pipelines | documents.py (new router) |
+| `postgres` | No change — existing schema sufficient for v3.0 UI | None |
+| `neo4j` | No change | None |
+| `qdrant` | New documents upserted via data-sidecar (same collections, same 384-dim) | Data only |
+| `n8n` | New document ingestion workflows added | New workflow definitions |
+| `flyway` | V8 migration (optional — only if dictionary moves to DB) | V8__dictionary_expansion.sql |
 
 ---
 
 ## Sources
 
-- [LangGraph StateGraph Official Docs — LangChain](https://docs.langchain.com/oss/python/langgraph/add-memory) — HIGH confidence (official)
-- [langgraph-checkpoint-postgres PyPI v3.0.2](https://pypi.org/project/langgraph-checkpoint-postgres/) — HIGH confidence (official package)
-- [Gemini + LangGraph Official Example (Google AI, Feb 2026)](https://ai.google.dev/gemini-api/docs/langgraph-example) — HIGH confidence (Google official)
-- [langchain-google-genai Reference](https://reference.langchain.com/python/integrations/langchain_google_genai/) — HIGH confidence (LangChain official)
-- [LlamaIndex Neo4j PropertyGraph Integration (Neo4j Labs)](https://neo4j.com/labs/genai-ecosystem/llamaindex/) — HIGH confidence (official Neo4j)
-- [LlamaIndex QdrantVectorStore Hybrid Search (official docs)](https://docs.llamaindex.ai/en/stable/examples/vector_stores/qdrant_hybrid/) — HIGH confidence (official LlamaIndex)
-- [GraphRAG with Qdrant and Neo4j (Qdrant official)](https://qdrant.tech/documentation/examples/graphrag-qdrant-neo4j/) — HIGH confidence (official Qdrant)
-- [LlamaIndex + Qdrant Integration Guide (Qdrant official)](https://qdrant.tech/documentation/frameworks/llama-index/) — HIGH confidence (official Qdrant)
-- [FastAPI + LangGraph Production Pattern (Zestminds, 2025)](https://www.zestminds.com/blog/build-ai-workflows-fastapi-langgraph/) — MEDIUM confidence (verified against official patterns)
-- [PostgreSQL Checkpointer + Docker Compose (LangGraph discussion #3691)](https://github.com/langchain-ai/langgraph/discussions/3691) — MEDIUM confidence (community, verified against official checkpointer docs)
+- [Supabase Auth Server-Side Next.js — Official Docs](https://supabase.com/docs/guides/auth/server-side/nextjs) — HIGH confidence (official)
+- [Use Supabase Auth with Next.js — Official Quickstart](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — HIGH confidence (official)
+- [Supabase Self-Hosting Auth Config](https://supabase.com/docs/guides/self-hosting/auth/config) — HIGH confidence (official — confirms self-hosted complexity)
+- [FastAPI + Supabase Auth JWT Verification (DEV Community)](https://dev.to/j0/integrating-fastapi-with-supabase-auth-780) — MEDIUM confidence (community, verified against official JWT spec)
+- [Implementing Supabase Auth with Next.js and FastAPI (ByteGoblin)](https://bytegoblin.io/blog/implementing-supabase-authentication-with-next-js-and-fastapi.mdx) — MEDIUM confidence (community, pattern verified)
+- [TradingView Lightweight Charts — Official Library](https://tradingview.github.io/lightweight-charts/docs) — HIGH confidence (official)
+- [TradingView Lightweight Charts SSR Issue #543](https://github.com/tradingview/lightweight-charts/issues/543) — HIGH confidence (official repo — confirms SSR workaround requirement)
+- [TradingView Charting Library Examples — Next.js](https://github.com/tradingview/charting-library-examples) — HIGH confidence (official TradingView)
+- [Next.js Self-Hosting Guide](https://nextjs.org/docs/app/guides/self-hosting) — HIGH confidence (official)
+- [Next.js Docker Standalone Output (Next.js Deploying Docs)](https://nextjs.org/docs/app/getting-started/deploying) — HIGH confidence (official)
+- [n8n + Qdrant Workflow Template — Process Documents with Gemini](https://n8n.io/workflows/7882-process-documents-and-build-semantic-search-with-openai-gemini-and-qdrant/) — MEDIUM confidence (official n8n templates)
+- [Qdrant n8n Integration Tutorial](https://qdrant.tech/documentation/tutorials-build-essentials/qdrant-n8n/) — HIGH confidence (official Qdrant)
+- [EventSource Custom Headers — WHATWG Issue #2177](https://github.com/whatwg/html/issues/2177) — HIGH confidence (official spec issue — confirms EventSource cannot send headers)
+- [Next.js + Nginx Reverse Proxy with Docker](https://www.slingacademy.com/article/how-to-set-up-next-js-with-docker-compose-and-nginx/) — MEDIUM confidence (community, verified against nginx official docs)
+- [Supabase Pricing — Free Tier 50K MAU, 500MB DB](https://supabase.com/pricing) — HIGH confidence (official)
 
 ---
 
-*Architecture research for: Stratum v2.0 — Analytical Reasoning Engine*
-*Researched: 2026-03-09*
+*Architecture research for: Stratum v3.0 — Product Frontend and User Experience*
+*Researched: 2026-03-17*
