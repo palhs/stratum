@@ -43,20 +43,35 @@ Protect investors from being fundamentally right but entering at a structurally 
 - ✓ Gemini API spend alerts configured — v2.0
 - ✓ Checkpoint cleanup job (TTL-based purge) — v2.0
 
+## Current Milestone: v3.0 Product Frontend & User Experience
+
+**Goal:** Make Stratum usable as a product — dashboard, watchlist, report browsing, auth, and automated document ingestion for a small group of invite-only users.
+
+**Target features:**
+- Dashboard with watchlist cards (entry quality tier, sparkline, last report date)
+- Summary + expand report view with interactive TradingView chart (MAs, zoom)
+- Report history timeline per ticker
+- Manual "Generate Report" with SSE progress
+- Supabase auth (invite-only, per-user watchlists)
+- Watchlist management (add/remove tickers)
+- Automated document ingestion pipelines (Fed minutes, SBV reports, earnings)
+- Comprehensive Vietnamese financial terminology dictionary
+
 ### Active (v3.0)
 
-- [ ] User watchlist management
-- [ ] On-demand report generation for watchlist additions
-- [ ] Next.js frontend with TradingView charts
-- [ ] Report history browsing
-- [ ] Supabase authentication with user accounts
+- [ ] Dashboard with watchlist cards showing entry quality tier, sparkline chart, and last report date
+- [ ] Summary + expand report view with interactive TradingView chart (MAs, zoom)
+- [ ] Report history timeline per ticker with assessment change tracking
+- [ ] Manual report generation trigger with SSE progress display
+- [ ] Supabase authentication with invite-only user accounts
+- [ ] Per-user watchlist management (add/remove tickers)
 - [ ] Automated document ingestion pipelines (Fed minutes, SBV reports, earnings)
-- [ ] Local LLM fallback via Ollama
-- [ ] Comprehensive Vietnamese financial terminology dictionary
-- [ ] OpenRouter integration for LLM cost optimization
+- [ ] Comprehensive Vietnamese financial terminology dictionary expansion
 
 ### Out of Scope
 
+- Local LLM fallback via Ollama — Gemini API working, defer to v4.0
+- OpenRouter integration for LLM cost optimization — defer to v4.0
 - Real-time or intraday data — weekly/monthly cadence only
 - Short-term technical analysis or trading signals — not a trading tool
 - Holdings tracking, cost basis, or P&L — watchlist only at launch
@@ -128,4 +143,4 @@ Known limitations: WGC Goldhub returns 501 (JS-rendered). SBV document corpus re
 | WGC 501 stub (no Playwright) | Goldhub JS-rendered, no stable API | ⚠️ Revisit — manual CSV import needed |
 
 ---
-*Last updated: 2026-03-17 after v2.0 milestone*
+*Last updated: 2026-03-17 after v3.0 milestone start*
