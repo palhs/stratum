@@ -14,7 +14,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers import reports
+from reasoning.app.routers import reports
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ def client(test_app):
 # Test helpers — common mock patches
 # ---------------------------------------------------------------------------
 
-ROUTER_PATH = "app.routers.reports"
+ROUTER_PATH = "reasoning.app.routers.reports"
 
 
 # ---------------------------------------------------------------------------

@@ -28,7 +28,7 @@ from sse_starlette import EventSourceResponse
 logger = logging.getLogger(__name__)
 
 # Module-level reference to pipeline entry point.
-# Defined here so tests can patch 'app.routers.reports.generate_report'.
+# Defined here so tests can patch 'reasoning.app.routers.reports.generate_report'.
 # Assigned lazily on first use to avoid import errors in test environments
 # where the 'reasoning' package root is not on sys.path.
 generate_report = None  # patched / resolved at call-time via _get_generate_report()
