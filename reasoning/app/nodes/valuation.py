@@ -49,7 +49,7 @@ from reasoning.app.retrieval.types import (
 # Constants
 # ---------------------------------------------------------------------------
 
-_MODEL = "gemini-2.0-flash-001"
+_MODEL = "gemini-2.5-pro"
 
 WGC_WARNING = (
     "WGC central bank buying data unavailable (HTTP 501) — "

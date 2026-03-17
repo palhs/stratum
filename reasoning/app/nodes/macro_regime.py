@@ -39,7 +39,7 @@ from reasoning.app.retrieval.types import DocumentChunk, FredIndicatorRow, Regim
 # Constants
 # ---------------------------------------------------------------------------
 
-_MODEL = "gemini-2.0-flash-001"
+_MODEL = "gemini-2.5-pro"
 
 _SYSTEM_PROMPT = (
     "You are a macro regime analyst. Classify the current macroeconomic environment "

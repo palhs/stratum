@@ -21,6 +21,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/ingest/gold/wgc-flows",
         "sendBody": true,
         "specifyBody": "json",
@@ -65,6 +66,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/compute/structure-markers",
         "sendBody": true,
         "specifyBody": "json",

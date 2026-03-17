@@ -1,4 +1,4 @@
-vnstock==3.2.3
+vnstock>=3.4.2
 yfinance>=0.2.48
 fredapi>=0.5.2
 fastapi>=0.115.0

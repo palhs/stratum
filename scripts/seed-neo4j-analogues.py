@@ -110,11 +110,15 @@ def compute_similarity(feature_matrix: np.ndarray) -> np.ndarray:
     sim_matrix = 1.0 - distance_matrix
 
     log.info("Similarity matrix shape: %s", sim_matrix.shape)
-    log.info(
-        "Similarity value range (excluding diagonal): min=%.4f max=%.4f",
-        sim_matrix[sim_matrix < 0.9999].min(),
-        sim_matrix[sim_matrix < 0.9999].max(),
-    )
+    off_diag = sim_matrix[sim_matrix < 0.9999]
+    if off_diag.size > 0:
+        log.info(
+            "Similarity value range (excluding diagonal): min=%.4f max=%.4f",
+            off_diag.min(),
+            off_diag.max(),
+        )
+    else:
+        log.info("Similarity matrix has no off-diagonal entries (single regime)")
     return sim_matrix
 
 
@@ -199,7 +203,8 @@ def call_gemini_with_retry(client, prompt: str, max_retries: int = 3) -> str:
                 model=GEMINI_MODEL,
                 contents=prompt,
             )
-            return response.text.strip()
+            text = response.text or ""
+            return text.strip()
         except Exception as exc:
             if attempt < max_retries - 1:
                 log.warning(
@@ -338,9 +343,7 @@ def validate_relationships(driver, pairs: list[dict]) -> None:
         total_count = total_result.single()["cnt"]
         log.info("Total HAS_ANALOGUE relationships in Neo4j: %d", total_count)
 
-    unique_pairs = len(
-        {(p["from_id"], p["to_id"]) for p in [(p["from_id"], p["to_id"]) for p in pairs]}
-    )
+    unique_pairs = len({(p["from_id"], p["to_id"]) for p in pairs})
     regime_ids = {p["from_id"] for p in pairs}
     print(
         f"\nCreated {total_count} HAS_ANALOGUE relationships across {unique_pairs} directed pairs "

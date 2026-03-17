@@ -1,0 +1,5 @@
+Requirement already satisfied: pytest in /Users/phananhle/Library/Python/3.11/lib/python/site-packages (9.0.2)
+Requirement already satisfied: iniconfig>=1.0.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pytest) (2.0.0)
+Requirement already satisfied: packaging>=22 in /Users/phananhle/Library/Python/3.11/lib/python/site-packages (from pytest) (24.2)
+Requirement already satisfied: pluggy<2,>=1.5 in /Users/phananhle/Library/Python/3.11/lib/python/site-packages (from pytest) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pytest) (2.17.2)

@@ -128,6 +128,16 @@ None - no external service configuration required. Cleanup script runs on demand
 - The `created_at` column will be present after next `docker-compose up` runs `langgraph-init` service.
 - No blockers for remaining Phase 9 plans.
 
+## Self-Check: PASSED
+
+- FOUND: scripts/cleanup-checkpoints.py
+- FOUND: scripts/init-langgraph-schema.py (modified with created_at ALTER TABLE)
+- FOUND: reasoning/tests/integration/test_checkpoint_cleanup.py
+- FOUND: 09-03-SUMMARY.md
+- FOUND commit: 5186873 (TDD RED — failing tests)
+- FOUND commit: b7e3ba3 (TDD GREEN — implementation + test fixes)
+- FOUND commit: 0105ec8 (docs — SUMMARY.md, STATE.md, ROADMAP.md, REQUIREMENTS.md)
+
 ---
 *Phase: 09-production-hardening-and-batch-validation*
 *Completed: 2026-03-17*

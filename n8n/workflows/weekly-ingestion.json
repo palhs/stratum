@@ -46,10 +46,11 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/ingest/vnstock/ohlcv",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"start_date\": \"{{ $json.start_date }}\",\n  \"end_date\": \"{{ $json.end_date }}\"\n}",
+        "jsonBody": "={\n  \"start_date\": \"{{ $('Set Date Range').first().json.start_date }}\",\n  \"end_date\": \"{{ $('Set Date Range').first().json.end_date }}\"\n}",
         "options": {
           "timeout": 300000,
           "response": {
@@ -89,10 +90,11 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/ingest/vnstock/fundamentals",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"start_date\": \"{{ $json.start_date }}\",\n  \"end_date\": \"{{ $json.end_date }}\"\n}",
+        "jsonBody": "={\n  \"start_date\": \"{{ $('Set Date Range').first().json.start_date }}\",\n  \"end_date\": \"{{ $('Set Date Range').first().json.end_date }}\"\n}",
         "options": {
           "timeout": 300000
         }
@@ -127,6 +129,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/ingest/gold/fred-price",
         "sendBody": true,
         "specifyBody": "json",
@@ -165,6 +168,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/ingest/gold/gld-etf",
         "sendBody": true,
         "specifyBody": "json",
@@ -203,6 +207,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/ingest/fred/indicators",
         "sendBody": true,
         "specifyBody": "json",
@@ -241,6 +246,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "http://data-sidecar:8000/compute/structure-markers",
         "sendBody": true,
         "specifyBody": "json",

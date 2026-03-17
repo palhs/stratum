@@ -47,7 +47,7 @@ _SYSTEM_PROMPT = (
     "consistent with it. Include both MA positioning and drawdown context."
 )
 
-_MODEL = "gemini-2.0-flash"
+_MODEL = "gemini-2.5-pro"
 
 
 # ---------------------------------------------------------------------------

@@ -99,7 +99,7 @@ NAMED_CONFLICT_PATTERNS: dict[tuple[str, str, str], dict[str, str]] = {
 # Constants
 # ---------------------------------------------------------------------------
 
-_MODEL = "gemini-2.0-flash-001"
+_MODEL = "gemini-2.5-pro"
 
 _SYSTEM_PROMPT = (
     "You are a financial analyst specializing in identifying signal conflicts across "

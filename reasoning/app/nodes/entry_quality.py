@@ -41,7 +41,7 @@ from reasoning.app.nodes.state import (
 # Constants and tier logic
 # ---------------------------------------------------------------------------
 
-_MODEL = "gemini-2.0-flash-001"
+_MODEL = "gemini-2.5-pro"
 
 # Structure veto map: structure_label → maximum allowed tier
 STRUCTURE_VETO_MAP: dict[str, str] = {

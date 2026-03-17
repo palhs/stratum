@@ -1,7 +1,7 @@
 # Dependencies for Phase 4 seed scripts
 # Used by the seed-runner docker compose service
 neo4j>=5.0
-qdrant-client>=1.9.0
+qdrant-client>=1.14.0,<1.17.0
 fastembed>=0.3.0
 langchain-text-splitters>=0.2.0
 pdfplumber>=0.11.0
