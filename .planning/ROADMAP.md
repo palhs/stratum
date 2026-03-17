@@ -37,7 +37,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 - [x] **Phase 6: LangGraph Reasoning Nodes** - Five individual reasoning nodes built and validated in isolation with correct state schemas and Gemini structured output (completed 2026-03-15)
 - [x] **Phase 7: Graph Assembly and End-to-End Report Generation** - StateGraph assembled and first complete bilingual report produced, grounded, and stored in PostgreSQL (completed 2026-03-16)
 - [x] **Phase 8: FastAPI Gateway and Docker Service** - HTTP gateway exposing the validated reasoning pipeline with background execution and SSE streaming (completed 2026-03-16)
-- [ ] **Phase 9: Production Hardening and Batch Validation** - Batch behavior validated at 20-stock scale with memory baseline, spend alerts, and checkpoint cleanup
+- [x] **Phase 9: Production Hardening and Batch Validation** - Batch behavior validated at 20-stock scale with memory baseline, spend alerts, and checkpoint cleanup (completed 2026-03-17)
 
 ## Phase Details
 
@@ -194,4 +194,4 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 8.1 → 9
 | 7. Graph Assembly and End-to-End Report Generation | 5/5 | Complete   | 2026-03-16 | - |
 | 8. FastAPI Gateway and Docker Service | 3/3 | Complete   | 2026-03-16 | - |
 | 8.1. Docker Runtime Fixes (gap closure) | 1/1 | Complete   | 2026-03-16 | - |
-| 9. Production Hardening and Batch Validation | 2/3 | In Progress|  | - |
+| 9. Production Hardening and Batch Validation | 3/3 | Complete   | 2026-03-17 | - |

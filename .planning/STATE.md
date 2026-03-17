@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Analytical Reasoning Engine
 status: unknown
-last_updated: "2026-03-16T18:30:00.654Z"
+last_updated: "2026-03-17T15:09:44.979Z"
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 28
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Project State
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 Milestone: v2.0 — Analytical Reasoning Engine
 Phase: 9 of 9 IN PROGRESS (Production Hardening and Batch Validation)
-Plan: 03 of N complete — TTL-based LangGraph checkpoint cleanup with created_at column and unit tests (SRVC-08)
-Status: Phase 9 Plan 03 COMPLETE — scripts/cleanup-checkpoints.py with DELETE cascade order, --dry-run, CHECKPOINT_TTL_DAYS config; init-langgraph-schema.py updated with ALTER TABLE created_at
-Last activity: 2026-03-17 — 09-03 complete: cleanup-checkpoints.py TTL purge script, init-langgraph-schema.py created_at column, 6 unit tests passing
+Plan: 02 of N complete (out-of-order) — Gemini API spend alert configuration documentation (SRVC-07); user configured AI Studio spend cap
+Status: Phase 9 Plan 02 COMPLETE — docs/gemini-spend-alerts.md with two-layer cost defense guide; user confirmed AI Studio spend cap configured; SRVC-07 marked complete
+Last activity: 2026-03-17 — 09-02 complete: Gemini API spend alert docs, user verified AI Studio path
 
 Progress: [████████░░] 82% (25/30 plans)
 
@@ -68,6 +68,7 @@ Progress: [████████░░] 82% (25/30 plans)
 | Phase 08.1 P01 | ~10 min | 2 tasks | 2 files |
 | Phase 09 P01 | ~2 min | 1 task | 1 file |
 | Phase 09 P03 | 15min | 1 tasks | 4 files |
+| Phase 09 P02 | 10min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,7 @@ Key decisions active for v2.0:
 - [Phase 08.1-01]: langgraph-init added to reasoning-engine depends_on with condition: service_completed_successfully — ensures checkpoint schema exists before API accepts requests; full-stack E2E test deferred to Phase 9
 - [Phase 09]: ALTER TABLE uses ADD COLUMN IF NOT EXISTS for idempotent created_at column addition to langgraph.checkpoints via init-langgraph-schema.py (not Flyway)
 - [Phase 09]: cleanup-checkpoints.py DELETE order: checkpoint_writes THEN checkpoint_blobs THEN checkpoints — no FK cascade exists so manual cascade required
+- [Phase 09-02]: User configured AI Studio spend cap path — GEMINI_API_KEY is AI Studio only; tiered Cloud Billing notifications not available; AI Studio hard-stop spend cap is the single control layer (SRVC-07)
 
 ### Pending Todos
 
@@ -185,6 +187,6 @@ Key decisions active for v2.0:
 
 ## Session Continuity
 
-Last session: 2026-03-16
-Stopped at: Completed 09-01-PLAN.md — batch-validate.py standalone script for 20 VN30 tickers sequential validation, docker stats memory snapshots, docker inspect OOMKilled detection; SRVC-06 validation artifact complete
+Last session: 2026-03-17
+Stopped at: Completed 09-02-PLAN.md — Gemini API spend alert documentation; user configured AI Studio spend cap; SRVC-07 complete
 Resume file: None
