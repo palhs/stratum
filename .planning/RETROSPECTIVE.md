@@ -47,6 +47,54 @@
 
 ---
 
+## Milestone: v2.0 — Analytical Reasoning Engine
+
+**Shipped:** 2026-03-17
+**Phases:** 8 (3-9 + 8.1 gap closure) | **Plans:** 28
+
+### What Was Built
+- 7-node LangGraph reasoning pipeline (macro_regime → valuation → structure → conflict → entry_quality → grounding_check → compose_report) with PostgreSQL checkpointing
+- Neo4j knowledge graph: 17 macro regime nodes with cosine-similarity HAS_ANALOGUE relationships and Gemini narratives
+- Triple-store hybrid retrieval: Neo4j CypherTemplateRetriever, Qdrant dense+sparse, PostgreSQL direct queries — all with freshness monitoring
+- Bilingual reports: Vietnamese (162-term dictionary + Gemini narrative rewrite) and English, with DATA WARNING sections
+- FastAPI reasoning-engine: POST /reports/generate (BackgroundTask), GET /reports/{id}, SSE streaming, health endpoint
+- Production tooling: 20-stock batch validation, Gemini spend cap, checkpoint TTL cleanup
+
+### What Worked
+- Deterministic labels with LLM-generated narratives — every node computes its classification in Python, Gemini only writes the narrative. Made grounding check possible and debugging straightforward
+- Phase-by-phase dependency chain — data → retrieval → nodes → graph → API → hardening. Each phase validated independently before building on top. Never hit a "works locally, breaks integrated" issue
+- TDD approach across all phases — 200+ tests caught real issues (import path conflicts, route ordering, structured output schema mismatches) before they reached integration
+- Milestone audit with integration checker — caught the Docker import path mismatch and missing langgraph-init dependency before deployment, not after
+- Wave-based parallel execution — Phases 6 (5 plans) and 9 (3 plans) executed multiple agents in parallel, cutting wall-clock time significantly
+
+### What Was Inefficient
+- Docker import path mismatch (Phase 8.1) — the Dockerfile `COPY app/ ./app/` created a namespace that didn't match `from reasoning.app.*` imports. Should have been caught by a container smoke test in Phase 8, not discovered during milestone audit
+- Phase 6 SUMMARY frontmatter authoring — 4 out of 5 SUMMARYs had empty `requirements_completed` lists despite the VERIFICATION confirming all requirements satisfied. Caused noise in the 3-source cross-reference
+- Gemini model name confusion — `gemini-2.0-flash` vs `gemini-2.0-flash-001` vs `gemini-2.5-pro` naming changed during development. One node had the wrong suffix initially
+- No live E2E test until after Phase 8 — all tests mocked the LLM and database. The first actual pipeline run will be during the batch validation (Phase 9), not during development
+
+### Patterns Established
+- Labels deterministic, LLM for narrative only — prevents hallucinated classifications while still getting natural language output
+- Shared `ReportState` TypedDict with `total=False` — each node reads only what it needs, no full-state coupling
+- `with_structured_output(PydanticModel)` pattern — consistent across all 7 LLM call sites, easy to swap models later
+- Lazy import for pipeline entry point — `_get_generate_report()` defers heavy import chain, keeping FastAPI startup fast
+- Route ordering matters — `GET /stream/{id}` before `GET /{id}` prevents FastAPI treating "stream" as a path parameter
+- Cascade delete order for checkpoint tables — writes → blobs → checkpoints (no FKs, manual ordering required)
+
+### Key Lessons
+1. Always run a container smoke test (build + import + basic request) as part of the Docker phase — don't defer to milestone audit
+2. SUMMARY frontmatter `requirements_completed` should be enforced, not optional — empty lists create audit noise
+3. The gap closure pattern (audit → insert phase → fix → re-verify) works well for post-phase integration issues
+4. Cost analysis BEFORE choosing models — gemini-2.5-pro works but at $0.04-0.07/report when flash-lite at $0.002/report would suffice for structured output with deterministic labels
+5. Vietnamese narrative quality is the only place premium model quality matters — all other nodes produce short structured output that any model can handle
+
+### Cost Observations
+- Model mix: sonnet for all executor/verifier/researcher agents, opus for orchestration
+- Sessions: ~10 sessions across 9 days
+- Notable: parallel wave execution in Phase 6 and Phase 9 was the biggest velocity win — 5 independent nodes built simultaneously
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -54,14 +102,18 @@
 | Milestone | Sessions | Phases | Key Change |
 |-----------|----------|--------|------------|
 | v1.0 | ~8 | 2 | Established infrastructure and data pipeline patterns |
+| v2.0 | ~10 | 8 | Parallel wave execution, milestone audit with integration checker, gap closure pattern |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Coverage | Zero-Dep Additions |
 |-----------|-------|----------|-------------------|
 | v1.0 | 59 (46 pass, 13 skip) | 9/9 DATA requirements | 7 tables, 7 endpoints |
+| v2.0 | 200+ (all pass) | 34/34 requirements | 7 nodes, 4 API routes, 3 scripts |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Pin dependency versions from day one — verified by vnstock 3.2.3→3.4.2 and n8n 1.78.0→2.10.2 breaking changes
-2. Integration gaps between containers are invisible until end-to-end testing — Telegram env vars, n8n method defaults
+1. Pin dependency versions from day one — verified by vnstock, n8n, and Gemini model naming issues across v1.0 and v2.0
+2. Integration gaps between containers are invisible until end-to-end testing — Telegram env vars (v1.0), Docker import paths (v2.0)
+3. Milestone audit catches issues that phase-level verification misses — cross-phase wiring, import namespace conflicts, missing depends_on declarations
+4. Deterministic logic + LLM narrative is more reliable than pure LLM reasoning — grounding check validates what Python computed, not what the LLM decided
