@@ -161,7 +161,7 @@ Plans:
 | 8.1. Docker Runtime Fixes | v2.0 | 1/1 | Complete | 2026-03-16 |
 | 9. Production Hardening | v2.0 | 3/3 | Complete | 2026-03-17 |
 | 10. Backend API Contracts and JWT Middleware | 2/2 | Complete    | 2026-03-18 | - |
-| 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete   | 2026-03-18 | - |
+| 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete    | 2026-03-18 | - |
 | 12. Next.js Core Shell and Dashboard | v3.0 | 0/? | Not started | - |
 | 13. Report Generation with SSE Progress | v3.0 | 0/? | Not started | - |
 | 14. Report View, TradingView Chart, and History | v3.0 | 0/? | Not started | - |
