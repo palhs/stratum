@@ -84,7 +84,10 @@ Plans:
   4. User can add and remove tickers from their watchlist; changes persist after closing and reopening the browser
   5. User A's watchlist is not visible to User B (per-user isolation enforced by RLS)
   6. A newly invited user's watchlist is pre-seeded with default tickers on first login
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 11-01-PLAN.md — Flyway V8 watchlist schema, auth.py RS256/JWKS migration, test rewrites
+- [ ] 11-02-PLAN.md — Watchlist CRUD API (GET/PUT /watchlist), endpoint tests, Supabase dashboard config
 
 ### Phase 12: Next.js Core Shell and Dashboard
 **Goal**: Users can open a browser, log in, and see their watchlist as an actionable dashboard of entry quality cards with sparklines
