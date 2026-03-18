@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Product Frontend & User Experience
 status: unknown
-last_updated: "2026-03-18T05:16:00.000Z"
+last_updated: "2026-03-18T15:24:40.193Z"
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 30
-  completed_plans: 31
+  total_phases: 10
+  completed_phases: 10
+  total_plans: 32
+  completed_plans: 32
 ---
 
 # Project State
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 Milestone: v3.0 — Product Frontend & User Experience
 Phase: 11 of 16 (Supabase Auth and Per-User Watchlist)
-Plan: 1 of 3 (11-01 complete)
-Status: In progress
-Last activity: 2026-03-18 — 11-01 complete (RS256/JWKS auth migration, V8 watchlist migration)
+Plan: 2 of 3 (11-01 complete, 11-02 Task 1 complete — checkpoint on Task 2)
+Status: In progress — awaiting Supabase dashboard config (checkpoint:human-action)
+Last activity: 2026-03-18 — 11-02 Task 1 complete (watchlist GET/PUT API, 42 tests passing)
 
 Progress: [░░░░░░░░░░] 5%
 
@@ -43,6 +43,7 @@ Progress: [░░░░░░░░░░] 5%
 |-------|-------|-------|----------|
 | 10-backend-api-contracts-and-jwt-middleware | 2 | 7 min | 3.5 min |
 | 11-supabase-auth-and-per-user-watchlist | 1 | 7 min | 7 min |
+| 11-supabase-auth-and-per-user-watchlist (02) | 1 | 5 min | 5 min |
 
 *Updated after each plan completion*
 
@@ -74,6 +75,8 @@ Decisions from 10-02 execution:
 Decisions from 11-01 execution:
 - signing_key.key (not signing_key directly) passed to jwt.decode — PyJWT's isinstance(key, PyJWK) check fails on MagicMock; unwrapping .key works in production and tests
 - PyJWKClient module-level singleton initialized from SUPABASE_JWKS_URL — at module level for 300s JWKS cache to be shared across requests
+- [Phase 11-supabase-auth-and-per-user-watchlist]: Static TICKER_METADATA dict used for symbol validation — ticker universe is static for VN30+gold; faster and avoids coupling to DB state
+- [Phase 11-supabase-auth-and-per-user-watchlist]: Zero-rows triggers seeding on GET /watchlist — explicitly clearing re-seeds on next GET, acceptable for v3.0
 
 ### Pending Todos
 
@@ -88,5 +91,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 11-01-PLAN.md — RS256/JWKS auth migration, V8 watchlist migration, all 19 tests passing
+Stopped at: 11-02 checkpoint:human-action — Task 2 requires Supabase dashboard configuration (disable public signups, set Site URL, invite test user, verify JWKS URL)
 Resume file: None

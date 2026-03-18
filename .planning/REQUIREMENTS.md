@@ -13,13 +13,13 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 - [x] **AUTH-02**: User session persists across browser refresh via HTTP-only cookies
 - [ ] **AUTH-03**: Admin can invite new users via Supabase admin API (signup disabled)
 - [x] **AUTH-04**: User data is isolated per account (watchlists, report access)
-- [ ] **AUTH-05**: Invited user receives pre-seeded watchlist on first login
+- [x] **AUTH-05**: Invited user receives pre-seeded watchlist on first login
 
 ### Watchlist
 
-- [ ] **WTCH-01**: User can add tickers from VN30 + gold universe to their watchlist
-- [ ] **WTCH-02**: User can remove tickers from their watchlist
-- [ ] **WTCH-03**: Watchlist is persisted per user across sessions
+- [x] **WTCH-01**: User can add tickers from VN30 + gold universe to their watchlist
+- [x] **WTCH-02**: User can remove tickers from their watchlist
+- [x] **WTCH-03**: Watchlist is persisted per user across sessions
 
 ### Dashboard
 
@@ -101,10 +101,10 @@ Deferred to v4.0+.
 | AUTH-02 | Phase 11 | Complete |
 | AUTH-03 | Phase 11 | Pending |
 | AUTH-04 | Phase 11 | Complete |
-| AUTH-05 | Phase 11 | Pending |
-| WTCH-01 | Phase 11 | Pending |
-| WTCH-02 | Phase 11 | Pending |
-| WTCH-03 | Phase 11 | Pending |
+| AUTH-05 | Phase 11 | Complete |
+| WTCH-01 | Phase 11 | Complete |
+| WTCH-02 | Phase 11 | Complete |
+| WTCH-03 | Phase 11 | Complete |
 | DASH-01 | Phase 12 | Pending |
 | DASH-02 | Phase 12 | Pending |
 | DASH-03 | Phase 12 | Pending |
