@@ -347,6 +347,7 @@ services:
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
       REASONING_ENGINE_URL: http://reasoning-engine:8000
+      NEXT_PUBLIC_API_URL: http://${VPS_HOST:-localhost}:8001
     ports:
       - "3000:3000"
     networks:
