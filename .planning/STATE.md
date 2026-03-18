@@ -7,8 +7,8 @@ last_updated: "2026-03-18"
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,24 +24,24 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 Milestone: v3.0 — Product Frontend & User Experience
 Phase: 10 of 16 (Backend API Contracts and JWT Middleware)
-Plan: 1 of 1 (10-01 complete)
+Plan: 2 of 2 (10-02 complete)
 Status: In progress
-Last activity: 2026-03-18 — 10-01 complete (JWT auth dependency, OHLCV endpoint, Pydantic schemas)
+Last activity: 2026-03-18 — 10-02 complete (report history endpoint, auth on generate, OpenAPI spec tests)
 
-Progress: [░░░░░░░░░░] 3%
+Progress: [░░░░░░░░░░] 5%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1 (v3.0)
-- Average duration: 5 min
-- Total execution time: 5 min
+- Total plans completed: 2 (v3.0)
+- Average duration: 3.5 min
+- Total execution time: 7 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 10-backend-api-contracts-and-jwt-middleware | 1 | 5 min | 5 min |
+| 10-backend-api-contracts-and-jwt-middleware | 2 | 7 min | 3.5 min |
 
 *Updated after each plan completion*
 
@@ -64,6 +64,12 @@ Decisions from 10-01 execution:
 - MA50/MA200 via SQL window functions rows=(-49,0) and rows=(-199,0) — no Python-side calculation
 - Table autoload_with=db_engine chosen over pre-defined ORM models to avoid metadata coupling
 
+Decisions from 10-02 execution:
+- dependency_overrides[require_auth] in test_reports.py — cleanest way to bypass auth in endpoint logic tests
+- Route order: generate -> by-ticker -> stream -> {job_id} — string paths before parameterized /{job_id} prevents 422
+- text() for JSONB extraction — avoids SQLAlchemy type casting issues with JSONB operators in select()
+- GROUP BY generated_at collapses vi+en rows — one history entry per generation run
+
 ### Pending Todos
 
 None yet.
@@ -77,5 +83,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 10-01-PLAN.md — JWT auth dependency, OHLCV endpoint, Pydantic schemas
+Stopped at: Completed 10-02-PLAN.md — report history endpoint, auth on generate, OpenAPI spec tests
 Resume file: None

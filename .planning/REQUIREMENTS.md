@@ -65,7 +65,7 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 - [ ] **INFR-02**: nginx reverse proxy with SSE buffering disabled for stream routes
 - [x] **INFR-03**: FastAPI reasoning-engine validates Supabase JWT on protected endpoints
 - [x] **INFR-04**: New GET /tickers/{symbol}/ohlcv endpoint serves chart data
-- [ ] **INFR-05**: New GET /reports/by-ticker/{symbol} endpoint serves report history
+- [x] **INFR-05**: New GET /reports/by-ticker/{symbol} endpoint serves report history
 
 ## Future Requirements
 
@@ -129,7 +129,7 @@ Deferred to v4.0+.
 | INFR-02 | Phase 15 | Pending |
 | INFR-03 | Phase 10 | Complete |
 | INFR-04 | Phase 10 | Complete |
-| INFR-05 | Phase 10 | Pending |
+| INFR-05 | Phase 10 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 33 total

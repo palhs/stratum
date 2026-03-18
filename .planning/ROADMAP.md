@@ -48,7 +48,7 @@ See: `.planning/milestones/v2.0-ROADMAP.md` for full details.
 
 **Milestone Goal:** Make Stratum usable as a product — invite-only auth, per-user watchlists, dashboard with entry quality cards, full report view with TradingView chart, report history, SSE progress, document ingestion, and Vietnamese dictionary expansion.
 
-- [ ] **Phase 10: Backend API Contracts and JWT Middleware** — JWT auth on reasoning-engine + new read-only endpoints for dashboard, OHLCV, and report history
+- [x] **Phase 10: Backend API Contracts and JWT Middleware** — JWT auth on reasoning-engine + new read-only endpoints for dashboard, OHLCV, and report history (completed 2026-03-18)
 - [ ] **Phase 11: Supabase Auth and Per-User Watchlist** — Invite-only Supabase project, watchlist schema in VPS PostgreSQL, per-user data isolation
 - [ ] **Phase 12: Next.js Core Shell and Dashboard** — Scaffolded Next.js Docker service, login page, dashboard with watchlist cards (tier badge, sparkline, last report date)
 - [ ] **Phase 13: Report Generation with SSE Progress** — Generate Report button wired to FastAPI, real-time named pipeline steps via SSE, disabled state during active run
@@ -157,7 +157,7 @@ Plans:
 | 8. FastAPI Gateway | v2.0 | 3/3 | Complete | 2026-03-16 |
 | 8.1. Docker Runtime Fixes | v2.0 | 1/1 | Complete | 2026-03-16 |
 | 9. Production Hardening | v2.0 | 3/3 | Complete | 2026-03-17 |
-| 10. Backend API Contracts and JWT Middleware | 1/2 | In Progress|  | - |
+| 10. Backend API Contracts and JWT Middleware | 2/2 | Complete   | 2026-03-18 | - |
 | 11. Supabase Auth and Per-User Watchlist | v3.0 | 0/? | Not started | - |
 | 12. Next.js Core Shell and Dashboard | v3.0 | 0/? | Not started | - |
 | 13. Report Generation with SSE Progress | v3.0 | 0/? | Not started | - |
