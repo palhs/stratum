@@ -52,7 +52,7 @@ async def require_auth(
         signing_key = _jwks_client.get_signing_key_from_jwt(cred.credentials)
         payload = jwt.decode(
             cred.credentials,
-            signing_key,
+            signing_key.key,
             algorithms=["RS256"],
             audience="authenticated",
         )

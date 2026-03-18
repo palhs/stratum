@@ -11,10 +11,12 @@ Scenarios:
   - No Authorization header returns 401 (auth not bypassed)
   - Gold symbol routing: GLD routes to gold_etf_ohlcv table (verified via _query_ohlcv call)
 """
-import os
+import time
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -26,7 +28,14 @@ from reasoning.app.routers import tickers
 # ---------------------------------------------------------------------------
 
 ROUTER_PATH = "reasoning.app.routers.tickers"
-_SECRET = "test-secret-for-unit-tests"
+
+# Test RSA key pair — generated once at module level
+_TEST_PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+_TEST_PUBLIC_KEY = _TEST_PRIVATE_KEY.public_key()
+
+# Reusable mock signing key
+_mock_signing_key = MagicMock()
+_mock_signing_key.key = _TEST_PUBLIC_KEY
 
 _SAMPLE_OHLCV = [
     {
@@ -73,11 +82,10 @@ def client(test_app):
 
 
 def _make_auth_header():
-    import jwt, time
     token = jwt.encode(
         {"sub": "user-1", "aud": "authenticated", "exp": int(time.time()) + 3600},
-        _SECRET,
-        algorithm="HS256",
+        _TEST_PRIVATE_KEY,
+        algorithm="RS256",
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -91,8 +99,9 @@ def test_ohlcv_returns_data_with_ma(client):
     """GET /tickers/VHM/ohlcv with valid auth returns OHLCVResponse with correct shape."""
     with (
         patch(f"{ROUTER_PATH}._query_ohlcv", return_value=_SAMPLE_OHLCV),
-        patch("reasoning.app.auth.os.environ", {"SUPABASE_JWT_SECRET": _SECRET}),
+        patch("reasoning.app.auth._jwks_client") as mock_client,
     ):
+        mock_client.get_signing_key_from_jwt.return_value = _mock_signing_key
         response = client.get("/tickers/VHM/ohlcv", headers=_make_auth_header())
 
     assert response.status_code == 200, response.text
@@ -115,8 +124,9 @@ def test_ohlcv_empty_symbol_returns_empty_data(client):
     """Unknown symbol returns 200 with empty data array."""
     with (
         patch(f"{ROUTER_PATH}._query_ohlcv", return_value=[]),
-        patch("reasoning.app.auth.os.environ", {"SUPABASE_JWT_SECRET": _SECRET}),
+        patch("reasoning.app.auth._jwks_client") as mock_client,
     ):
+        mock_client.get_signing_key_from_jwt.return_value = _mock_signing_key
         response = client.get("/tickers/UNKNOWN/ohlcv", headers=_make_auth_header())
 
     assert response.status_code == 200
@@ -135,8 +145,9 @@ def test_ohlcv_gold_symbol_routes_to_gold_table(client):
     """GLD symbol calls _query_ohlcv (table routing is internal to that function)."""
     with (
         patch(f"{ROUTER_PATH}._query_ohlcv", return_value=_SAMPLE_OHLCV) as mock_query,
-        patch("reasoning.app.auth.os.environ", {"SUPABASE_JWT_SECRET": _SECRET}),
+        patch("reasoning.app.auth._jwks_client") as mock_client,
     ):
+        mock_client.get_signing_key_from_jwt.return_value = _mock_signing_key
         response = client.get("/tickers/GLD/ohlcv", headers=_make_auth_header())
 
     assert response.status_code == 200

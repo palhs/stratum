@@ -12,10 +12,12 @@ Scenarios:
   - POST /reports/generate without auth returns 401
   - GET /health returns 200 without any Authorization header
 """
-import os
+import time
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -27,7 +29,14 @@ from reasoning.app.routers import health, reports
 # ---------------------------------------------------------------------------
 
 ROUTER_PATH = "reasoning.app.routers.reports"
-_SECRET = "test-secret-for-unit-tests"
+
+# Test RSA key pair — generated once at module level
+_TEST_PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+_TEST_PUBLIC_KEY = _TEST_PRIVATE_KEY.public_key()
+
+# Reusable mock signing key
+_mock_signing_key = MagicMock()
+_mock_signing_key.key = _TEST_PUBLIC_KEY
 
 _SAMPLE_HISTORY = [
     {
@@ -64,13 +73,10 @@ def client(test_app):
 
 
 def _make_auth_header():
-    import jwt
-    import time
-
     token = jwt.encode(
         {"sub": "user-1", "aud": "authenticated", "exp": int(time.time()) + 3600},
-        _SECRET,
-        algorithm="HS256",
+        _TEST_PRIVATE_KEY,
+        algorithm="RS256",
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -87,8 +93,9 @@ def test_report_history_returns_paginated_list(client):
             f"{ROUTER_PATH}._query_report_history",
             return_value=(_SAMPLE_HISTORY, 1),
         ),
-        patch("reasoning.app.auth.os.environ", {"SUPABASE_JWT_SECRET": _SECRET}),
+        patch("reasoning.app.auth._jwks_client") as mock_client,
     ):
+        mock_client.get_signing_key_from_jwt.return_value = _mock_signing_key
         response = client.get(
             "/reports/by-ticker/VHM",
             headers=_make_auth_header(),
@@ -116,8 +123,9 @@ def test_report_history_pagination(client):
             f"{ROUTER_PATH}._query_report_history",
             return_value=([], 10),
         ) as mock_query,
-        patch("reasoning.app.auth.os.environ", {"SUPABASE_JWT_SECRET": _SECRET}),
+        patch("reasoning.app.auth._jwks_client") as mock_client,
     ):
+        mock_client.get_signing_key_from_jwt.return_value = _mock_signing_key
         response = client.get(
             "/reports/by-ticker/VHM?page=2&per_page=5",
             headers=_make_auth_header(),
@@ -141,8 +149,9 @@ def test_report_history_empty_symbol(client):
             f"{ROUTER_PATH}._query_report_history",
             return_value=([], 0),
         ),
-        patch("reasoning.app.auth.os.environ", {"SUPABASE_JWT_SECRET": _SECRET}),
+        patch("reasoning.app.auth._jwks_client") as mock_client,
     ):
+        mock_client.get_signing_key_from_jwt.return_value = _mock_signing_key
         response = client.get(
             "/reports/by-ticker/UNKNOWN",
             headers=_make_auth_header(),
@@ -157,18 +166,16 @@ def test_report_history_empty_symbol(client):
 
 def test_report_history_requires_auth(client):
     """GET /reports/by-ticker/VHM without auth returns 401."""
-    with patch.dict(os.environ, {"SUPABASE_JWT_SECRET": _SECRET}):
-        response = client.get("/reports/by-ticker/VHM")
+    response = client.get("/reports/by-ticker/VHM")
     assert response.status_code == 401
 
 
 def test_generate_requires_auth(client):
     """POST /reports/generate without auth returns 401."""
-    with patch.dict(os.environ, {"SUPABASE_JWT_SECRET": _SECRET}):
-        response = client.post(
-            "/reports/generate",
-            json={"ticker": "VHM", "asset_type": "equity"},
-        )
+    response = client.post(
+        "/reports/generate",
+        json={"ticker": "VHM", "asset_type": "equity"},
+    )
     assert response.status_code == 401
 
 

@@ -39,7 +39,7 @@ def _make_app_state():
 def openapi_spec():
     """Build a full app with all routers and return the OpenAPI dict."""
     # Must set env var before importing modules that read it at import time
-    os.environ.setdefault("SUPABASE_JWT_SECRET", "openapi-test-secret-at-least-32")
+    os.environ.setdefault("SUPABASE_JWKS_URL", "https://test.supabase.co/auth/v1/.well-known/jwks.json")
 
     app = FastAPI(title="Stratum Reasoning Engine Test")
     app.include_router(health.router)
