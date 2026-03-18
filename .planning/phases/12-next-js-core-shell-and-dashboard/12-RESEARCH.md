@@ -711,6 +711,161 @@ export function LoginForm() {
 
 ---
 
+## Validation Architecture
+
+### Test Framework
+| Property | Value |
+|----------|-------|
+| Framework | None pre-existing — this is a greenfield Next.js service |
+| Config file | Wave 0 creates `frontend/playwright.config.ts` (E2E) + `frontend/vitest.config.ts` (unit) |
+| Quick run command | `cd frontend && npx vitest run --reporter=verbose` |
+| Full suite command | `cd frontend && npx vitest run && npx playwright test` |
+
+### Success Criteria → Validation Map
+
+Each success criterion from the phase goal maps to one or more concrete, automatable checks.
+
+#### SC-1: Unauthenticated redirect / authenticated landing (INFR-01, DASH-01)
+**Criterion:** Unauthenticated users are redirected to `/login`; authenticated users land on the dashboard.
+
+| Check | Type | Command / Assertion | Pass Threshold |
+|-------|------|---------------------|----------------|
+| Unauthenticated GET `/` returns redirect | Automated (curl) | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" http://localhost:3000/` | Status 307 or 302; redirect URL contains `/login` |
+| Unauthenticated GET `/` final URL is `/login` | Automated (curl follow) | `curl -sL -o /dev/null -w "%{url_effective}" http://localhost:3000/` | Final URL ends with `/login` |
+| Unauthenticated GET `/login` returns 200 | Automated (curl) | `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/login` | `200` |
+| middleware.ts exists with route protection logic | Automated (file check) | `grep -q "redirect.*login" frontend/src/middleware.ts` | Exit code 0 |
+| middleware.ts uses getClaims not getSession | Automated (grep) | `grep -q "getClaims" frontend/src/middleware.ts && ! grep -q "getSession" frontend/src/middleware.ts` | Exit code 0 |
+| Authenticated user session reaches dashboard | Manual / E2E | Playwright: log in with test credentials, assert `page.url()` ends with `/` | URL is `/` (not `/login`) |
+
+#### SC-2: Dashboard cards with tier badge, sparkline, last report date (DASH-01, DASH-02, DASH-03, DASH-04)
+**Criterion:** Dashboard shows a card per watchlist ticker with entry quality tier badge, 52-week sparkline, and last report date.
+
+| Check | Type | Command / Assertion | Pass Threshold |
+|-------|------|---------------------|----------------|
+| TickerCard component renders tier badge element | Unit (Vitest + React Testing Library) | `render(<TickerCard .../>); screen.getByText(/Favorable|Neutral|Cautious|Avoid/)` | Element found, no throw |
+| TierBadge renders correct CSS class for each tier | Unit (Vitest) | Test each of 4 tiers: assert `bg-teal-100` for Favorable, `bg-slate-100` for Neutral, `bg-amber-100` for Cautious, `bg-rose-100` for Avoid | All 4 assertions pass |
+| Sparkline renders SVG polyline element | Unit (Vitest) | `render(<Sparkline data={[...52 values...]} />); container.querySelector('polyline')` | Not null |
+| Sparkline polyline points attribute contains 52 coordinate pairs | Unit (Vitest) | Parse `polyline.getAttribute('points').trim().split(' ').length` | Equals 52 |
+| Sparkline color is green when last > first | Unit (Vitest) | `data[51] > data[0]`: assert `stroke="#16a34a"` | Passes |
+| Sparkline color is red when last < first | Unit (Vitest) | `data[51] < data[0]`: assert `stroke="#dc2626"` | Passes |
+| Last report date renders on card | Unit (Vitest) | `render(<TickerCard lastReport={{ tier: 'Favorable', generated_at: '2026-01-15T00:00:00Z' }} .../>); screen.getByText(/Jan|2026/)` | Date text present |
+| Dashboard page responds 200 for authenticated session | E2E (Playwright) | After login: `await page.goto('/'); expect(response.status()).toBe(200)` | Status 200 |
+| Dashboard HTML contains tier badge colors | E2E (Playwright) | After login with seeded watchlist: `page.locator('[class*="bg-teal"], [class*="bg-slate"], [class*="bg-amber"], [class*="bg-rose"]').count()` | Count > 0 |
+| Dashboard HTML contains SVG polyline | E2E (Playwright) | After login: `page.locator('polyline').count()` | Count >= number of watchlist tickers with OHLCV data |
+
+#### SC-3: Loading skeleton and error toast (DASH-05)
+**Criterion:** Dashboard shows loading skeleton while data fetches; error toast if API call fails.
+
+| Check | Type | Command / Assertion | Pass Threshold |
+|-------|------|---------------------|----------------|
+| WatchlistGridSkeleton renders 6 skeleton cards | Unit (Vitest) | `render(<WatchlistGridSkeleton />); screen.getAllByRole('...skeleton...').length` (or test aria-label on skeleton divs) | Count = 6 |
+| Skeleton cards contain `animate-pulse` class | Unit (Vitest) | `container.querySelectorAll('.animate-pulse').length` | > 0 |
+| DashboardClient shows skeleton on initial render (before fetch resolves) | Unit (Vitest + mock) | Mock `getWatchlist` to return pending promise; render `DashboardClient`; assert skeleton visible before resolution | Skeleton rendered synchronously |
+| DashboardClient shows error state when fetch throws | Unit (Vitest + mock) | Mock `getWatchlist` to reject; render; await; assert error message text present | Error text visible |
+| Sonner toast fires on API error | Unit (Vitest + spy) | Spy on `toast.error`; trigger fetch failure; assert spy called once | Called with error message |
+| Error state renders Retry button | Unit (Vitest + mock) | After fetch rejection: `screen.getByRole('button', { name: /retry/i })` | Button present |
+
+#### SC-4: Empty state when watchlist has no tickers (DASH-05)
+**Criterion:** Dashboard shows empty state when watchlist has no tickers.
+
+| Check | Type | Command / Assertion | Pass Threshold |
+|-------|------|---------------------|----------------|
+| EmptyState component renders "watchlist is empty" text | Unit (Vitest) | `render(<EmptyState />); screen.getByText(/watchlist is empty/i)` | Text present |
+| EmptyState renders quick-add buttons for VNM, FPT, HPG, GLD, MWG | Unit (Vitest) | Assert 5 buttons with ticker names | All 5 found |
+| DashboardClient renders EmptyState when watchlist returns 0 tickers | Unit (Vitest + mock) | Mock `getWatchlist` returning `{ tickers: [] }`; render; await; assert EmptyState visible | Empty state visible |
+| Quick-add button calls PUT /watchlist with correct ticker | Unit (Vitest + mock) | Mock fetch; click VNM quick-add; assert fetch called with `{ symbol: 'VNM' }` | Fetch called correctly |
+
+#### SC-5: Docker service starts within 512MB mem_limit (INFR-01)
+**Criterion:** Next.js Docker service starts with `mem_limit: 512m` and passes `docker stats` without exceeding limit during normal dashboard load.
+
+| Check | Type | Command / Assertion | Pass Threshold |
+|-------|------|---------------------|----------------|
+| docker-compose.yml frontend service has `mem_limit: 512m` | Automated (grep) | `grep -A 5 "frontend:" docker-compose.yml \| grep "mem_limit: 512m"` | Exit code 0 |
+| next.config.ts has `output: 'standalone'` | Automated (grep) | `grep -q "standalone" frontend/next.config.ts` | Exit code 0 |
+| Dockerfile has 3 stages (deps, builder, runner) | Automated (grep) | `grep -c "^FROM" frontend/Dockerfile` | Equals 3 |
+| Dockerfile copies `.next/static` and `public` separately | Automated (grep) | `grep -q ".next/static" frontend/Dockerfile && grep -q "public" frontend/Dockerfile` | Exit code 0 |
+| Container starts healthy within 60s | Integration (docker) | `docker compose --profile reasoning up -d frontend && docker compose ps frontend \| grep "healthy"` (poll 60s) | Service shows `healthy` |
+| Container memory during cold start stays under 512MB | Integration (docker stats) | `docker stats --no-stream --format "{{.MemUsage}}" stratum-frontend-1` | Reported MiB < 512 |
+| Container memory during dashboard load (30-ticker page) stays under 512MB | Manual / Integration | Open dashboard in browser with full 30-ticker watchlist; re-run docker stats | Reported MiB < 512 |
+| `force-dynamic` export present on dashboard page | Automated (grep) | `grep -q "force-dynamic" frontend/src/app/\(dashboard\)/page.tsx` | Exit code 0 |
+
+### Grouped by Validation Type
+
+#### Automated (can run in CI with no live services)
+```bash
+# File/config checks — run anywhere
+grep -q "mem_limit: 512m" docker-compose.yml
+grep -q "standalone" frontend/next.config.ts
+grep -c "^FROM" frontend/Dockerfile          # expect 3
+grep -q "getClaims" frontend/src/middleware.ts
+grep -q "force-dynamic" "frontend/src/app/(dashboard)/page.tsx"
+
+# Unit tests (Vitest)
+cd frontend && npx vitest run --reporter=verbose
+```
+
+#### Integration (requires running Docker stack)
+```bash
+# Start the frontend service
+docker compose --profile reasoning up -d
+
+# Health check
+docker compose ps frontend | grep "healthy"
+
+# Unauthenticated redirect
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
+# expect 307 (or 302)
+
+curl -sL -o /dev/null -w "%{url_effective}" http://localhost:3000/
+# expect URL ends with /login
+
+# Login page available
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/login
+# expect 200
+
+# Memory at idle
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}" | grep frontend
+# MiB value must be < 512
+```
+
+#### Manual / E2E (requires live Supabase + seeded watchlist)
+```bash
+# Run Playwright E2E suite (requires TEST_EMAIL and TEST_PASSWORD env vars)
+cd frontend && npx playwright test
+
+# Manual memory check under load
+# 1. Open dashboard in browser with 30-ticker watchlist
+# 2. Run: docker stats --no-stream stratum-frontend-1
+# 3. Confirm MemUsage < 512MiB
+```
+
+### Sampling Rate
+- **Per task commit:** `cd frontend && npx vitest run` (unit tests only, ~5-10s)
+- **Per wave merge:** `cd frontend && npx vitest run && npx playwright test` (full suite)
+- **Phase gate:** Full suite green + manual docker stats check before `/gsd:verify-work`
+
+### Wave 0 Gaps
+The following test infrastructure does not yet exist (greenfield project) and must be created before implementation tasks can be validated:
+
+- [ ] `frontend/vitest.config.ts` — Vitest config with jsdom environment and React Testing Library
+- [ ] `frontend/src/test/setup.ts` — Global test setup (jest-dom matchers, cleanup)
+- [ ] `frontend/playwright.config.ts` — Playwright config with baseURL, test credentials from env
+- [ ] `frontend/tests/e2e/auth.spec.ts` — E2E: unauthenticated redirect, login flow
+- [ ] `frontend/tests/e2e/dashboard.spec.ts` — E2E: dashboard load, card rendering
+- [ ] `frontend/src/components/dashboard/__tests__/TierBadge.test.tsx` — Unit: tier badge color classes
+- [ ] `frontend/src/components/dashboard/__tests__/Sparkline.test.tsx` — Unit: SVG polyline math
+- [ ] `frontend/src/components/dashboard/__tests__/DashboardClient.test.tsx` — Unit: loading/error/empty states
+- [ ] `frontend/src/components/dashboard/__tests__/EmptyState.test.tsx` — Unit: quick-add buttons
+
+**Framework install (Wave 0 task):**
+```bash
+cd frontend
+npm install --save-dev vitest @vitest/coverage-v8 jsdom @testing-library/react @testing-library/jest-dom @playwright/test
+npx playwright install chromium
+```
+
+---
+
 ## Sources
 
 ### Primary (HIGH confidence)
@@ -740,6 +895,7 @@ export function LoginForm() {
 - Architecture: HIGH — patterns derived from official docs; SVG sparkline math verified
 - Pitfalls: HIGH for auth pitfalls (official docs explicit); MEDIUM for memory concerns (GitHub issues, not official docs)
 - Docker: HIGH — Dockerfile pattern confirmed against official Next.js example and multiple 2025/2026 sources
+- Validation Architecture: HIGH for unit/integration checks; MEDIUM for E2E (Playwright config is standard but test credentials depend on live Supabase)
 
 **Research date:** 2026-03-18
 **Valid until:** 2026-04-18 (30 days — stack is stable; shadcn/ui canary moves fast, verify before implementing)
