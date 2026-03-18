@@ -113,7 +113,10 @@ Plans:
   2. Named LangGraph pipeline steps (macro_regime, valuation, structure, etc.) appear in the UI in sequence as the pipeline progresses
   3. The Generate button is disabled and cannot be clicked again while a generation is active for that ticker
   4. SSE connection is cleanly closed when the user navigates away (no abandoned runs burning Gemini API budget)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 13-01-PLAN.md — Backend per-node SSE events via LangGraph astream, run_graph queue param, generate_report wiring
+- [ ] 13-02-PLAN.md — Frontend GenerateButton, StepList, TickerCard generation state, DashboardClient EventSource management
 
 ### Phase 14: Report View, TradingView Chart, and History
 **Goal**: Users can read any report in full with a bilingual toggle, see price structure in context via an interactive chart, and browse the history of assessments for a ticker
@@ -166,7 +169,7 @@ Plans:
 | 10. Backend API Contracts and JWT Middleware | 2/2 | Complete    | 2026-03-18 | - |
 | 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete    | 2026-03-18 | - |
 | 12. Next.js Core Shell and Dashboard | 2/2 | Complete    | 2026-03-18 | - |
-| 13. Report Generation with SSE Progress | v3.0 | 0/? | Not started | - |
+| 13. Report Generation with SSE Progress | v3.0 | 0/2 | Not started | - |
 | 14. Report View, TradingView Chart, and History | v3.0 | 0/? | Not started | - |
 | 15. nginx and Docker Compose Integration | v3.0 | 0/? | Not started | - |
 | 16. Document Ingestion and Dictionary Expansion | v3.0 | 0/? | Not started | - |
