@@ -169,7 +169,7 @@ Plans:
 | 10. Backend API Contracts and JWT Middleware | 2/2 | Complete    | 2026-03-18 | - |
 | 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete    | 2026-03-18 | - |
 | 12. Next.js Core Shell and Dashboard | 2/2 | Complete    | 2026-03-18 | - |
-| 13. Report Generation with SSE Progress | v3.0 | 0/2 | Not started | - |
+| 13. Report Generation with SSE Progress | 1/2 | In Progress|  | - |
 | 14. Report View, TradingView Chart, and History | v3.0 | 0/? | Not started | - |
 | 15. nginx and Docker Compose Integration | v3.0 | 0/? | Not started | - |
 | 16. Document Ingestion and Dictionary Expansion | v3.0 | 0/? | Not started | - |

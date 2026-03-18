@@ -32,7 +32,7 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 ### Report Generation
 
 - [ ] **RGEN-01**: User can trigger report generation via button on ticker card
-- [ ] **RGEN-02**: User sees real-time SSE progress showing named pipeline steps
+- [x] **RGEN-02**: User sees real-time SSE progress showing named pipeline steps
 - [ ] **RGEN-03**: Generate button is disabled during active generation
 
 ### Report View
@@ -111,7 +111,7 @@ Deferred to v4.0+.
 | DASH-04 | Phase 12 | Complete |
 | DASH-05 | Phase 12 | Complete |
 | RGEN-01 | Phase 13 | Pending |
-| RGEN-02 | Phase 13 | Pending |
+| RGEN-02 | Phase 13 | Complete |
 | RGEN-03 | Phase 13 | Pending |
 | RVEW-01 | Phase 14 | Pending |
 | RVEW-02 | Phase 14 | Pending |
