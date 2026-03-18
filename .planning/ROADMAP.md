@@ -99,7 +99,10 @@ Plans:
   3. Dashboard shows a loading skeleton while data is fetching and an error toast if the API call fails
   4. Dashboard shows an appropriate empty state when the watchlist has no tickers
   5. Next.js Docker service starts with `mem_limit: 512m` and passes `docker stats` without exceeding its limit during normal dashboard load
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 12-01-PLAN.md — Next.js scaffold, Docker, Supabase SSR auth, login page, test infra
+- [ ] 12-02-PLAN.md — Dashboard components (TierBadge, Sparkline, TickerCard, states), API fetch layer, DashboardClient wiring
 
 ### Phase 13: Report Generation with SSE Progress
 **Goal**: Users can trigger a report generation from the dashboard and watch named pipeline steps update in real time as the LangGraph pipeline runs
@@ -162,7 +165,7 @@ Plans:
 | 9. Production Hardening | v2.0 | 3/3 | Complete | 2026-03-17 |
 | 10. Backend API Contracts and JWT Middleware | 2/2 | Complete    | 2026-03-18 | - |
 | 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete    | 2026-03-18 | - |
-| 12. Next.js Core Shell and Dashboard | v3.0 | 0/? | Not started | - |
+| 12. Next.js Core Shell and Dashboard | v3.0 | 0/2 | Not started | - |
 | 13. Report Generation with SSE Progress | v3.0 | 0/? | Not started | - |
 | 14. Report View, TradingView Chart, and History | v3.0 | 0/? | Not started | - |
 | 15. nginx and Docker Compose Integration | v3.0 | 0/? | Not started | - |
