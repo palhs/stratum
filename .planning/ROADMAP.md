@@ -68,7 +68,10 @@ See: `.planning/milestones/v2.0-ROADMAP.md` for full details.
   3. `GET /tickers/{symbol}/ohlcv` returns OHLCV + MA series in the exact format `{ time, open, high, low, close, volume }` consumed by TradingView Lightweight Charts
   4. `GET /reports/by-ticker/{symbol}` returns a paginated list of historical reports with tier badges and dates
   5. All new endpoints have Pydantic response schemas and are documented in the FastAPI OpenAPI spec
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 10-01-PLAN.md — JWT auth dependency, Pydantic schemas, OHLCV endpoint with window function MAs
+- [ ] 10-02-PLAN.md — Report history endpoint, auth wiring to all routes, OpenAPI verification
 
 ### Phase 11: Supabase Auth and Per-User Watchlist
 **Goal**: Users can be invited by the admin, log in with email/password, and have a private watchlist that persists across sessions
@@ -154,7 +157,7 @@ See: `.planning/milestones/v2.0-ROADMAP.md` for full details.
 | 8. FastAPI Gateway | v2.0 | 3/3 | Complete | 2026-03-16 |
 | 8.1. Docker Runtime Fixes | v2.0 | 1/1 | Complete | 2026-03-16 |
 | 9. Production Hardening | v2.0 | 3/3 | Complete | 2026-03-17 |
-| 10. Backend API Contracts and JWT Middleware | v3.0 | 0/? | Not started | - |
+| 10. Backend API Contracts and JWT Middleware | v3.0 | 0/2 | Not started | - |
 | 11. Supabase Auth and Per-User Watchlist | v3.0 | 0/? | Not started | - |
 | 12. Next.js Core Shell and Dashboard | v3.0 | 0/? | Not started | - |
 | 13. Report Generation with SSE Progress | v3.0 | 0/? | Not started | - |
