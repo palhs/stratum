@@ -141,15 +141,14 @@ There is no test mechanism for the AI Studio spend cap. Verification is observat
 Fill in this template after completing the setup above. Commit the filled-in version to the repository as the authoritative record.
 
 ```
-Billing path:         [Cloud Project / AI Studio Only]
-Cloud project name:   [project name, or N/A if AI Studio only]
-Monthly budget:       $[amount]
-Threshold tiers:      50% ($[x]), 80% ($[y]), 100% ($[z])
-                      [N/A if AI Studio only — no tiered alerts available]
-Notification email:   [email address receiving alerts]
-AI Studio spend cap:  $[amount]
-Date configured:      [YYYY-MM-DD]
-Test notification:    [Passed / Not tested — Cloud Billing only]
+Billing path:         AI Studio Only
+Cloud project name:   My First Project
+Monthly budget:       $200
+Threshold tiers:      N/A
+Notification email:   phananhle2003@gmail.com
+AI Studio spend cap:  $200
+Date configured:      2026-03-17
+Test notification:    Not tested
 ```
 
 **Example (Cloud Billing path):**
