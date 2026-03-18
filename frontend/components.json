@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/v0.0.0-canary.92.json",
+  "style": "new-york",
+  "tailwind": {
+    "config": "",
+    "css": "src/app/globals.css",
+    "baseColor": "zinc",
+    "cssVariables": true
+  },
+  "rsc": true,
+  "tsx": true,
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  }
+}

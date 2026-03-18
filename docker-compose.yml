@@ -327,3 +327,34 @@ services:
     networks:
       - reasoning
     profiles: ["reasoning"]
+
+  # ===========================================================================
+  # FRONTEND TIER — Next.js 15 standalone app
+  # Auth via Supabase SSR; proxies API calls to reasoning-engine
+  # Profile: reasoning | Port: 3000:3000 (host:container)
+  # ===========================================================================
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    mem_limit: 512m
+    restart: unless-stopped
+    depends_on:
+      reasoning-engine:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      REASONING_ENGINE_URL: http://reasoning-engine:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - reasoning
+    profiles: ["reasoning"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
