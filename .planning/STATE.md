@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Product Frontend & User Experience
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-18T17:31:25.231Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-18T17:39:39.886Z"
 last_activity: 2026-03-18 — 11-02 Task 1 complete (watchlist GET/PUT API, 42 tests passing)
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 5
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 5%
 
 *Updated after each plan completion*
 | Phase 12-next-js-core-shell-and-dashboard P01 | 11 | 2 tasks | 35 files |
+| Phase 12-next-js-core-shell-and-dashboard P02 | 4 | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,10 @@ Decisions from 11-01 execution:
 - [Phase 12-next-js-core-shell-and-dashboard]: proxy.ts (not middleware.ts) is the Next.js 16 file convention — middleware.ts deprecated, export must be named 'proxy'
 - [Phase 12-next-js-core-shell-and-dashboard]: Supabase getUser() used in proxy.ts (not getSession()) — validates JWT with JWKS, not just cookie presence
 - [Phase 12-next-js-core-shell-and-dashboard]: force-dynamic on (dashboard)/page.tsx prevents ISR cache pressure from authenticated content
+- [Phase 12-next-js-core-shell-and-dashboard]: NEXT_PUBLIC_API_URL targets host-mapped reasoning-engine port 8001 for client-side fetches — no nginx proxy in Phase 12
+- [Phase 12-next-js-core-shell-and-dashboard]: satisfies TickerData operator used at Promise.all return site — structural type check without losing inference
+- [Phase 12-next-js-core-shell-and-dashboard]: range || 1 in Sparkline guards against division by zero on flat OHLCV data
+- [Phase 12-next-js-core-shell-and-dashboard]: useCallback with [accessToken] dep on loadDashboard prevents infinite fetch loops in DashboardClient useEffect
 
 ### Pending Todos
 
@@ -97,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T17:31:25.229Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-03-18T17:39:39.883Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None

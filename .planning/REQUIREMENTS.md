@@ -23,11 +23,11 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 
 ### Dashboard
 
-- [ ] **DASH-01**: User sees watchlist as cards on dashboard landing page
-- [ ] **DASH-02**: Each card shows entry quality tier badge (color-coded Favorable/Neutral/Cautious/Avoid)
-- [ ] **DASH-03**: Each card shows sparkline price chart (52-week weekly close)
-- [ ] **DASH-04**: Each card shows last report date
-- [ ] **DASH-05**: Dashboard shows appropriate empty/loading/error states
+- [x] **DASH-01**: User sees watchlist as cards on dashboard landing page
+- [x] **DASH-02**: Each card shows entry quality tier badge (color-coded Favorable/Neutral/Cautious/Avoid)
+- [x] **DASH-03**: Each card shows sparkline price chart (52-week weekly close)
+- [x] **DASH-04**: Each card shows last report date
+- [x] **DASH-05**: Dashboard shows appropriate empty/loading/error states
 
 ### Report Generation
 
@@ -105,11 +105,11 @@ Deferred to v4.0+.
 | WTCH-01 | Phase 11 | Complete |
 | WTCH-02 | Phase 11 | Complete |
 | WTCH-03 | Phase 11 | Complete |
-| DASH-01 | Phase 12 | Pending |
-| DASH-02 | Phase 12 | Pending |
-| DASH-03 | Phase 12 | Pending |
-| DASH-04 | Phase 12 | Pending |
-| DASH-05 | Phase 12 | Pending |
+| DASH-01 | Phase 12 | Complete |
+| DASH-02 | Phase 12 | Complete |
+| DASH-03 | Phase 12 | Complete |
+| DASH-04 | Phase 12 | Complete |
+| DASH-05 | Phase 12 | Complete |
 | RGEN-01 | Phase 13 | Pending |
 | RGEN-02 | Phase 13 | Pending |
 | RGEN-03 | Phase 13 | Pending |
