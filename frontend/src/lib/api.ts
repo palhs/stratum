@@ -1,4 +1,4 @@
-import type { WatchlistResponse, OHLCVResponse, ReportHistoryResponse } from './types'
+import type { WatchlistResponse, OHLCVResponse, ReportHistoryResponse, GenerateResponse } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -39,5 +39,16 @@ export async function addTickerToWatchlist(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ tickers: [...currentTickers, newTicker] }),
+  })
+}
+
+export async function generateReport(
+  ticker: string,
+  assetType: string,
+  token: string
+): Promise<GenerateResponse> {
+  return fetchAPI<GenerateResponse>('/reports/generate', token, {
+    method: 'POST',
+    body: JSON.stringify({ ticker, asset_type: assetType }),
   })
 }

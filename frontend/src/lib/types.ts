@@ -50,3 +50,23 @@ export interface TickerData {
   ohlcv: OHLCVPoint[] | null
   lastReport: { tier: string; generated_at: string } | null
 }
+
+// --- Phase 13: Report Generation types ---
+
+export interface GenerateResponse {
+  job_id: number
+  status: string
+}
+
+export type StepStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
+
+export interface StepState {
+  node: string
+  label: string
+  status: StepStatus
+}
+
+export interface GenerationState {
+  jobId: number
+  steps: Map<string, StepStatus>
+}
