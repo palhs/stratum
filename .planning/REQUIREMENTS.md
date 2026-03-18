@@ -9,10 +9,10 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can log in with email and password via Supabase
-- [ ] **AUTH-02**: User session persists across browser refresh via HTTP-only cookies
+- [x] **AUTH-01**: User can log in with email and password via Supabase
+- [x] **AUTH-02**: User session persists across browser refresh via HTTP-only cookies
 - [ ] **AUTH-03**: Admin can invite new users via Supabase admin API (signup disabled)
-- [ ] **AUTH-04**: User data is isolated per account (watchlists, report access)
+- [x] **AUTH-04**: User data is isolated per account (watchlists, report access)
 - [ ] **AUTH-05**: Invited user receives pre-seeded watchlist on first login
 
 ### Watchlist
@@ -97,10 +97,10 @@ Deferred to v4.0+.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 11 | Pending |
-| AUTH-02 | Phase 11 | Pending |
+| AUTH-01 | Phase 11 | Complete |
+| AUTH-02 | Phase 11 | Complete |
 | AUTH-03 | Phase 11 | Pending |
-| AUTH-04 | Phase 11 | Pending |
+| AUTH-04 | Phase 11 | Complete |
 | AUTH-05 | Phase 11 | Pending |
 | WTCH-01 | Phase 11 | Pending |
 | WTCH-02 | Phase 11 | Pending |

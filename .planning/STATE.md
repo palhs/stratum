@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Product Frontend & User Experience
 status: unknown
-last_updated: "2026-03-18T04:40:07.903Z"
+last_updated: "2026-03-18T05:16:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 9
   total_plans: 30
-  completed_plans: 30
+  completed_plans: 31
 ---
 
 # Project State
@@ -18,30 +18,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Protect investors from being fundamentally right but entering at a structurally dangerous price level — by combining macro regime analysis, valuation context, and price structure into a single actionable entry quality assessment.
-**Current focus:** v3.0 Phase 10 — Backend API Contracts and JWT Middleware
+**Current focus:** v3.0 Phase 11 — Supabase Auth and Per-User Watchlist
 
 ## Current Position
 
 Milestone: v3.0 — Product Frontend & User Experience
-Phase: 10 of 16 (Backend API Contracts and JWT Middleware)
-Plan: 2 of 2 (10-02 complete)
+Phase: 11 of 16 (Supabase Auth and Per-User Watchlist)
+Plan: 1 of 3 (11-01 complete)
 Status: In progress
-Last activity: 2026-03-18 — 10-02 complete (report history endpoint, auth on generate, OpenAPI spec tests)
+Last activity: 2026-03-18 — 11-01 complete (RS256/JWKS auth migration, V8 watchlist migration)
 
 Progress: [░░░░░░░░░░] 5%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2 (v3.0)
-- Average duration: 3.5 min
-- Total execution time: 7 min
+- Total plans completed: 3 (v3.0)
+- Average duration: 4.7 min
+- Total execution time: 14 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 10-backend-api-contracts-and-jwt-middleware | 2 | 7 min | 3.5 min |
+| 11-supabase-auth-and-per-user-watchlist | 1 | 7 min | 7 min |
 
 *Updated after each plan completion*
 
@@ -70,6 +71,10 @@ Decisions from 10-02 execution:
 - text() for JSONB extraction — avoids SQLAlchemy type casting issues with JSONB operators in select()
 - GROUP BY generated_at collapses vi+en rows — one history entry per generation run
 
+Decisions from 11-01 execution:
+- signing_key.key (not signing_key directly) passed to jwt.decode — PyJWT's isinstance(key, PyJWK) check fails on MagicMock; unwrapping .key works in production and tests
+- PyJWKClient module-level singleton initialized from SUPABASE_JWKS_URL — at module level for 300s JWKS cache to be shared across requests
+
 ### Pending Todos
 
 None yet.
@@ -83,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 10-02-PLAN.md — report history endpoint, auth on generate, OpenAPI spec tests
+Stopped at: Completed 11-01-PLAN.md — RS256/JWKS auth migration, V8 watchlist migration, all 19 tests passing
 Resume file: None
