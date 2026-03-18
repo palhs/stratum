@@ -1,8 +1,8 @@
 """
 JWT authentication dependency for the Stratum Reasoning Engine.
 
-Uses Supabase-issued JWTs (HS256, audience="authenticated").
-SUPABASE_JWT_SECRET must be set in the environment.
+Uses Supabase-issued JWTs (RS256, audience="authenticated") validated via JWKS.
+SUPABASE_JWKS_URL must be set in the environment.
 
 Usage:
     from reasoning.app.auth import require_auth
@@ -16,6 +16,16 @@ import os
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
+
+# Module-level singleton — initialized once at import time so the JWKS cache
+# is shared across requests. lifespan=300 means keys are refetched at most
+# once every 5 minutes.
+_jwks_client = PyJWKClient(
+    os.environ["SUPABASE_JWKS_URL"],
+    cache_jwk_set=True,
+    lifespan=300,
+)
 
 # auto_error=False: prevents FastAPI's default 403 on missing header.
 # We raise 401 ourselves when cred is None, matching the spec.
@@ -38,13 +48,12 @@ async def require_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    secret = os.environ["SUPABASE_JWT_SECRET"]
-
     try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(cred.credentials)
         payload = jwt.decode(
             cred.credentials,
-            secret,
-            algorithms=["HS256"],
+            signing_key,
+            algorithms=["RS256"],
             audience="authenticated",
         )
     except jwt.ExpiredSignatureError:
