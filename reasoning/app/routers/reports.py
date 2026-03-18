@@ -1,15 +1,18 @@
 """
-Reports router — POST /reports/generate, GET /reports/stream/{job_id}, GET /reports/{job_id}.
+Reports router — POST /reports/generate, GET /reports/by-ticker/{symbol},
+                 GET /reports/stream/{job_id}, GET /reports/{job_id}.
 
 Phase 8 | Plans 02-03 | Requirements: SRVC-01, SRVC-02, SRVC-03
+Phase 10 | Plan 02     | Requirements: INFR-05
 
 Endpoints:
-  POST /reports/generate           — Submit async report generation job (returns 202)
+  POST /reports/generate           — Submit async report generation job (returns 202) [auth required]
+  GET  /reports/by-ticker/{symbol} — Paginated history of reports for a symbol [auth required]
   GET  /reports/stream/{job_id}    — SSE stream of pipeline progress events
   GET  /reports/{job_id}           — Poll job status or retrieve completed report (200/202/404)
 
-IMPORTANT: /stream/{job_id} is registered BEFORE /{job_id} to prevent FastAPI treating
-"stream" as an integer job_id value and returning 422.
+IMPORTANT: /by-ticker/{symbol} and /stream/{job_id} are registered BEFORE /{job_id} to prevent
+FastAPI treating "by-ticker" or "stream" as an integer job_id value and returning 422.
 
 All DB operations use SQLAlchemy Core Table reflection (autoload_with=db_engine).
 No ORM models — consistent with reasoning/app/pipeline/storage.py pattern.
@@ -18,12 +21,15 @@ import asyncio
 import json
 import logging
 
-from fastapi import BackgroundTasks, HTTPException, Request
+from fastapi import BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from pydantic import BaseModel
-from sqlalchemy import MetaData, Table, text
+from sqlalchemy import MetaData, Table, distinct, func, select, text
 from sse_starlette import EventSourceResponse
+
+from reasoning.app.auth import require_auth
+from reasoning.app.schemas import ReportHistoryItem, ReportHistoryResponse
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +154,63 @@ def _get_job(db_engine, job_id: int) -> dict | None:
     return dict(row._mapping)
 
 
+def _query_report_history(
+    db_engine, symbol: str, page: int, per_page: int
+) -> tuple[list[dict], int]:
+    """Return paginated report history for a ticker symbol.
+
+    Groups vi+en reports by generated_at (one entry per generation run).
+    Extracts tier and narrative from report_json JSONB via raw SQL expressions.
+    Returns (items_list, total_count).
+    """
+    metadata = MetaData()
+    reports = Table("reports", metadata, autoload_with=db_engine)
+
+    asset_id_pattern = f"{symbol.upper()}:%"
+    where_clause = reports.c.asset_id.like(asset_id_pattern)
+
+    # Main query: one row per generation run (grouped by generated_at)
+    history_stmt = (
+        select(
+            func.min(reports.c.report_id).label("report_id"),
+            reports.c.generated_at,
+            text("MIN(report_json->'entry_quality'->>'tier') AS tier"),
+            text("MIN(report_json->'entry_quality'->>'narrative') AS verdict"),
+        )
+        .where(where_clause)
+        .group_by(reports.c.generated_at)
+        .order_by(reports.c.generated_at.desc())
+        .limit(per_page)
+        .offset((page - 1) * per_page)
+    )
+
+    # Count query: distinct generation runs
+    count_stmt = select(func.count(distinct(reports.c.generated_at))).where(where_clause)
+
+    with db_engine.connect() as conn:
+        rows = conn.execute(history_stmt).fetchall()
+        total_count = conn.execute(count_stmt).scalar() or 0
+
+    items = []
+    for row in rows:
+        mapping = dict(row._mapping)
+        generated_at = mapping.get("generated_at")
+        if generated_at is not None and hasattr(generated_at, "isoformat"):
+            generated_at = generated_at.isoformat()
+        else:
+            generated_at = str(generated_at) if generated_at is not None else ""
+        items.append(
+            {
+                "report_id": int(mapping["report_id"]),
+                "generated_at": generated_at,
+                "tier": mapping.get("tier") or "Unknown",
+                "verdict": mapping.get("verdict") or "",
+            }
+        )
+
+    return items, int(total_count)
+
+
 def _get_report_by_job(db_engine, job_id: int) -> dict | None:
     """JOIN report_jobs → reports and return the report columns.
 
@@ -247,6 +310,7 @@ async def generate(
     body: GenerateRequest,
     background_tasks: BackgroundTasks,
     request: Request,
+    _: dict = Depends(require_auth),
 ) -> JSONResponse:
     """Submit an async report generation job.
 
@@ -279,6 +343,34 @@ async def generate(
     return JSONResponse(
         status_code=202,
         content={"job_id": job_id, "status": "pending"},
+    )
+
+
+@router.get("/by-ticker/{symbol}", response_model=ReportHistoryResponse)
+async def get_report_history(
+    symbol: str,
+    page: int = 1,
+    per_page: int = 20,
+    request: Request = ...,
+    _: dict = Depends(require_auth),
+) -> ReportHistoryResponse:
+    """Return paginated report history for a ticker symbol.
+
+    Groups vi+en reports by generated_at — one entry per generation run.
+    Returns newest reports first.
+
+    Returns 200 with empty items and total=0 for unknown symbols.
+    Returns 401 if Authorization header is missing.
+    """
+    items, total = _query_report_history(
+        request.app.state.db_engine, symbol, page, per_page
+    )
+    return ReportHistoryResponse(
+        symbol=symbol.upper(),
+        page=page,
+        per_page=per_page,
+        total=total,
+        items=items,
     )
 
 

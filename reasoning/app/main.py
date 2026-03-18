@@ -9,8 +9,9 @@ Starts with lifespan context manager that initializes:
 
 Routers registered:
   - health:   GET /health
-  - reports:  POST /reports/generate, GET /reports/{job_id}
-  - tickers:  GET /tickers/{symbol}/ohlcv
+  - reports:  POST /reports/generate [auth], GET /reports/by-ticker/{symbol} [auth],
+              GET /reports/stream/{job_id}, GET /reports/{job_id}
+  - tickers:  GET /tickers/{symbol}/ohlcv [auth]
 """
 import logging
 
