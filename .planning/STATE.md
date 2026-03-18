@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Product Frontend & User Experience
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-03-18T16:13:19.084Z"
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-18T17:31:25.231Z"
 last_activity: 2026-03-18 — 11-02 Task 1 complete (watchlist GET/PUT API, 42 tests passing)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 5
 ---
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 5%
 | 11-supabase-auth-and-per-user-watchlist (02) | 1 | 5 min | 5 min |
 
 *Updated after each plan completion*
+| Phase 12-next-js-core-shell-and-dashboard P01 | 11 | 2 tasks | 35 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Decisions from 11-01 execution:
 - PyJWKClient module-level singleton initialized from SUPABASE_JWKS_URL — at module level for 300s JWKS cache to be shared across requests
 - [Phase 11-supabase-auth-and-per-user-watchlist]: Static TICKER_METADATA dict used for symbol validation — ticker universe is static for VN30+gold; faster and avoids coupling to DB state
 - [Phase 11-supabase-auth-and-per-user-watchlist]: Zero-rows triggers seeding on GET /watchlist — explicitly clearing re-seeds on next GET, acceptable for v3.0
+- [Phase 12-next-js-core-shell-and-dashboard]: proxy.ts (not middleware.ts) is the Next.js 16 file convention — middleware.ts deprecated, export must be named 'proxy'
+- [Phase 12-next-js-core-shell-and-dashboard]: Supabase getUser() used in proxy.ts (not getSession()) — validates JWT with JWKS, not just cookie presence
+- [Phase 12-next-js-core-shell-and-dashboard]: force-dynamic on (dashboard)/page.tsx prevents ISR cache pressure from authenticated content
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T16:13:19.081Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-next-js-core-shell-and-dashboard/12-CONTEXT.md
+Last session: 2026-03-18T17:31:25.229Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None

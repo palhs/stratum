@@ -61,7 +61,7 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 
 ### Infrastructure
 
-- [ ] **INFR-01**: Next.js frontend runs as Docker service with mem_limit on VPS
+- [x] **INFR-01**: Next.js frontend runs as Docker service with mem_limit on VPS
 - [ ] **INFR-02**: nginx reverse proxy with SSE buffering disabled for stream routes
 - [x] **INFR-03**: FastAPI reasoning-engine validates Supabase JWT on protected endpoints
 - [x] **INFR-04**: New GET /tickers/{symbol}/ohlcv endpoint serves chart data
@@ -125,7 +125,7 @@ Deferred to v4.0+.
 | DING-02 | Phase 16 | Pending |
 | DING-03 | Phase 16 | Pending |
 | DICT-01 | Phase 16 | Pending |
-| INFR-01 | Phase 12 | Pending |
+| INFR-01 | Phase 12 | Complete |
 | INFR-02 | Phase 15 | Pending |
 | INFR-03 | Phase 10 | Complete |
 | INFR-04 | Phase 10 | Complete |
