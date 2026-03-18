@@ -6,6 +6,10 @@ real database/service connections.
 
 SRVC-01: POST /reports/generate returns 202 with job_id and status=pending
 SRVC-02: GET /reports/{job_id} returns report or status based on job state
+
+Note: POST /reports/generate now requires JWT auth (Phase 10-02).
+These tests override the require_auth dependency so they focus on endpoint logic,
+not JWT validation (which is tested separately in test_auth.py).
 """
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,6 +18,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from reasoning.app.auth import require_auth
 from reasoning.app.routers import reports
 
 
@@ -33,12 +38,23 @@ def _make_app_state():
     return state
 
 
+async def _mock_require_auth():
+    """Dummy auth dependency — returns a fake payload without JWT validation."""
+    return {"sub": "test-user", "aud": "authenticated"}
+
+
 @pytest.fixture(scope="module")
 def test_app():
-    """Minimal FastAPI app with reports router and mocked app.state."""
+    """Minimal FastAPI app with reports router and mocked app.state.
+
+    require_auth is overridden at the app level so endpoint logic tests can
+    call POST /reports/generate without providing a real JWT token.
+    """
     app = FastAPI()
     app.include_router(reports.router, prefix="/reports", tags=["reports"])
     app.state = _make_app_state()
+    # Override auth dependency — these tests are for endpoint logic, not JWT validation
+    app.dependency_overrides[require_auth] = _mock_require_auth
     return app
 
 
