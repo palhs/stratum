@@ -10,6 +10,7 @@ Exports:
     prefetch         — Two-stage prefetch: retrieve all data before graph runs
 """
 
+import asyncio
 import copy
 import uuid
 import time
@@ -33,6 +34,7 @@ async def generate_report(
     neo4j_driver,
     qdrant_client,
     db_uri: str,
+    sse_queue: asyncio.Queue | None = None,
 ) -> tuple[int, int]:
     """
     Full pipeline entry point — orchestrates prefetch → run_graph(vi) → write → run_graph(en) → write.
@@ -66,17 +68,18 @@ async def generate_report(
     # Stage 1: Prefetch all data sources
     state = prefetch(ticker, asset_type, db_engine, neo4j_driver, qdrant_client)
 
-    # Stage 2a: Vietnamese graph execution
+    # Stage 2a: Vietnamese graph execution — pass sse_queue for node-level progress events
     state_vi = copy.deepcopy(state)
     thread_id_vi = f"{ticker}-vi-{uuid.uuid4()}"
     start_vi = time.monotonic()
-    result_vi = await run_graph(state_vi, "vi", thread_id_vi, db_uri)
+    result_vi = await run_graph(state_vi, "vi", thread_id_vi, db_uri, queue=sse_queue)
     duration_vi = int((time.monotonic() - start_vi) * 1000)
 
     # Stage 3a: Store Vietnamese report
     vi_id = write_report(db_engine, ticker, "vi", result_vi["report_output"], duration_vi)
 
     # Stage 2b: English graph execution (deep copy from original prefetch state)
+    # No queue for en run — vi already showed all 7 steps (single-pass progress perception)
     state_en = copy.deepcopy(state)
     thread_id_en = f"{ticker}-en-{uuid.uuid4()}"
     start_en = time.monotonic()

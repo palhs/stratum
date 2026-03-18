@@ -276,7 +276,9 @@ async def _run_pipeline(job_id: int, ticker: str, asset_type: str, app_state) ->
         await _emit(app_state, job_id, {"event_type": "job_started", "job_id": job_id, "ticker": ticker})
 
         await _emit(app_state, job_id, {"event_type": "pipeline_vi_start", "language": "vi"})
-        # generate_report handles both vi + en internally; we emit language events around the full call
+        # generate_report handles both vi + en internally; we emit language events around the full call.
+        # Pass sse_queue so generate_report can forward per-node node_start/node_complete events.
+        queue = app_state.job_queues.get(job_id)
         vi_id, en_id = await _fn(
             ticker=ticker,
             asset_type=asset_type,
@@ -284,6 +286,7 @@ async def _run_pipeline(job_id: int, ticker: str, asset_type: str, app_state) ->
             neo4j_driver=app_state.neo4j_driver,
             qdrant_client=app_state.qdrant_client,
             db_uri=app_state.db_uri,
+            sse_queue=queue,
         )
         await _emit(app_state, job_id, {"event_type": "pipeline_vi_complete", "language": "vi"})
         await _emit(app_state, job_id, {"event_type": "pipeline_en_complete", "language": "en"})

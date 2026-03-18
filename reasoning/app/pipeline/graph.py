@@ -21,6 +21,7 @@ Design decisions (locked):
 
 from __future__ import annotations
 
+import asyncio
 import copy
 from typing import Any
 
@@ -99,6 +100,7 @@ async def run_graph(
     language: str,
     thread_id: str,
     db_uri: str,
+    queue: asyncio.Queue | None = None,
 ) -> ReportState:
     """
     Compile the graph with AsyncPostgresSaver and invoke it with the given state.
@@ -108,6 +110,9 @@ async def run_graph(
         language:  Report language code — "vi" or "en". Set on state before invocation.
         thread_id: LangGraph checkpoint thread ID for resume/replay support.
         db_uri:    PostgreSQL connection URI (without schema override).
+        queue:     Optional asyncio.Queue for SSE progress events. When provided,
+                   uses astream(stream_mode="tasks") to emit node_start and
+                   node_complete events per node. When None, uses ainvoke (fast path).
 
     Returns:
         The final ReportState after all nodes have executed.
@@ -130,6 +135,30 @@ async def run_graph(
     async with AsyncPostgresSaver.from_conn_string(conn_str) as checkpointer:
         compiled = build_graph().compile(checkpointer=checkpointer)
         config = {"configurable": {"thread_id": thread_id}}
-        result = await compiled.ainvoke(working_state, config=config)
 
-    return result
+        if queue is None:
+            # Fast path: no streaming needed — use ainvoke (no regression)
+            result = await compiled.ainvoke(working_state, config=config)
+            return result
+
+        # Streaming path: emit node_start and node_complete events via astream
+        async for item in compiled.astream(working_state, config=config, stream_mode="tasks"):
+            data = item if isinstance(item, dict) else {}
+            # TasksStreamPart: {"type": "tasks", "ns": ..., "data": TaskPayload|TaskResultPayload}
+            payload = data.get("data", {})
+            node_name = payload.get("name") if isinstance(payload, dict) else None
+            if node_name:
+                if "input" in payload:  # TaskPayload — start event
+                    await queue.put({"event_type": "node_start", "node": node_name})
+                elif "result" in payload or "error" in payload:  # TaskResultPayload — finish
+                    error = payload.get("error")
+                    await queue.put({
+                        "event_type": "node_complete",
+                        "node": node_name,
+                        "error": str(error) if error else None,
+                    })
+
+        # Retrieve final state from checkpoint after stream exhausted
+        # astream does NOT return final state directly — must use aget_state
+        final = await compiled.aget_state(config)
+        return final.values
