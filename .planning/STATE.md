@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Product Frontend & User Experience
-status: ready_to_plan
+status: in_progress
 last_updated: "2026-03-18"
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Project State
@@ -24,24 +24,24 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 Milestone: v3.0 — Product Frontend & User Experience
 Phase: 10 of 16 (Backend API Contracts and JWT Middleware)
-Plan: 0 of ? (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-18 — v3.0 roadmap created (7 phases, 33 requirements)
+Plan: 1 of 1 (10-01 complete)
+Status: In progress
+Last activity: 2026-03-18 — 10-01 complete (JWT auth dependency, OHLCV endpoint, Pydantic schemas)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░] 3%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0 (v3.0)
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 1 (v3.0)
+- Average duration: 5 min
+- Total execution time: 5 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| — | — | — | — |
+| 10-backend-api-contracts-and-jwt-middleware | 1 | 5 min | 5 min |
 
 *Updated after each plan completion*
 
@@ -58,6 +58,12 @@ Key decisions active for v3.0:
 - SSE proxied via next.config.ts rewrites (not API routes) — nginx buffering disabled on /api/stream/* routes
 - Supabase service role key must NEVER carry NEXT_PUBLIC_ prefix
 
+Decisions from 10-01 execution:
+- HTTPBearer(auto_error=False) pattern — returns 401 on missing header, not FastAPI default 403
+- GOLD_TICKERS set (GLD/IAU/SGOL) routes to gold_etf_ohlcv (ticker column) vs stock_ohlcv (symbol column)
+- MA50/MA200 via SQL window functions rows=(-49,0) and rows=(-199,0) — no Python-side calculation
+- Table autoload_with=db_engine chosen over pre-defined ORM models to avoid metadata coupling
+
 ### Pending Todos
 
 None yet.
@@ -71,5 +77,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: v3.0 roadmap created — ready to plan Phase 10
+Stopped at: Completed 10-01-PLAN.md — JWT auth dependency, OHLCV endpoint, Pydantic schemas
 Resume file: None

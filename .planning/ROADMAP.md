@@ -157,7 +157,7 @@ Plans:
 | 8. FastAPI Gateway | v2.0 | 3/3 | Complete | 2026-03-16 |
 | 8.1. Docker Runtime Fixes | v2.0 | 1/1 | Complete | 2026-03-16 |
 | 9. Production Hardening | v2.0 | 3/3 | Complete | 2026-03-17 |
-| 10. Backend API Contracts and JWT Middleware | v3.0 | 0/2 | Not started | - |
+| 10. Backend API Contracts and JWT Middleware | 1/2 | In Progress|  | - |
 | 11. Supabase Auth and Per-User Watchlist | v3.0 | 0/? | Not started | - |
 | 12. Next.js Core Shell and Dashboard | v3.0 | 0/? | Not started | - |
 | 13. Report Generation with SSE Progress | v3.0 | 0/? | Not started | - |
