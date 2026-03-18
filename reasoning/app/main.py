@@ -10,13 +10,14 @@ Starts with lifespan context manager that initializes:
 Routers registered:
   - health:   GET /health
   - reports:  POST /reports/generate, GET /reports/{job_id}
+  - tickers:  GET /tickers/{symbol}/ohlcv
 """
 import logging
 
 from fastapi import FastAPI
 
 from reasoning.app.dependencies import lifespan
-from reasoning.app.routers import health, reports
+from reasoning.app.routers import health, reports, tickers
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,5 +36,8 @@ app.include_router(health.router)
 
 # Reports router — prefix /reports; stream endpoint (Plan 03) will be added before /{job_id}
 app.include_router(reports.router, prefix="/reports", tags=["reports"])
+
+# Tickers router — prefix /tickers; requires Supabase JWT auth
+app.include_router(tickers.router, prefix="/tickers", tags=["tickers"])
 
 logger.info("Stratum Reasoning Engine configured.")
