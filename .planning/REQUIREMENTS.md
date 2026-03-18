@@ -97,45 +97,45 @@ Deferred to v4.0+.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| AUTH-04 | — | Pending |
-| AUTH-05 | — | Pending |
-| WTCH-01 | — | Pending |
-| WTCH-02 | — | Pending |
-| WTCH-03 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
-| RGEN-01 | — | Pending |
-| RGEN-02 | — | Pending |
-| RGEN-03 | — | Pending |
-| RVEW-01 | — | Pending |
-| RVEW-02 | — | Pending |
-| RVEW-03 | — | Pending |
-| RVEW-04 | — | Pending |
-| RHST-01 | — | Pending |
-| RHST-02 | — | Pending |
-| RHST-03 | — | Pending |
-| RHST-04 | — | Pending |
-| DING-01 | — | Pending |
-| DING-02 | — | Pending |
-| DING-03 | — | Pending |
-| DICT-01 | — | Pending |
-| INFR-01 | — | Pending |
-| INFR-02 | — | Pending |
-| INFR-03 | — | Pending |
-| INFR-04 | — | Pending |
-| INFR-05 | — | Pending |
+| AUTH-01 | Phase 11 | Pending |
+| AUTH-02 | Phase 11 | Pending |
+| AUTH-03 | Phase 11 | Pending |
+| AUTH-04 | Phase 11 | Pending |
+| AUTH-05 | Phase 11 | Pending |
+| WTCH-01 | Phase 11 | Pending |
+| WTCH-02 | Phase 11 | Pending |
+| WTCH-03 | Phase 11 | Pending |
+| DASH-01 | Phase 12 | Pending |
+| DASH-02 | Phase 12 | Pending |
+| DASH-03 | Phase 12 | Pending |
+| DASH-04 | Phase 12 | Pending |
+| DASH-05 | Phase 12 | Pending |
+| RGEN-01 | Phase 13 | Pending |
+| RGEN-02 | Phase 13 | Pending |
+| RGEN-03 | Phase 13 | Pending |
+| RVEW-01 | Phase 14 | Pending |
+| RVEW-02 | Phase 14 | Pending |
+| RVEW-03 | Phase 14 | Pending |
+| RVEW-04 | Phase 14 | Pending |
+| RHST-01 | Phase 14 | Pending |
+| RHST-02 | Phase 14 | Pending |
+| RHST-03 | Phase 14 | Pending |
+| RHST-04 | Phase 14 | Pending |
+| DING-01 | Phase 16 | Pending |
+| DING-02 | Phase 16 | Pending |
+| DING-03 | Phase 16 | Pending |
+| DICT-01 | Phase 16 | Pending |
+| INFR-01 | Phase 12 | Pending |
+| INFR-02 | Phase 15 | Pending |
+| INFR-03 | Phase 10 | Pending |
+| INFR-04 | Phase 10 | Pending |
+| INFR-05 | Phase 10 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 33 total
-- Mapped to phases: 0
-- Unmapped: 33 ⚠️
+- Mapped to phases: 33
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 after v3.0 roadmap creation — all 33 requirements mapped*
