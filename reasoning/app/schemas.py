@@ -4,6 +4,8 @@ Shared Pydantic v2 response schemas for the Stratum Reasoning Engine API.
 Used by:
   - GET /tickers/{symbol}/ohlcv  → OHLCVPoint, OHLCVResponse
   - GET /tickers/{symbol}/reports → ReportHistoryItem, ReportHistoryResponse (Phase 10-02)
+  - GET /watchlist → WatchlistItem, WatchlistResponse (Phase 11-02)
+  - PUT /watchlist → WatchlistUpdate (Phase 11-02)
 """
 from typing import Optional
 
@@ -51,3 +53,23 @@ class ReportHistoryResponse(BaseModel):
     per_page: int
     total: int
     items: list[ReportHistoryItem]
+
+
+class WatchlistItem(BaseModel):
+    """Single ticker in a user's watchlist."""
+
+    symbol: str
+    name: str
+    asset_type: str  # "equity" | "gold_etf"
+
+
+class WatchlistResponse(BaseModel):
+    """User's full watchlist."""
+
+    tickers: list[WatchlistItem]
+
+
+class WatchlistUpdate(BaseModel):
+    """Payload for PUT /watchlist — full list replacement."""
+
+    tickers: list[str]  # list of symbol strings
