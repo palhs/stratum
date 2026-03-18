@@ -94,7 +94,7 @@ Declared values (multiples of 4 only):
 | 3xl | 64px | Page-level top/bottom breathing room |
 
 **Exceptions:**
-- Tier badge: `px-4 py-1.5` (16px / 6px) — matched to hero element prominence; approved exception to pure 4px grid
+- Tier badge: `px-4 py-2` (16px / 8px) — matched to hero element prominence; fits the 4px grid
 - Touch targets (quick-add buttons in empty state): minimum 44px height — WCAG 2.5.5 requirement
 
 ---
@@ -105,12 +105,12 @@ Declared values (multiples of 4 only):
 |------|------|--------|-------------|----------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | `text-sm` | Company name on card, last report date, form labels |
 | Label | 12px | 400 (regular) | 1.4 | `text-xs` | "Last report:" prefix text, meta labels |
-| Heading | 20px | 600 (semibold) | 1.2 | `text-xl font-semibold` | Ticker symbol on card (e.g., "VNM"), page headings ("Your Watchlist") |
+| Heading | 20px | 700 (bold) | 1.2 | `text-xl font-bold` | Ticker symbol on card (e.g., "VNM"), page headings ("Your Watchlist") |
 | Display | 28px | 700 (bold) | 1.1 | `text-2xl font-bold` | Tier badge text inside the hero badge element |
 
 **Font stack:** Inter, system-ui, -apple-system, sans-serif (shadcn/ui default; no Google Fonts import to keep CSP clean and reduce TTFB).
 
-**Weight constraint:** Exactly 2 weights in use — 400 (body/label) and 600/700 (headings/badge). The tier badge uses 700 for maximum legibility at hero scale.
+**Weight constraint:** Exactly 2 weights in use — 400 (body/label) and 700 (headings/badge). Both Heading and Display use 700 for strong visual hierarchy.
 
 ---
 
@@ -186,14 +186,14 @@ Dark mode variants appended: `dark:bg-teal-900/30 dark:text-teal-300` etc. per R
 
 ### Dashboard Page (`/`)
 - Full-width layout, no sidebar
-- Page heading: "Your Watchlist" — `text-xl font-semibold`
+- Page heading: "Your Watchlist" — `text-xl font-bold`
 - Card grid: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6`
 - Card max-width: unconstrained (fills grid column)
 - Card internal layout: `p-4 space-y-3` with items stacked top-to-bottom per locked visual order
 
 ### Ticker Card Internal Order
-1. **Symbol + company name** — `text-xl font-semibold` for symbol, `text-sm text-muted-foreground` for name
-2. **Tier badge** — centered horizontally, `text-2xl font-bold px-4 py-1.5`, full badge height
+1. **Symbol + company name** — `text-xl font-bold` for symbol, `text-sm text-muted-foreground` for name
+2. **Tier badge** — centered horizontally, `text-2xl font-bold px-4 py-2`, full badge height
 3. **Sparkline** — full card width, height 40px, SVG polyline
 4. **Last report date** — `text-xs text-muted-foreground`, e.g. "Last report: 15 Mar 2026"
 
