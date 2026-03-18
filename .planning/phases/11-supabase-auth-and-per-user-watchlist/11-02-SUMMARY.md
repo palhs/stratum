@@ -85,9 +85,9 @@ Each task was committed atomically:
 
 None — plan executed exactly as written. The `os.environ.setdefault("SUPABASE_JWKS_URL", ...)` line was added to `test_watchlist.py` following the existing pattern from `test_openapi.py` (required since `auth.py` reads the env var at module import time).
 
-## Pending: Task 2 — Supabase Dashboard Configuration
+## Deferred: Task 2 — Supabase Dashboard Configuration
 
-Task 2 is a `checkpoint:human-action` requiring manual configuration of the Supabase project dashboard. This cannot be automated. See checkpoint return message for full instructions.
+Task 2 is a `checkpoint:human-action` requiring manual Supabase dashboard configuration (invite-only auth, Site URL, JWKS URL env var). Deferred to post-frontend implementation — Site URL and invite flow are more practical once the FE is running.
 
 ## Self-Check: PASSED
 
