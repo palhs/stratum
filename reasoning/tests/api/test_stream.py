@@ -169,3 +169,96 @@ async def test_sse_queue_cleanup(stream_app):
     assert stream_app.state.job_queues.get(job_id) is None, (
         f"Expected job_id {job_id} to be removed from job_queues after stream close"
     )
+
+
+@pytest.mark.asyncio
+async def test_sse_stream_node_start_and_complete_events(stream_app):
+    """SSE stream emits node_transition events for node_start and node_complete."""
+    job_id = 10
+    queue = asyncio.Queue()
+    queue.put_nowait({"event_type": "node_start", "node": "macro_regime"})
+    queue.put_nowait({"event_type": "node_complete", "node": "macro_regime", "error": None})
+    queue.put_nowait({"event_type": "node_start", "node": "valuation"})
+    queue.put_nowait({"event_type": "node_complete", "node": "valuation", "error": None})
+    queue.put_nowait(None)  # sentinel
+
+    stream_app.state.job_queues = {job_id: queue}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=stream_app), base_url="http://test"
+    ) as client:
+        async with client.stream("GET", f"/reports/stream/{job_id}") as response:
+            assert response.status_code == 200
+            body = await response.aread()
+            text = body.decode("utf-8")
+
+    events = _parse_sse_events(text)
+    node_events = [e for e in events if e.get("event") == "node_transition"]
+    assert len(node_events) == 4  # 2 starts + 2 completes
+
+    # Verify first event is node_start for macro_regime
+    first = json.loads(node_events[0]["data"])
+    assert first["event_type"] == "node_start"
+    assert first["node"] == "macro_regime"
+
+    # Verify second event is node_complete for macro_regime
+    second = json.loads(node_events[1]["data"])
+    assert second["event_type"] == "node_complete"
+    assert second["node"] == "macro_regime"
+    assert second["error"] is None
+
+
+@pytest.mark.asyncio
+async def test_sse_stream_node_failure_event(stream_app):
+    """SSE stream emits node_transition with error field when a node fails."""
+    job_id = 11
+    queue = asyncio.Queue()
+    queue.put_nowait({"event_type": "node_start", "node": "macro_regime"})
+    queue.put_nowait({"event_type": "node_complete", "node": "macro_regime", "error": "LLM timeout"})
+    queue.put_nowait(None)
+
+    stream_app.state.job_queues = {job_id: queue}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=stream_app), base_url="http://test"
+    ) as client:
+        async with client.stream("GET", f"/reports/stream/{job_id}") as response:
+            body = await response.aread()
+            text = body.decode("utf-8")
+
+    events = _parse_sse_events(text)
+    node_events = [e for e in events if e.get("event") == "node_transition"]
+    # Find the node_complete event
+    complete_data = json.loads(node_events[1]["data"])
+    assert complete_data["event_type"] == "node_complete"
+    assert complete_data["error"] == "LLM timeout"
+
+
+@pytest.mark.asyncio
+async def test_sse_stream_all_seven_nodes(stream_app):
+    """Full pipeline emits node_start + node_complete for all 7 nodes."""
+    job_id = 12
+    queue = asyncio.Queue()
+    nodes = ["macro_regime", "valuation", "structure", "conflict",
+             "entry_quality", "grounding_check", "compose_report"]
+    for node in nodes:
+        queue.put_nowait({"event_type": "node_start", "node": node})
+        queue.put_nowait({"event_type": "node_complete", "node": node, "error": None})
+    queue.put_nowait(None)
+
+    stream_app.state.job_queues = {job_id: queue}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=stream_app), base_url="http://test"
+    ) as client:
+        async with client.stream("GET", f"/reports/stream/{job_id}") as response:
+            body = await response.aread()
+            text = body.decode("utf-8")
+
+    events = _parse_sse_events(text)
+    node_events = [e for e in events if e.get("event") == "node_transition"]
+    assert len(node_events) == 14  # 7 starts + 7 completes
+
+    # Verify all node names present
+    node_names = {json.loads(e["data"])["node"] for e in node_events}
+    assert node_names == set(nodes)
