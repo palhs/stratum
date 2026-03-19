@@ -116,7 +116,7 @@ New components required for this phase. All existing components (TierBadge, Badg
 ### BilingualToggle
 - Floating position: fixed top-4 right-4 (z-index above page content)
 - Implementation: Two-segment button group — "VI" | "EN" — using shadcn Button variant="outline" with active segment showing variant="default"
-- Size: text-sm, px-3 py-1.5 (compact, not full touch target — this is a secondary persistent control)
+- Size: text-sm, px-4 py-2 (16px horizontal / 8px vertical — md/sm tokens from the declared spacing scale)
 - State persisted: localStorage key "stratum-report-lang", values "vi" | "en"
 - Default: "vi" (Vietnamese primary per PROJECT.md)
 - Transition: instant switch — no loading state (both content versions fetched upfront)
@@ -148,7 +148,7 @@ New components required for this phase. All existing components (TierBadge, Badg
   - Layout: horizontal flex, items-center, gap-3, py-3, border-b border-border
   - Min height: 44px (touch target compliance)
   - Date: text-sm text-muted-foreground, fixed width ~80px
-  - TierBadge: existing component, smaller variant — text-sm font-semibold (override display size for timeline density)
+  - TierBadge: existing component, smaller variant — text-sm font-bold (override display size for timeline density; bold (700) is the only heavy weight in the two-weight contract)
   - Verdict snippet: text-sm text-foreground, truncated with line-clamp-1, flex-1
   - Change arrow: lucide ArrowUp (teal-600) / ArrowDown (rose-600) / no element — rightmost, w-4 h-4
   - Active row: left border 2px solid hsl(var(--primary)), bg-muted/50
