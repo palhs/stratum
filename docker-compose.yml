@@ -291,7 +291,7 @@ services:
   # ===========================================================================
   # REASONING TIER — FastAPI reasoning-engine service
   # Wraps LangGraph pipeline; serves report generation, retrieval, and SSE streaming
-  # Profile: reasoning | Port: 8001:8000 (host:container)
+  # Profile: reasoning | No host port — accessed via nginx on port 80/443
   # ===========================================================================
 
   reasoning-engine:
@@ -331,7 +331,7 @@ services:
   # ===========================================================================
   # FRONTEND TIER — Next.js 15 standalone app
   # Auth via Supabase SSR; proxies API calls to reasoning-engine
-  # Profile: reasoning | Port: 3000:3000 (host:container)
+  # Profile: reasoning | No host port — accessed via nginx on port 80/443
   # ===========================================================================
 
   frontend:
