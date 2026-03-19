@@ -1,18 +1,21 @@
 """
 Reports router — POST /reports/generate, GET /reports/by-ticker/{symbol},
+                 GET /reports/by-report-id/{report_id},
                  GET /reports/stream/{job_id}, GET /reports/{job_id}.
 
 Phase 8 | Plans 02-03 | Requirements: SRVC-01, SRVC-02, SRVC-03
 Phase 10 | Plan 02     | Requirements: INFR-05
+Phase 14 | Plan 01     | Requirements: RVEW-01, RVEW-04, RHST-03
 
 Endpoints:
-  POST /reports/generate           — Submit async report generation job (returns 202) [auth required]
-  GET  /reports/by-ticker/{symbol} — Paginated history of reports for a symbol [auth required]
-  GET  /reports/stream/{job_id}    — SSE stream of pipeline progress events
-  GET  /reports/{job_id}           — Poll job status or retrieve completed report (200/202/404)
+  POST /reports/generate                   — Submit async report generation job (returns 202) [auth required]
+  GET  /reports/by-ticker/{symbol}         — Paginated history of reports for a symbol [auth required]
+  GET  /reports/by-report-id/{report_id}  — Full report content (both vi and en) for a given report_id [auth required]
+  GET  /reports/stream/{job_id}            — SSE stream of pipeline progress events
+  GET  /reports/{job_id}                   — Poll job status or retrieve completed report (200/202/404)
 
-IMPORTANT: /by-ticker/{symbol} and /stream/{job_id} are registered BEFORE /{job_id} to prevent
-FastAPI treating "by-ticker" or "stream" as an integer job_id value and returning 422.
+IMPORTANT: /by-ticker/{symbol}, /by-report-id/{report_id}, and /stream/{job_id} are registered
+BEFORE /{job_id} to prevent FastAPI treating string path segments as an integer job_id and returning 422.
 
 All DB operations use SQLAlchemy Core Table reflection (autoload_with=db_engine).
 No ORM models — consistent with reasoning/app/pipeline/storage.py pattern.
@@ -29,7 +32,7 @@ from sqlalchemy import MetaData, Table, distinct, func, select, text
 from sse_starlette import EventSourceResponse
 
 from reasoning.app.auth import require_auth
-from reasoning.app.schemas import ReportHistoryItem, ReportHistoryResponse
+from reasoning.app.schemas import ReportHistoryItem, ReportHistoryResponse, ReportContentResponse
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +214,55 @@ def _query_report_history(
     return items, int(total_count)
 
 
+def _get_report_content_by_id(db_engine, report_id: int) -> dict | None:
+    """Fetch both vi and en report rows for a given report_id's generation run."""
+    metadata = MetaData()
+    reports = Table("reports", metadata, autoload_with=db_engine)
+
+    with db_engine.connect() as conn:
+        anchor = conn.execute(
+            reports.select().where(reports.c.report_id == report_id)
+        ).fetchone()
+        if anchor is None:
+            return None
+        anchor_map = dict(anchor._mapping)
+
+        rows = conn.execute(
+            reports.select()
+            .where(reports.c.asset_id == anchor_map["asset_id"])
+            .where(reports.c.generated_at == anchor_map["generated_at"])
+        ).fetchall()
+
+    report_json = anchor_map.get("report_json") or {}
+    entry_quality = report_json.get("entry_quality", {})
+    generated_at = anchor_map.get("generated_at")
+    if generated_at is not None and hasattr(generated_at, "isoformat"):
+        generated_at = generated_at.isoformat()
+    else:
+        generated_at = str(generated_at) if generated_at is not None else ""
+
+    result = {
+        "report_id": report_id,
+        "generated_at": generated_at,
+        "tier": entry_quality.get("tier", "Unknown"),
+        "verdict": entry_quality.get("narrative", ""),
+        "macro_assessment": entry_quality.get("macro_assessment", ""),
+        "valuation_assessment": entry_quality.get("valuation_assessment", ""),
+        "structure_assessment": entry_quality.get("structure_assessment", ""),
+        "report_markdown_vi": None,
+        "report_markdown_en": None,
+    }
+    for row in rows:
+        m = dict(row._mapping)
+        lang = m.get("language")
+        if lang == "vi":
+            result["report_markdown_vi"] = m.get("report_markdown")
+        elif lang == "en":
+            result["report_markdown_en"] = m.get("report_markdown")
+
+    return result
+
+
 def _get_report_by_job(db_engine, job_id: int) -> dict | None:
     """JOIN report_jobs → reports and return the report columns.
 
@@ -375,6 +427,25 @@ async def get_report_history(
         total=total,
         items=items,
     )
+
+
+@router.get("/by-report-id/{report_id}", response_model=ReportContentResponse)
+async def get_report_content(
+    report_id: int,
+    request: Request,
+    _: dict = Depends(require_auth),
+) -> ReportContentResponse:
+    """Return full report content (both vi and en) for a given report_id.
+
+    The report_id identifies the anchor row; both language rows sharing the same
+    asset_id + generated_at are returned in a single response.
+
+    Returns 404 if report_id does not exist.
+    """
+    result = _get_report_content_by_id(request.app.state.db_engine, report_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
+    return ReportContentResponse(**result)
 
 
 @router.get("/stream/{job_id}")

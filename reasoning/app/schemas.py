@@ -6,6 +6,7 @@ Used by:
   - GET /tickers/{symbol}/reports → ReportHistoryItem, ReportHistoryResponse (Phase 10-02)
   - GET /watchlist → WatchlistItem, WatchlistResponse (Phase 11-02)
   - PUT /watchlist → WatchlistUpdate (Phase 11-02)
+  - GET /reports/by-report-id/{report_id} → ReportContentResponse (Phase 14-01)
 """
 from typing import Optional
 
@@ -53,6 +54,20 @@ class ReportHistoryResponse(BaseModel):
     per_page: int
     total: int
     items: list[ReportHistoryItem]
+
+
+class ReportContentResponse(BaseModel):
+    """Full report content for both languages, keyed by report_id."""
+
+    report_id: int
+    generated_at: str
+    tier: str
+    verdict: str
+    macro_assessment: str
+    valuation_assessment: str
+    structure_assessment: str
+    report_markdown_vi: str | None = None
+    report_markdown_en: str | None = None
 
 
 class WatchlistItem(BaseModel):
