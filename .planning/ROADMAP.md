@@ -174,6 +174,6 @@ Plans:
 | 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete    | 2026-03-18 | - |
 | 12. Next.js Core Shell and Dashboard | 2/2 | Complete    | 2026-03-18 | - |
 | 13. Report Generation with SSE Progress | 2/2 | Complete    | 2026-03-18 | - |
-| 14. Report View, TradingView Chart, and History | 1/3 | In Progress|  | - |
+| 14. Report View, TradingView Chart, and History | 2/3 | In Progress|  | - |
 | 15. nginx and Docker Compose Integration | v3.0 | 0/? | Not started | - |
 | 16. Document Ingestion and Dictionary Expansion | v3.0 | 0/? | Not started | - |
