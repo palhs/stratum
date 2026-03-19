@@ -37,16 +37,16 @@ Requirements for v3.0 Product Frontend & User Experience. Each maps to roadmap p
 
 ### Report View
 
-- [ ] **RVEW-01**: User sees report summary card (tier, sub-assessments, one-line verdict)
+- [x] **RVEW-01**: User sees report summary card (tier, sub-assessments, one-line verdict)
 - [ ] **RVEW-02**: User can expand summary to full bilingual markdown report
 - [ ] **RVEW-03**: User can toggle between Vietnamese and English report versions
-- [ ] **RVEW-04**: Report view includes interactive TradingView chart (weekly OHLCV + 50MA + 200MA, zoomable)
+- [x] **RVEW-04**: Report view includes interactive TradingView chart (weekly OHLCV + 50MA + 200MA, zoomable)
 
 ### Report History
 
 - [ ] **RHST-01**: User can view timeline of past reports per ticker
 - [ ] **RHST-02**: Timeline shows date and entry quality tier badge per report
-- [ ] **RHST-03**: User can open any historical report from the timeline
+- [x] **RHST-03**: User can open any historical report from the timeline
 - [ ] **RHST-04**: Timeline shows assessment change indicators (upgrade/downgrade arrows)
 
 ### Document Ingestion
@@ -113,13 +113,13 @@ Deferred to v4.0+.
 | RGEN-01 | Phase 13 | Complete |
 | RGEN-02 | Phase 13 | Complete |
 | RGEN-03 | Phase 13 | Complete |
-| RVEW-01 | Phase 14 | Pending |
+| RVEW-01 | Phase 14 | Complete |
 | RVEW-02 | Phase 14 | Pending |
 | RVEW-03 | Phase 14 | Pending |
-| RVEW-04 | Phase 14 | Pending |
+| RVEW-04 | Phase 14 | Complete |
 | RHST-01 | Phase 14 | Pending |
 | RHST-02 | Phase 14 | Pending |
-| RHST-03 | Phase 14 | Pending |
+| RHST-03 | Phase 14 | Complete |
 | RHST-04 | Phase 14 | Pending |
 | DING-01 | Phase 16 | Pending |
 | DING-02 | Phase 16 | Pending |
