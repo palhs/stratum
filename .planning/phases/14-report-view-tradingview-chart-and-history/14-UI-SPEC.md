@@ -59,14 +59,13 @@ Four roles, two weights. Consistent with existing dashboard component usage.
 | Display | 24px (text-2xl) | Bold (700) | 1.2 | Hero tier badge text inside summary card |
 | Heading | 20px (text-xl) | Bold (700) | 1.2 | Symbol heading ("Back to Dashboard" page title), section labels |
 | Body | 16px (text-base) | Regular (400) | 1.5 | Full report markdown body text, verdict text |
-| Label | 14px (text-sm) | Regular (400) | 1.4 | Sub-assessment labels (Macro/Valuation/Structure), history timeline metadata, dates |
-| Caption | 12px (text-xs) | Regular (400) | 1.4 | Secondary metadata — e.g. time elapsed, muted-foreground supplementary text |
-
-Note: Caption (12px) is a fifth size added for this phase because report history timelines require a distinct metadata level. This is an exception to the "3-4 sizes" guideline driven by content density requirements.
+| Label | 14px (text-sm) | Regular (400) | 1.4 | Sub-assessment labels (Macro/Valuation/Structure), history timeline metadata, dates, time elapsed, muted-foreground supplementary text |
 
 Weights used: Regular (400) and Bold (700) only. Semibold (600) is NOT introduced — existing bold/regular pattern from Phase 12 is preserved.
 
-Source: Existing TierBadge.tsx (text-2xl font-bold), TickerCard.tsx (text-xl font-bold, text-sm, text-xs), CONTEXT.md
+All secondary metadata (time elapsed, supplementary context text) uses Label (14px) at text-muted-foreground to communicate hierarchy through color contrast rather than a separate type size.
+
+Source: Existing TierBadge.tsx (text-2xl font-bold), TickerCard.tsx (text-xl font-bold, text-sm), CONTEXT.md
 
 ---
 
