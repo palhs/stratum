@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Product Frontend & User Experience
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-03-19T09:09:13.844Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-03-19T09:33:31.200Z"
 last_activity: 2026-03-18 — 11-02 Task 1 complete (watchlist GET/PUT API, 42 tests passing)
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 6
+  total_plans: 12
+  completed_plans: 12
   percent: 5
 ---
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 5%
 | Phase 14-report-view-tradingview-chart-and-history P01 | 8 | 2 tasks | 7 files |
 | Phase 14-report-view-tradingview-chart-and-history P02 | 4 | 2 tasks | 8 files |
 | Phase 14-report-view-tradingview-chart-and-history P03 | 4 | 2 tasks | 5 files |
+| Phase 15-nginx-and-docker-compose-integration P01 | 8 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Decisions from 11-01 execution:
 - [Phase 14-report-view-tradingview-chart-and-history]: vi.hoisted() required when vi.mock factory references variables defined outside factory — hoisting prevents initialization order errors
 - [Phase 14-report-view-tradingview-chart-and-history]: ArrowUp/ArrowDown from lucide-react with aria-label for tier change accessibility in HistoryTimeline
 - [Phase 14-report-view-tradingview-chart-and-history]: TIER_RANK integer map for ordinal tier comparison (Favorable=0 through Avoid=3) — reusable pattern for tier-ranked logic
+- [Phase 15-nginx-and-docker-compose-integration]: docker-compose.override.yml committed to git — contains no secrets, only local dev config per RESEARCH.md
+- [Phase 15-nginx-and-docker-compose-integration]: DOMAIN_PLACEHOLDER literal in production.conf — deployer does find-replace, simpler than envsubst templating
+- [Phase 15-nginx-and-docker-compose-integration]: NEXT_PUBLIC_API_URL defaults to empty string — same-origin fetch for local dev, production .env sets full domain URL
 
 ### Pending Todos
 
@@ -119,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T09:09:13.837Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-nginx-and-docker-compose-integration/15-CONTEXT.md
+Last session: 2026-03-19T09:33:21.753Z
+Stopped at: Completed 15-01-PLAN.md
+Resume file: None

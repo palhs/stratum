@@ -53,7 +53,7 @@ See: `.planning/milestones/v2.0-ROADMAP.md` for full details.
 - [x] **Phase 12: Next.js Core Shell and Dashboard** — Scaffolded Next.js Docker service, login page, dashboard with watchlist cards (tier badge, sparkline, last report date) (completed 2026-03-18)
 - [x] **Phase 13: Report Generation with SSE Progress** — Generate Report button wired to FastAPI, real-time named pipeline steps via SSE, disabled state during active run (completed 2026-03-18)
 - [x] **Phase 14: Report View, TradingView Chart, and History** — Full report expand, bilingual toggle, TradingView OHLCV chart, report history timeline with assessment change indicators (completed 2026-03-19)
-- [ ] **Phase 15: nginx and Docker Compose Integration** — nginx reverse proxy with SSE buffering disabled, TLS, CORS, end-to-end production wiring
+- [x] **Phase 15: nginx and Docker Compose Integration** — nginx reverse proxy with SSE buffering disabled, TLS, CORS, end-to-end production wiring (completed 2026-03-19)
 - [ ] **Phase 16: Document Ingestion and Dictionary Expansion** — FOMC/SBV n8n ingestion pipelines with Qdrant deduplication, Vietnamese financial dictionary expanded to 300+ terms
 
 ## Phase Details
@@ -177,5 +177,5 @@ Plans:
 | 12. Next.js Core Shell and Dashboard | 2/2 | Complete    | 2026-03-18 | - |
 | 13. Report Generation with SSE Progress | 2/2 | Complete    | 2026-03-18 | - |
 | 14. Report View, TradingView Chart, and History | 3/3 | Complete    | 2026-03-19 | - |
-| 15. nginx and Docker Compose Integration | v3.0 | 0/1 | Not started | - |
+| 15. nginx and Docker Compose Integration | 1/1 | Complete   | 2026-03-19 | - |
 | 16. Document Ingestion and Dictionary Expansion | v3.0 | 0/? | Not started | - |
