@@ -143,7 +143,9 @@ Plans:
   2. All HTTP traffic is redirected to HTTPS; TLS certificate is valid and auto-renewing via certbot
   3. Unauthenticated requests to protected API routes through nginx return 401 (not a 502 or proxy error)
   4. All 10 Docker services start cleanly with `docker compose up -d` and pass health checks
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 15-01-PLAN.md — nginx config files (local HTTP + production HTTPS), Docker Compose nginx/certbot services, override file, .env.example update
 
 ### Phase 16: Document Ingestion and Dictionary Expansion
 **Goal**: The macro document corpus grows automatically when FOMC minutes are released, SBV reports can be manually ingested without touching the filesystem, and the Vietnamese financial dictionary covers earnings-season vocabulary
@@ -175,5 +177,5 @@ Plans:
 | 12. Next.js Core Shell and Dashboard | 2/2 | Complete    | 2026-03-18 | - |
 | 13. Report Generation with SSE Progress | 2/2 | Complete    | 2026-03-18 | - |
 | 14. Report View, TradingView Chart, and History | 3/3 | Complete    | 2026-03-19 | - |
-| 15. nginx and Docker Compose Integration | v3.0 | 0/? | Not started | - |
+| 15. nginx and Docker Compose Integration | v3.0 | 0/1 | Not started | - |
 | 16. Document Ingestion and Dictionary Expansion | v3.0 | 0/? | Not started | - |
