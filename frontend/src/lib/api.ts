@@ -1,4 +1,4 @@
-import type { WatchlistResponse, OHLCVResponse, ReportHistoryResponse, GenerateResponse } from './types'
+import type { WatchlistResponse, OHLCVResponse, ReportHistoryResponse, GenerateResponse, ReportContentResponse } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -51,4 +51,23 @@ export async function generateReport(
     method: 'POST',
     body: JSON.stringify({ ticker, asset_type: assetType }),
   })
+}
+
+export async function getReportHistory(
+  symbol: string,
+  token: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<ReportHistoryResponse> {
+  return fetchAPI<ReportHistoryResponse>(
+    `/reports/by-ticker/${symbol}?page=${page}&per_page=${perPage}`,
+    token
+  )
+}
+
+export async function getReportContent(
+  reportId: number,
+  token: string
+): Promise<ReportContentResponse> {
+  return fetchAPI<ReportContentResponse>(`/reports/by-report-id/${reportId}`, token)
 }

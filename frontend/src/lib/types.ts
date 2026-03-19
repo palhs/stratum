@@ -70,3 +70,17 @@ export interface GenerationState {
   jobId: number
   steps: Map<string, StepStatus>
 }
+
+// --- Phase 14: Report View types ---
+
+export interface ReportContentResponse {
+  report_id: number
+  generated_at: string
+  tier: string
+  verdict: string
+  macro_assessment: string
+  valuation_assessment: string
+  structure_assessment: string
+  report_markdown_vi: string | null
+  report_markdown_en: string | null
+}
