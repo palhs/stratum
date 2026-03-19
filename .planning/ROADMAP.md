@@ -128,7 +128,11 @@ Plans:
   3. Report view includes a TradingView candlestick chart with weekly OHLCV, 50MA, and 200MA overlays that is zoomable and does not crash the Next.js build
   4. Report history timeline shows all past reports for a ticker with date, tier badge, and upgrade/downgrade arrows between consecutive assessments
   5. User can click any historical report in the timeline and open it in the full report view
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 14-01-PLAN.md — Backend report content endpoint, npm installs, frontend types/API, typography plugin
+- [ ] 14-02-PLAN.md — Leaf UI components: ReportSummaryCard, BilingualToggle, TradingViewChart, ReportMarkdown, ReportPageSkeleton
+- [ ] 14-03-PLAN.md — HistoryTimeline, ReportPageClient orchestrator, page.tsx server wrapper
 
 ### Phase 15: nginx and Docker Compose Integration
 **Goal**: All services are wired through nginx with TLS; SSE streaming works end-to-end from browser to FastAPI through the proxy; the system is production-ready
@@ -170,6 +174,6 @@ Plans:
 | 11. Supabase Auth and Per-User Watchlist | 2/2 | Complete    | 2026-03-18 | - |
 | 12. Next.js Core Shell and Dashboard | 2/2 | Complete    | 2026-03-18 | - |
 | 13. Report Generation with SSE Progress | 2/2 | Complete    | 2026-03-18 | - |
-| 14. Report View, TradingView Chart, and History | v3.0 | 0/? | Not started | - |
+| 14. Report View, TradingView Chart, and History | v3.0 | 0/3 | Not started | - |
 | 15. nginx and Docker Compose Integration | v3.0 | 0/? | Not started | - |
 | 16. Document Ingestion and Dictionary Expansion | v3.0 | 0/? | Not started | - |
