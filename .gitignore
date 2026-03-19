@@ -74,7 +74,8 @@ Icon
 # ---------------------------------------------------------------------------
 # Docker local state
 # ---------------------------------------------------------------------------
-docker-compose.override.yml
+# Note: docker-compose.override.yml is committed (contains no secrets, only local dev config)
+# docker-compose.override.yml
 
 # ---------------------------------------------------------------------------
 # Build artifacts
