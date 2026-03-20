@@ -1,7 +1,7 @@
 """
 JWT authentication dependency for the Stratum Reasoning Engine.
 
-Uses Supabase-issued JWTs (RS256, audience="authenticated") validated via JWKS.
+Uses Supabase-issued JWTs (RS256/ES256, audience="authenticated") validated via JWKS.
 SUPABASE_JWKS_URL must be set in the environment.
 
 Usage:
@@ -53,7 +53,7 @@ async def require_auth(
         payload = jwt.decode(
             cred.credentials,
             signing_key.key,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             audience="authenticated",
         )
     except jwt.ExpiredSignatureError:

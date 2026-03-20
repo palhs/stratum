@@ -169,8 +169,7 @@ def _query_report_history(
     metadata = MetaData()
     reports = Table("reports", metadata, autoload_with=db_engine)
 
-    asset_id_pattern = f"{symbol.upper()}:%"
-    where_clause = reports.c.asset_id.like(asset_id_pattern)
+    where_clause = reports.c.asset_id == symbol.upper()
 
     # Main query: one row per generation run (grouped by generated_at)
     history_stmt = (

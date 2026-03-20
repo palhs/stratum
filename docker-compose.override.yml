@@ -1,13 +1,36 @@
 # Local development override — auto-merged by docker compose up
-# Production: docker compose -f docker-compose.yml up -d (excludes this file)
+# Disables certbot and prevents frontend/reasoning-engine from needing buildx.
+# For dev nginx proxy, use: make dev-nginx (runs standalone container)
+# Production (VPS): docker compose -f docker-compose.yml up -d (excludes this file)
 services:
-  nginx:
-    volumes:
-      - ./nginx/local.conf:/etc/nginx/conf.d/default.conf:ro
+  # Expose storage ports for native dev (not exposed in production)
+  postgres:
     ports:
-      - "80:80"
-    # Override: replaces letsencrypt volumes, HTTP only (no port 443)
+      - "5432:5432"
+
+  qdrant:
+    ports:
+      - "6333:6333"
 
   certbot:
     entrypoint: ["echo", "certbot disabled in local dev"]
     restart: "no"
+
+  # Override build → image so docker-buildx is not required for storage-only workflows.
+  frontend:
+    image: alpine:latest
+    entrypoint: ["echo", "Run natively: make dev-frontend"]
+    restart: "no"
+    profiles: ["integration"]
+
+  reasoning-engine:
+    image: alpine:latest
+    entrypoint: ["echo", "Run natively: make dev-reasoning"]
+    restart: "no"
+    profiles: ["integration"]
+
+  nginx:
+    image: alpine:latest
+    entrypoint: ["echo", "Run via: make dev-nginx"]
+    restart: "no"
+    profiles: ["integration"]

@@ -14,7 +14,8 @@ Watchlist persists in VPS PostgreSQL (user_watchlist table).
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import MetaData, Table, delete, insert, select, text
+from sqlalchemy import MetaData, Table, delete, select, text
+from sqlalchemy.dialects.postgresql import insert
 
 from reasoning.app.auth import require_auth
 from reasoning.app.schemas import WatchlistItem, WatchlistResponse, WatchlistUpdate

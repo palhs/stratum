@@ -9,7 +9,8 @@
 ENV_FILE := $(shell test -f .env.local && echo .env.local || echo .env)
 COMPOSE := docker compose --env-file $(ENV_FILE)
 
-.PHONY: help up up-storage up-ingestion up-sidecar down reset-db nuke migrate logs ps health
+.PHONY: help up up-storage up-ingestion up-sidecar down reset-db nuke migrate logs ps health \
+       dev dev-storage dev-nginx dev-nginx-stop dev-frontend dev-reasoning up-integration
 
 ## help: Show available commands (default target)
 help:
@@ -47,6 +48,7 @@ up-sidecar:
 
 ## down: Stop all running services (preserves volumes)
 down:
+	@docker rm -f stratum-dev-nginx 2>/dev/null || true
 	$(COMPOSE) down
 
 ## reset-db: DESTRUCTIVE — destroy all volumes and remove containers
@@ -81,6 +83,55 @@ logs:
 ## ps: Show status of all services
 ps:
 	$(COMPOSE) ps
+
+# =============================================================================
+# Local Dev (native Mac — hot reload)
+# =============================================================================
+
+## dev: Start storage + nginx for local dev (run frontend & reasoning natively)
+dev: dev-storage dev-nginx
+	@echo ""
+	@echo "Storage + nginx running. Now start services natively:"
+	@echo "  make dev-frontend    # Terminal 2: Next.js on :3000"
+	@echo "  make dev-reasoning   # Terminal 3: FastAPI on :8000"
+	@echo ""
+	@echo "Then open http://localhost (nginx) or http://localhost:3000 (direct)"
+	@echo ""
+
+## dev-storage: Start databases only (postgres, neo4j, qdrant + migrations/init)
+dev-storage:
+	$(COMPOSE) --profile storage up -d
+
+## dev-nginx: Start nginx proxy (points to host.docker.internal for Mac services)
+dev-nginx:
+	@docker rm -f stratum-dev-nginx 2>/dev/null || true
+	docker run -d --name stratum-dev-nginx \
+		-p 80:80 \
+		-v $(CURDIR)/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro \
+		nginx:alpine
+	@echo "nginx running on http://localhost (proxying to host services)"
+
+## dev-nginx-stop: Stop the dev nginx container
+dev-nginx-stop:
+	docker rm -f stratum-dev-nginx 2>/dev/null || true
+
+## dev-frontend: Run Next.js dev server with hot reload (port 3000)
+dev-frontend:
+	set -a && . ./$(ENV_FILE) && set +a && \
+	cd frontend && npm run dev
+
+## dev-reasoning: Run FastAPI with auto-reload (port 8000)
+dev-reasoning:
+	set -a && . ./$(ENV_FILE) && set +a && \
+	PYTHONPATH=$(CURDIR) reasoning/.venv/bin/python -m uvicorn reasoning.app.main:app --reload --reload-dir reasoning --host 0.0.0.0 --port 8000
+
+## up-integration: Start full stack in Docker for integration testing (builds images)
+up-integration:
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.integration.yml --profile reasoning up -d --build
+
+# =============================================================================
+# Operations
+# =============================================================================
 
 ## health: Check health status of all running services
 health:
